@@ -1,0 +1,65 @@
+# Git
+.git/
+.gitignore
+.gitattributes
+.gitmodules
+
+# Node
+# Exclude node_modules at EVERY depth. `node_modules/` alone only excludes the
+# context-root copy; without `**/node_modules` the per-service local dev trees
+# (services/<svc>/node_modules — full of workspace symlinks) leak into the
+# build context and can leave dangling links in runtime images. Runtime images
+# instead copy root and workspace node_modules from the production dependency
+# stage, where npm installed dependencies from the lockfile.
+node_modules/
+**/node_modules/
+**/node_modules/**
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.yarn/
+.pnpm/
+
+# Build artifacts
+dist/
+build/
+*.tsbuildinfo
+**/dist/**
+**/build/**
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore
+docker-compose*.yml
+Dockerfile*
+**/Dockerfile*
+
+# Logs
+logs/
+*.log
+
+# Test
+coverage/
+.nyc_output/
+__tests__/
+__mocks__/
+**/*.test.*
+**/*.spec.*
+
+# Documentation
+docs/
+*.md
+!README.md

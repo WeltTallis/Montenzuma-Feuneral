@@ -1,0 +1,623 @@
+/* ============================================================================
+   PREMIUM COMPONENTS — Card, button, badge, table, input, scrollbar,
+   gradient text, shimmer, glass, dot, masonry, mobile animations
+   ============================================================================ */
+
+@layer utilities {
+  /* Premium card elevation with gradient borders */
+  .premium-card {
+    @apply relative rounded-xl border transition-all duration-300;
+    background: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(220 10% 98%) 100%);
+    box-shadow: var(--shadow-card), 0 0 0 1px hsl(var(--border) / 0.5) inset;
+  }
+
+  .premium-card:hover {
+    box-shadow: var(--shadow-elevated), 0 0 0 1px hsl(var(--primary) / 0.1) inset;
+    transform: translateY(-2px);
+  }
+
+  /* Premium stat card with gradient background */
+  .premium-stat-card {
+    @apply relative rounded-xl border overflow-hidden;
+    background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--muted) / 0.3) 100%);
+    border-color: hsl(var(--border) / 0.6);
+    box-shadow: var(--shadow-soft);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .premium-stat-card:hover {
+    border-color: hsl(var(--primary) / 0.3);
+    box-shadow: var(--shadow-card);
+    transform: scale(1.02);
+  }
+
+  /* Premium button with gradient and glow */
+  .premium-button {
+    @apply relative overflow-hidden rounded-lg font-semibold transition-all duration-200;
+    box-shadow: 0 4px 14px hsl(var(--primary) / 0.3);
+  }
+
+  .premium-button::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .premium-button:hover::before {
+    opacity: 1;
+  }
+
+  .premium-button:active {
+    transform: scale(0.98);
+  }
+
+  /* Premium badge with gradient */
+  .premium-badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold text-xs;
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.1) 0%, hsl(var(--primary) / 0.05) 100%);
+    border: 1px solid hsl(var(--primary) / 0.2);
+    color: hsl(var(--primary));
+  }
+
+  /* Premium table row hover */
+  .premium-table-row {
+    @apply transition-colors duration-150;
+  }
+
+  .premium-table-row:hover {
+    background: linear-gradient(90deg, hsl(var(--muted) / 0.5) 0%, hsl(var(--muted) / 0.2) 100%);
+  }
+
+  /* Premium input with focus glow */
+  .premium-input {
+    @apply w-full py-3 rounded-lg border-2 transition-all duration-200;
+    border-color: hsl(var(--border));
+    background: hsl(var(--background));
+  }
+
+  .premium-input:focus {
+    border-color: hsl(var(--success));
+    box-shadow: 0 0 0 3px hsl(var(--success) / 0.1), var(--shadow-card);
+    outline: none;
+  }
+
+  /* Premium scrollbar */
+  .premium-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary) / 0.3) transparent;
+  }
+
+  .premium-scroll::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .premium-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .premium-scroll::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary) / 0.2);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  .premium-scroll::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.3);
+    background-clip: content-box;
+  }
+
+  /* Premium gradient text */
+  .premium-gradient-text {
+    font-family: var(--font-family-display);
+    font-weight: 800;
+    background: linear-gradient(135deg, hsl(var(--foreground)) 0%, hsl(var(--primary)) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Premium shimmer effect for loading */
+  .premium-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .premium-shimmer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      hsl(var(--muted) / 0.5) 50%,
+      transparent 100%
+    );
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+  }
+
+  /* Premium hover lift effect */
+  .premium-hover-lift {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .premium-hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-elevated);
+  }
+
+  /* Premium glass morphism */
+  .premium-glass {
+    background: hsl(var(--card) / 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--border) / 0.5);
+  }
+
+  /* Premium notification dot */
+  .premium-dot {
+    @apply h-2 w-2 rounded-full;
+    background: hsl(var(--success));
+    box-shadow: 0 0 0 3px hsl(var(--success) / 0.2);
+    animation: pulse-dot 2s infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% {
+      box-shadow: 0 0 0 0 hsl(var(--success) / 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 6px hsl(var(--success) / 0);
+    }
+  }
+
+  /* ========================================================================
+     MOBILE PAGE ANIMATIONS — anime.js + CSS hybrid
+     ======================================================================== */
+
+  @keyframes mobile-wallet-reveal {
+    0% {
+      opacity: 0;
+      transform: translateY(12px) scale(0.97);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes mobile-card-reveal {
+    0% {
+      opacity: 0;
+      transform: translateY(16px) scale(0.98);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes mobile-section-reveal {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes mobile-stat-pop {
+    0% {
+      opacity: 0;
+      transform: translateY(8px) scale(0.95);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes wallet-shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  @keyframes mobile-tab-slide {
+    0% {
+      transform: scaleX(0);
+      opacity: 0;
+    }
+    100% {
+      transform: scaleX(1);
+      opacity: 1;
+    }
+  }
+
+  /* Utility classes for mobile pages */
+  .mobile-wallet-hero {
+    animation: mobile-wallet-reveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .mobile-card-enter {
+    animation: mobile-card-reveal 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .mobile-section-enter {
+    animation: mobile-section-reveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .mobile-stat-enter {
+    animation: mobile-stat-pop 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .wallet-shimmer-bg {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(110, 168, 255, 0.06) 40%,
+      rgba(110, 168, 255, 0.12) 50%,
+      rgba(110, 168, 255, 0.06) 60%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: wallet-shimmer 3s ease-in-out infinite;
+  }
+
+  /* Treasury band — quiet HUD effects. The data stays loud; these whisper. */
+
+  /* Light sweep across a band surface. The glass variant carries a white tint
+     for the dark wallet panel, where the emerald tint would not register. */
+  .band-sheen {
+    background: linear-gradient(
+      105deg,
+      transparent 40%,
+      rgba(16, 185, 129, 0.05) 50%,
+      transparent 60%
+    );
+    background-size: 220% 100%;
+    animation: band-sheen 7.5s linear infinite;
+  }
+
+  .band-sheen--glass {
+    background: linear-gradient(
+      105deg,
+      transparent 38%,
+      rgba(255, 255, 255, 0.07) 50%,
+      transparent 62%
+    );
+    background-size: 220% 100%;
+  }
+
+  @keyframes band-sheen {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  /* Live-telemetry LED — a solid core under an expanding halo, so every panel
+     label reads as a status light rather than a bullet. `.treasury-signal` is
+     the self-sizing form for labels that carry no size utilities of their own. */
+  .led-pulse,
+  .treasury-signal {
+    position: relative;
+    display: inline-block;
+    flex: none;
+  }
+
+  .treasury-signal {
+    height: 0.375rem;
+    width: 0.375rem;
+    border-radius: 9999px;
+  }
+
+  .led-pulse::after,
+  .treasury-signal::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: inherit;
+    animation: led-pulse 2.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+
+  @keyframes led-pulse {
+    0% {
+      transform: scale(1);
+      opacity: 0.55;
+    }
+    70%,
+    100% {
+      transform: scale(2.8);
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .led-pulse::after,
+    .treasury-signal::after {
+      animation: none !important;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mobile-wallet-hero,
+    .mobile-card-enter,
+    .mobile-section-enter,
+    .mobile-stat-enter,
+    .wallet-shimmer-bg,
+    .band-sheen,
+    .led-pulse {
+      animation: none !important;
+    }
+  }
+
+  /* ========================================================================
+     MASONRY LAYOUTS
+     ======================================================================== */
+
+  /* CSS Columns Masonry — for uniform items (stats, small cards) */
+  .masonry-grid {
+    column-gap: 1rem;
+    column-count: 1;
+  }
+
+  .masonry-grid > div {
+    break-inside: avoid;
+    margin-bottom: 1rem;
+    display: block;
+    width: 100%;
+  }
+
+  @media (min-width: 768px) {
+    .masonry-grid {
+      column-count: 2;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .masonry-grid {
+      column-count: 3;
+    }
+  }
+
+  /* Flexbox Column Masonry — for mixed-size items (charts, tables, stats) */
+  .flex-masonry {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .flex-masonry > .flex-masonry-col {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  @media (max-width: 767px) {
+    .flex-masonry {
+      flex-direction: column;
+    }
+  }
+
+  /* ========================================================================
+     TREASURY INSTRUMENT BAND
+     Shared surface language for the advance-payments stat row: faded seams
+     between panels, a hover light-rail, a faint measurement mesh, pulsing
+     signal dots and a drifting aurora on the dark wallet panel.
+     ======================================================================== */
+
+  /* Seams — hairlines that fade out at both ends instead of hard dividers.
+     Horizontal when the band stacks, vertical once it sits side by side. */
+  .treasury-grid > * + * {
+    position: relative;
+  }
+
+  .treasury-grid > * + *::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 1px;
+    z-index: 3;
+    pointer-events: none;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(203 213 225 / 0.95) 14%,
+      rgb(203 213 225 / 0.95) 86%,
+      transparent
+    );
+  }
+
+  /* A hidden panel (wallet on mobile) must not hand a seam to the panel that
+     becomes visually first. */
+  .treasury-grid > .hidden + *::before {
+    content: none;
+  }
+
+  @media (min-width: 1024px) {
+    .treasury-grid > * + *::before {
+      right: auto;
+      bottom: 0;
+      width: 1px;
+      height: auto;
+      background: linear-gradient(
+        180deg,
+        transparent,
+        rgb(203 213 225 / 0.95) 16%,
+        rgb(203 213 225 / 0.95) 84%,
+        transparent
+      );
+    }
+  }
+
+  /* Panel shell — resting emerald wash plus a hover light-rail and glow.
+     The dark variant keeps its own gradient background, so only the light
+     variants carry a resting wash. */
+  .treasury-panel,
+  .treasury-panel--dark,
+  .treasury-panel--alert {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .treasury-panel {
+    background-image: radial-gradient(120% 85% at 50% 0%, rgba(8, 120, 62, 0.04), transparent 70%);
+  }
+
+  .treasury-panel::after,
+  .treasury-panel--dark::after,
+  .treasury-panel--alert::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    background:
+      linear-gradient(90deg, transparent, rgba(8, 120, 62, 0.55), transparent) top / 100% 2px no-repeat,
+      radial-gradient(120% 90% at 50% 0%, rgba(8, 120, 62, 0.07), transparent 68%);
+  }
+
+  .treasury-panel:hover::after,
+  .treasury-panel:focus-within::after,
+  .treasury-panel--dark:hover::after,
+  .treasury-panel--dark:focus-within::after,
+  .treasury-panel--alert:hover::after,
+  .treasury-panel--alert:focus-within::after {
+    opacity: 1;
+  }
+
+  .treasury-panel--dark::after {
+    background:
+      linear-gradient(90deg, transparent, rgba(110, 231, 183, 0.7), transparent) top / 100% 2px no-repeat,
+      radial-gradient(120% 90% at 50% 0%, rgba(16, 185, 129, 0.14), transparent 70%);
+  }
+
+  .treasury-panel--alert {
+    background-image: radial-gradient(120% 85% at 50% 0%, rgba(225, 29, 72, 0.05), transparent 72%);
+  }
+
+  .treasury-panel--alert::after {
+    background:
+      linear-gradient(90deg, transparent, rgba(225, 29, 72, 0.5), transparent) top / 100% 2px no-repeat,
+      radial-gradient(120% 90% at 50% 0%, rgba(225, 29, 72, 0.07), transparent 68%);
+  }
+
+  /* Measurement mesh — faint dot grid, strongest under the panel label. */
+  /* Negative z-index keeps the mesh above the panel's own wash but behind the
+     in-flow readouts, which is why the panel isolates a stacking context. */
+  .treasury-mesh {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: radial-gradient(rgba(8, 120, 62, 0.09) 1px, transparent 1px);
+    background-size: 16px 16px;
+    mask-image: radial-gradient(115% 80% at 50% 0%, #000 4%, transparent 70%);
+    -webkit-mask-image: radial-gradient(115% 80% at 50% 0%, #000 4%, transparent 70%);
+  }
+
+  .treasury-mesh--alert {
+    background-image: radial-gradient(rgba(225, 29, 72, 0.1) 1px, transparent 1px);
+  }
+
+  /* Footer rail — divider carrying a short accent tick at its origin. */
+  .treasury-rail {
+    position: relative;
+    border-top: 1px solid rgb(226 232 240 / 0.9);
+  }
+
+  .treasury-rail::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: 0;
+    width: 2rem;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(8, 120, 62, 0.8), rgba(8, 120, 62, 0));
+  }
+
+  .treasury-rail--dark {
+    border-top-color: rgb(255 255 255 / 0.12);
+  }
+
+  .treasury-rail--dark::before {
+    background: linear-gradient(90deg, rgba(110, 231, 183, 0.85), rgba(110, 231, 183, 0));
+  }
+
+  /* Headline values ease in from a blur so the band settles as one instrument. */
+  .treasury-value {
+    animation: treasury-value-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  @keyframes treasury-value-in {
+    0% {
+      opacity: 0;
+      transform: translateY(6px);
+      filter: blur(6px);
+    }
+    100% {
+      opacity: 1;
+      transform: none;
+      filter: blur(0);
+    }
+  }
+
+  /* Aurora — reserved for the dark wallet panel; the sweep on top of it is the
+     shared .band-sheen--glass. */
+  .treasury-aurora {
+    position: absolute;
+    inset: -35%;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(38% 46% at 30% 28%, rgba(52, 211, 153, 0.22), transparent 70%),
+      radial-gradient(34% 42% at 74% 70%, rgba(4, 120, 87, 0.28), transparent 72%);
+    filter: blur(8px);
+    animation: treasury-aurora 16s ease-in-out infinite;
+  }
+
+  @keyframes treasury-aurora {
+    0%,
+    100% {
+      transform: translate3d(-10%, -6%, 0) scale(1);
+    }
+    50% {
+      transform: translate3d(12%, 9%, 0) scale(1.14);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .treasury-aurora,
+    .treasury-value {
+      animation: none !important;
+    }
+
+    .treasury-value {
+      opacity: 1;
+      filter: none;
+      transform: none;
+    }
+  }
+}

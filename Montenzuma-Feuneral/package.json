@@ -1,0 +1,67 @@
+{
+  "name": "@montezuma/restpoint",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Restpoint — Modern Kenyan Mortuary Management SaaS Platform",
+  "engines": {
+    "node": ">=22.0.0 <25.0.0"
+  },
+  "workspaces": [
+    "packages/*",
+    "services/*",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently -n gateway,services -c blue,green \"npm run dev --workspace=restpoint-gateway\" \"npm run dev --workspaces\"",
+    "build": "npm run build --workspaces --if-present",
+    "start": "npm run start --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "lint:fix": "npm run lint:fix --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "clean": "npm run clean --workspaces --if-present",
+    "setup": "npm install",
+    "bootstrap": "npm install",
+    "docker:up": "docker compose up --build -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f --tail=100",
+    "docker:rebuild": "docker compose down && docker compose build --no-cache && docker compose up -d",
+    "docker:build": "docker compose build --parallel",
+    "docker:prune": "node scripts/docker-cleanup.mjs --apply",
+    "docker:prune:dry": "node scripts/docker-cleanup.mjs",
+    "docker:gen": "node scripts/generate-dockerfiles.mjs",
+    "check:paths": "node scripts/check-relative-paths.mjs",
+    "check:paths:strict": "node scripts/check-relative-paths.mjs --strict",
+    "check:paths:container": "node scripts/verify-container-paths.mjs",
+    "check:connection": "node scripts/check-connection-status.mjs",
+    "docker:df": "docker system df",
+    "scan:deps": "node scripts/scan-dependencies.mjs",
+    "scan:deps:json": "node scripts/scan-dependencies.mjs --json",
+    "audit:dependencies": "audit-ci --high --extra-args=--workspace=@montezuma/deceased-service --extra-args=--workspace=restpoint-gateway",
+    "fix:deps": "node scripts/fix-dependencies.mjs --apply",
+    "fix:deps:dry": "node scripts/fix-dependencies.mjs",
+    "provision-worker": "ts-node services/tenant-service/scripts/provision-worker.ts"
+  },
+  "dependencies": {
+    "pdfkit": "^0.19.1",
+    "perfect-freehand": "^1.2.3"
+  },
+  "devDependencies": {
+    "@socket.io/redis-adapter": "^8.3.0",
+    "@types/cors": "^2.8.19",
+    "@types/helmet": "^0.0.48",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "20.19.43",
+    "audit-ci": "^7.1.0",
+    "axios": "^1.19.0",
+    "concurrently": "^8.2.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.6.0",
+    "redis": "^4.7.1",
+    "socket.io": "^4.7.2",
+    "ts-node": "^10.9.2"
+  }
+}

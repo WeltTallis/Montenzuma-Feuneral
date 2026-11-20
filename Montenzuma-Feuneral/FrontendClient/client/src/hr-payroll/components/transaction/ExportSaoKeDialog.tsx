@@ -1,0 +1,299 @@
+import { useState, useMemo, useCallback } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@hr/components/ui/dialog';
+import { Button } from '@hr/components/ui/button';
+import { Input } from '@hr/components/ui/input';
+import { Label } from '@hr/components/ui/label';
+import { Download, X, Calendar, Loader2, Search, RefreshCw } from 'lucide-react';
+import { cn } from '@hr/lib/utils';
+import { dateToString } from '@hr/utils/dateHelpers';
+import { textIncludes } from '@hr/utils/kenyan';
+import { apiClient, buildQueryString } from '@hr/services/api/client';
+import { API_ENDPOINTS } from '@hr/config/api.config';
+import { useProjects } from '@hr/hooks/api/useProjects';
+import { getErrorMessage } from '@hr/utils/error-handler';
+import { authManager } from '@hr/lib/auth';
+import { Skeleton } from '@hr/components/ui/skeleton';
+
+interface ExportSaoKeDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function ExportSaoKeDialog({ open, onOpenChange }: ExportSaoKeDialogProps) {
+  // Only fetch while the dialog is open: it both avoids a 1–2s query on every
+  // timesheet page load and gives each open a fresh attempt, so a cached failed
+  // fetch (useProjects sets retry:false) can no longer pin the list at 0 forever.
+  const userRole = authManager.getUserRole();
+  const canPickProjects =
+    userRole === 'admin' || userRole === 'partner' || userRole === 'accountant';
+
+  const {
+    data: projectsData,
+    isPending,
+    isFetching,
+    isError,
+    refetch,
+  } = useProjects({ status: 'active', pageSize: 100 }, { enabled: open && canPickProjects });
+  const projects = useMemo(() => projectsData?.data || [], [projectsData]);
+  const isLoadingProjects = isPending || (isFetching && projects.length === 0);
+
+  const defaultDateRange = useMemo(() => {
+    const now = new Date();
+    return {
+      fromDate: dateToString(new Date(now.getFullYear(), now.getMonth(), 1)),
+      toDate: dateToString(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+    };
+  }, []);
+
+  const [selectedProjectIds, setSelectedProjectIds] = useState<number[]>([]);
+  const [isAllProjectsSelected, setIsAllProjectsSelected] = useState(true);
+  const [projectSearch, setProjectSearch] = useState('');
+  const [fromDate, setFromDate] = useState(defaultDateRange.fromDate);
+  const [toDate, setToDate] = useState(defaultDateRange.toDate);
+  const [isExporting, setIsExporting] = useState(false);
+  const [error, setError] = useState('');
+
+  const filteredProjects = useMemo(() => {
+    if (!projectSearch.trim()) return projects;
+    return projects.filter(
+      (p) => textIncludes(p.name, projectSearch) || textIncludes(p.code, projectSearch),
+    );
+  }, [projects, projectSearch]);
+
+  const handleSelectAll = useCallback(() => {
+    setIsAllProjectsSelected(true);
+    setSelectedProjectIds([]);
+  }, []);
+
+  const handleToggleProject = useCallback((id: number) => {
+    setIsAllProjectsSelected(false);
+    setSelectedProjectIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }, []);
+
+  const handleExport = async () => {
+    if (!fromDate || !toDate) return;
+
+    setIsExporting(true);
+    setError('');
+    try {
+      const params: Record<string, string> = { fromDate, toDate };
+      if (!isAllProjectsSelected && selectedProjectIds.length > 0) {
+        params.projectIds = selectedProjectIds.join(',');
+      }
+      const qs = buildQueryString(params);
+      await apiClient.download(
+        `${API_ENDPOINTS.timesheets.payrollReport}${qs}`,
+        `sao_ke_${fromDate}_${toDate}.xlsx`,
+      );
+      onOpenChange(false);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handlePresetClick = (preset: string) => {
+    const now = new Date();
+    let f = '';
+    let t = '';
+    switch (preset) {
+      case 'this-month':
+        f = dateToString(new Date(now.getFullYear(), now.getMonth(), 1));
+        t = dateToString(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+        break;
+      case 'last-month':
+        f = dateToString(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+        t = dateToString(new Date(now.getFullYear(), now.getMonth(), 0));
+        break;
+      case 'this-quarter': {
+        const q = Math.floor(now.getMonth() / 3);
+        f = dateToString(new Date(now.getFullYear(), q * 3, 1));
+        t = dateToString(new Date(now.getFullYear(), q * 3 + 3, 0));
+        break;
+      }
+      case 'last-3-months':
+        f = dateToString(new Date(now.getFullYear(), now.getMonth() - 3, 1));
+        t = dateToString(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+        break;
+    }
+    if (f && t) {
+      setFromDate(f);
+      setToDate(t);
+    }
+  };
+
+  const canExport = fromDate && toDate && !isExporting;
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !isExporting && onOpenChange(v)}>
+      <DialogContent className="flex max-h-[92dvh] flex-col sm:max-w-[700px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Download className="h-5 w-5" />
+            Export sao kê
+          </DialogTitle>
+          <DialogDescription>Chọn dự án và khoảng thời gian để xuất sao kê</DialogDescription>
+        </DialogHeader>
+
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto py-2 sm:flex-row sm:gap-6 sm:overflow-hidden">
+          {/* Left — Date Presets + Date Inputs */}
+          <div className="w-full shrink-0 space-y-3 sm:w-44">
+            <Label className="text-sm font-medium">Khoảng thời gian</Label>
+            <div className="flex flex-col gap-2">
+              {(['this-month', 'last-month', 'this-quarter', 'last-3-months'] as const).map((p) => (
+                <Button
+                  key={p}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePresetClick(p)}
+                  className="min-h-11 w-full justify-start"
+                >
+                  <Calendar className="h-3.5 w-3.5 mr-2" />
+                  {p === 'this-month' && 'This month'}
+                  {p === 'last-month' && 'Tháng trước'}
+                  {p === 'this-quarter' && 'Quý này'}
+                  {p === 'last-3-months' && '3 tháng gần đây'}
+                </Button>
+              ))}
+            </div>
+            <div className="space-y-2 pt-2">
+              <div className="space-y-1">
+                <Label htmlFor="fromDate" className="text-xs text-muted-foreground">Từ ngày</Label>
+                <Input id="fromDate" type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="h-11 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="toDate" className="text-xs text-muted-foreground">Đến ngày</Label>
+                <Input id="toDate" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="h-11 text-sm" />
+              </div>
+            </div>
+          </div>
+
+          {/* Right — Project Grid */}
+          <div className="flex-1 flex flex-col min-h-0 space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <Label className="text-sm font-medium">Projects</Label>
+              <Button
+                type="button"
+                variant={isAllProjectsSelected ? 'default' : 'outline'}
+                size="sm"
+                onClick={handleSelectAll}
+                className="h-11 text-xs"
+              >
+                All
+              </Button>
+            </div>
+
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Tìm dự án..."
+                value={projectSearch}
+                onChange={(e) => setProjectSearch(e.target.value)}
+                // sm:pl-* is required: the Input base sets sm:px-2.5, which wins at
+                // >=640px and pulls the text back under the leading icon otherwise.
+                className="h-11 pl-8 text-sm sm:pl-8"
+              />
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto -mx-1 px-1" style={{ maxHeight: '340px' }}>
+              <div className="grid grid-cols-1 gap-1.5 min-[420px]:grid-cols-2">
+                {!canPickProjects ? (
+                  <div className="col-span-2 py-6 text-center text-xs text-muted-foreground">
+                    Bạn không có quyền xem danh sách dự án.
+                  </div>
+                ) : isLoadingProjects ? (
+                  <>
+                    <Skeleton className="h-12 rounded-md" />
+                    <Skeleton className="h-12 rounded-md" />
+                    <Skeleton className="h-12 rounded-md" />
+                    <Skeleton className="h-12 rounded-md" />
+                  </>
+                ) : isError && projects.length === 0 ? (
+                  <div className="col-span-2 flex flex-col items-center gap-2 py-6 text-center">
+                    <p className="text-xs text-muted-foreground">
+                      Không tải được danh sách dự án.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-9 text-xs"
+                      onClick={() => refetch()}
+                    >
+                      <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                      Try again
+                    </Button>
+                  </div>
+                ) : filteredProjects.length === 0 ? (
+                  <div className="col-span-2 py-6 text-center text-xs text-muted-foreground">
+                    {projectSearch ? 'Không tìm thấy dự án' : 'Chưa có dự án nào được cấp cho tài khoản này'}
+                  </div>
+                ) : (
+                  filteredProjects.map((project) => {
+                    const isSelected = !isAllProjectsSelected && selectedProjectIds.includes(project.id);
+                    return (
+                      <button
+                        key={project.id}
+                        type="button"
+                        onClick={() => handleToggleProject(project.id)}
+                        className={cn(
+                          'text-left px-2.5 py-1.5 rounded-md border transition-colors min-h-[44px]',
+                          'hover:bg-muted/80 focus:outline-none focus:ring-2 focus:ring-ring',
+                          isSelected
+                            ? 'bg-primary/10 border-primary/30'
+                            : 'border-transparent',
+                        )}
+                      >
+                        <div className="text-xs font-medium break-words">{project.name}</div>
+                        <div className="mt-0.5 break-all text-xs text-muted-foreground">{project.code}</div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {!isAllProjectsSelected && selectedProjectIds.length > 0 && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-1 shrink-0">
+                <span>Đã chọn {selectedProjectIds.length}/{projects.length}</span>
+              </div>
+            )}
+            {isAllProjectsSelected && (
+              <div className="text-xs text-muted-foreground pt-1 shrink-0">
+                {isLoadingProjects
+                  ? 'Đang tải dự án…'
+                  : isError && projects.length === 0
+                    ? 'Chưa tải được dự án'
+                    : `All dự án (${projects.length})`}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {error && <p className="text-xs text-destructive px-4">{error}</p>}
+
+        <DialogFooter className="grid grid-cols-1 gap-2 shrink-0 sm:grid-cols-2">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isExporting} className="h-11 w-full">
+            <X className="h-4 w-4 mr-2" />
+            Cancel
+          </Button>
+          <Button type="button" onClick={handleExport} disabled={!canExport} className="h-11 w-full">
+            {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+            {isExporting ? 'Đang xuất...' : 'Export file'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

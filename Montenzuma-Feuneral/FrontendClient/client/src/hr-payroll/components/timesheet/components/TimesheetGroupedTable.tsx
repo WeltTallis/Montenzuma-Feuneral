@@ -1,0 +1,528 @@
+import { format } from "date-fns";
+import { memo, useCallback, useMemo } from "react";
+import {
+  Star,
+  ChevronRight,
+  ChevronDown,
+  Clock,
+  Building2,
+  Moon,
+  SunMedium,
+  TimerReset,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Timesheet } from "@hr/types/api/timesheet.types";
+import {
+  TIMESHEET_STRIP_COLORS,
+  PAYMENT_STRIP_COLORS,
+} from "../utils/timesheetStatusColors";
+import {
+  groupTimesheetsByEmployee,
+  groupEmployeeEntriesByProject,
+  formatTimesheetHours,
+  getPaytypeDetail,
+  EmployeeGroupedTimesheet,
+  ProjectTimesheetSection,
+} from "../utils/timesheetGrouping";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "@hr/components/ui/table";
+import { UserAvatar } from "@hr/components/ui/user-avatar";
+import { cn } from "@hr/lib/utils";
+import { EmptyState } from "@hr/components/shared/EmptyState";
+
+export interface TimesheetGroupedTableProps {
+  timesheets: Timesheet[];
+  userRole: "admin" | "partner";
+  expandedGroups: Set<string>;
+  onToggleGroup: (groupKey: string) => void;
+  onRowClick: (timesheet: Timesheet) => void;
+}
+
+function getStatusStripBg(status: string, paymentStatus?: string): string {
+  if (paymentStatus === "paid" || status === "paid") return "bg-green-500";
+  switch (status) {
+    case "approved": return "bg-blue-500";
+    case "pending_approval": return "bg-amber-400";
+    case "rejected": return "bg-red-500";
+    default: return "bg-gray-300";
+  }
+}
+
+export const TimesheetGroupedTable = memo(function TimesheetGroupedTable({
+  timesheets,
+  userRole,
+  expandedGroups,
+  onToggleGroup,
+  onRowClick,
+}: TimesheetGroupedTableProps) {
+  const grouped = useMemo(
+    () => groupTimesheetsByEmployee(timesheets),
+    [timesheets],
+  );
+
+  if (grouped.length === 0) {
+    return (
+      <div className="rounded-2xl border border-border/60 bg-utility-gray-100 p-20 text-center">
+        <EmptyState icon={Clock} title="No timesheet data" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-border/50 bg-utility-gray-100 overflow-hidden">
+      {/* Scroll only when the desktop workspace is genuinely too narrow. */}
+      <div className="overflow-x-auto">
+        <Table className="table-fixed min-w-[860px]">
+          <colgroup>
+            <col style={{ width: "4px" }} />
+            <col style={{ width: "170px" }} />
+            <col style={{ width: "130px" }} />
+            <col style={{ width: "150px" }} />
+            <col style={{ width: "80px" }} />
+            <col style={{ width: "125px" }} />
+            <col style={{ width: "145px" }} />
+            <col style={{ width: "36px" }} />
+          </colgroup>
+          <TableHeader>
+            <TableRow className="bg-utility-gray-200 hover:bg-utility-gray-200 border-b border-utility-gray-300">
+              <TableHead className="p-0"><span className="sr-only">Status</span></TableHead>
+              <TableHead className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+                {userRole === "partner" ? "Employee · Date" : "Employees"}
+              </TableHead>
+              <TableHead className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+                {userRole === "partner" ? "Project · Day type" : "Day type"}
+              </TableHead>
+              <TableHead className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+                Shift · Status
+              </TableHead>
+              <TableHead className="border-l border-border/30 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right whitespace-nowrap">
+                Hours
+              </TableHead>
+              <TableHead className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right whitespace-nowrap">
+                {userRole === "admin" ? "Project · Rate" : "Rate"}
+              </TableHead>
+              <TableHead className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right whitespace-nowrap">
+                Amount
+              </TableHead>
+              <TableHead className="px-2 py-2"><span className="sr-only">Details</span></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {grouped.map((group, idx) => (
+              <GroupRow
+                key={group.groupKey}
+                group={group}
+                idx={idx}
+                userRole={userRole}
+                isExpanded={expandedGroups.has(group.groupKey)}
+                onToggle={() => onToggleGroup(group.groupKey)}
+                onRowClick={onRowClick}
+              />
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+});
+
+// ── Group row (collapsible header + children) ──────────────────────────────
+
+interface GroupRowProps {
+  group: EmployeeGroupedTimesheet;
+  idx: number;
+  userRole: "admin" | "partner";
+  isExpanded: boolean;
+  onToggle: () => void;
+  onRowClick: (timesheet: Timesheet) => void;
+}
+
+const GroupRow = memo(function GroupRow({
+  group,
+  idx,
+  userRole,
+  isExpanded,
+  onToggle,
+  onRowClick,
+}: GroupRowProps) {
+  const groupStripBg = getStatusStripBg(group.aggregatedStatus);
+  const projectSections = useMemo(
+    () => groupEmployeeEntriesByProject(group.entries),
+    [group.entries],
+  );
+
+  return (
+    <>
+          <TableRow
+            onClick={onToggle}
+            className={cn(
+              "group cursor-pointer transition-colors hover:bg-utility-gray-200/60",
+              idx !== 0 && "border-t border-utility-gray-200",
+            )}
+          >
+            {/* [0] status strip */}
+            <TableCell className="p-0">
+              <div className={cn("h-full min-h-[44px] w-1 rounded-r-full transition-colors", groupStripBg)} />
+            </TableCell>
+            {/* [1] employee */}
+            <TableCell className="px-3 py-2.5">
+              <button
+                type="button"
+                className="flex min-h-11 w-full min-w-0 items-center gap-2.5 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                aria-expanded={isExpanded}
+                aria-label={`${isExpanded ? "Collapse" : "View"} timesheets for ${group.employeeName || group.employeeCode || "employee"}`}
+                onClick={(event) => { event.stopPropagation(); onToggle(); }}
+              >
+                <UserAvatar email={group.employeeCode} name={group.employeeName} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-foreground leading-tight truncate">
+                    {group.employeeName || "-"}
+                  </p>
+                  <p className="text-xs text-muted-foreground leading-tight mt-0.5 tabular-nums truncate">
+                    {group.employeeCode || "-"}
+                  </p>
+                </div>
+              </button>
+            </TableCell>
+            {/* [2] role-specific column */}
+            <TableCell className="px-3 py-2.5">
+              {userRole === "partner" ? (
+                <PartnerGroupColumn group={group} />
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2.5 h-6 rounded-full bg-utility-gray-100 text-xs font-semibold text-muted-foreground tabular-nums">
+                  {group.entries.length} shifts
+                </span>
+              )}
+            </TableCell>
+            {/* [3] status summary */}
+            <TableCell className="px-3 py-2.5">
+              <GroupStatusSummary group={group} />
+            </TableCell>
+            {/* [4] total hours */}
+            <TableCell className="border-l border-border/30 px-3 py-2.5 text-right">
+              <span className="typography-body-medium font-bold text-foreground tabular-nums whitespace-nowrap">
+                {formatTimesheetHours(group.totalHours)}h
+              </span>
+            </TableCell>
+            {/* [5] Project preview for Admin summaries; rate lives in expanded rows. */}
+            <TableCell className="px-3 py-2.5 text-right">
+              {userRole === "admin" ? (
+                <AdminGroupProjectColumn group={group} />
+              ) : (
+                <span className="text-xs text-muted-foreground">—</span>
+              )}
+            </TableCell>
+            {/* [6] total amount */}
+            <TableCell className="px-3 py-2.5 text-right">
+              <span className="typography-body-medium font-bold text-foreground tabular-nums whitespace-nowrap">
+                {group.totalAmount.toLocaleString("en-KE")}
+                <span className="ml-[0.2em] align-[0.1em] text-[0.58em] font-bold tracking-normal text-muted-foreground">₫</span>
+              </span>
+            </TableCell>
+            {/* [7] chevron */}
+            <TableCell className="px-2 py-2.5">
+              <div className="flex justify-center text-muted-foreground group-hover:text-foreground transition-colors">
+                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </div>
+            </TableCell>
+          </TableRow>
+
+            {isExpanded && projectSections.map((project, projectIndex) => (
+              <ProjectSection
+                key={project.projectId}
+                project={project}
+                showHeader={projectSections.length > 1}
+                isFirstProject={projectIndex === 0}
+                userRole={userRole}
+                onRowClick={onRowClick}
+              />
+            ))}
+    </>
+  );
+});
+
+// ── Partner-specific group column ──────────────────────────────────────────
+
+const PartnerGroupColumn = memo(function PartnerGroupColumn({ group }: { group: EmployeeGroupedTimesheet }) {
+  return (
+    <div className="flex flex-col gap-1 min-w-0">
+      {(() => {
+        const projects = [...new Set(group.entries.map(e => e.projectName).filter(Boolean))];
+        return (
+          <p className="text-xs font-medium text-foreground truncate" title={projects.join(", ")}>
+            {projects.length === 1 ? projects[0] : projects.length > 1 ? `${projects[0]} +${projects.length - 1}` : "—"}
+          </p>
+        );
+      })()}
+    </div>
+  );
+});
+
+const AdminGroupProjectColumn = memo(function AdminGroupProjectColumn({ group }: { group: EmployeeGroupedTimesheet }) {
+  const projects = [...new Set(group.entries.map((entry) => entry.projectName).filter(Boolean))];
+  const projectLabel = projects.length === 1
+    ? projects[0]
+    : projects.length > 1
+      ? `${projects[0]} +${projects.length - 1}`
+      : "—";
+
+  return (
+    <div
+      className="ml-auto flex w-full min-w-0 items-center justify-end gap-1.5 text-left"
+      title={projects.join(", ")}
+    >
+      <Building2 aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-primary" />
+      <span className="min-w-0 truncate text-xs font-semibold text-foreground">
+        {projectLabel}
+      </span>
+    </div>
+  );
+});
+
+const GroupStatusSummary = memo(function GroupStatusSummary({ group }: { group: EmployeeGroupedTimesheet }) {
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+        {group.statusBreakdown.pending_approval > 0 && (
+          <span className="inline-flex items-center gap-1 text-xs text-amber-700 whitespace-nowrap">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+            {group.statusBreakdown.pending_approval} pending
+          </span>
+        )}
+        {group.statusBreakdown.approved > 0 && group.aggregatedStatus !== "paid" && (
+          <span className="inline-flex items-center gap-1 text-xs text-blue-700 whitespace-nowrap">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+            {group.statusBreakdown.approved} approved
+          </span>
+        )}
+        {group.aggregatedStatus === "paid" && (
+          <span className="inline-flex items-center gap-1 text-xs text-green-700 whitespace-nowrap">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+            {group.entries.length} paid
+          </span>
+        )}
+        {group.statusBreakdown.rejected > 0 && (
+          <span className="inline-flex items-center gap-1 text-xs text-red-700 whitespace-nowrap">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+            {group.statusBreakdown.rejected} rejected
+          </span>
+        )}
+        {group.statusBreakdown.draft > 0 && (
+          <span className="inline-flex items-center gap-1 text-xs text-slate-600 whitespace-nowrap">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
+            {group.statusBreakdown.draft} draft
+          </span>
+        )}
+        {group.entries.some(e => !e.payrate || e.payrate === 0) && (
+          <span className="inline-flex items-center gap-1 text-xs text-red-700 font-semibold whitespace-nowrap">
+            ⚠ Missing rate
+          </span>
+        )}
+    </div>
+  );
+});
+
+const ProjectSection = memo(function ProjectSection({
+  project,
+  showHeader,
+  isFirstProject,
+  userRole,
+  onRowClick,
+}: {
+  project: ProjectTimesheetSection;
+  showHeader: boolean;
+  isFirstProject: boolean;
+  userRole: "admin" | "partner";
+  onRowClick: (timesheet: Timesheet) => void;
+}) {
+  return (
+    <>
+      {showHeader && (
+        <TableRow className={cn("bg-primary/[0.06] hover:bg-primary/[0.06]", isFirstProject && "border-t border-utility-gray-200")}>
+          <TableCell className="p-0" />
+          <TableCell colSpan={3} className="px-3 py-2.5 pl-6">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Building2 className="h-3.5 w-3.5" />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-xs font-bold text-foreground">{project.projectName}</p>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  {[project.projectCode, project.positions.join(', '), `${project.entries.length} entries`].filter(Boolean).join(' · ')}
+                </p>
+              </div>
+            </div>
+          </TableCell>
+          <TableCell className="px-4 py-2.5 text-right text-xs font-bold tabular-nums text-foreground">{formatTimesheetHours(project.totalHours)}h</TableCell>
+          <TableCell className="px-4 py-2.5 text-right text-xs text-muted-foreground">—</TableCell>
+          <TableCell className="px-4 py-2.5 text-right text-xs font-bold tabular-nums text-foreground">
+            {project.totalAmount.toLocaleString("en-KE")}
+            <span className="ml-[0.2em] align-[0.1em] text-[0.58em] font-bold tracking-normal text-muted-foreground">₫</span>
+          </TableCell>
+          <TableCell className="p-0" />
+        </TableRow>
+      )}
+      {project.entries.map((entry, entryIndex) => (
+        <EntryRow
+          key={entry.id}
+          entry={entry}
+          entryIdx={entryIndex}
+          showDate={entryIndex === 0 || project.entries[entryIndex - 1]?.date !== entry.date}
+          startsAfterProjectHeader={showHeader && entryIndex === 0}
+          userRole={userRole}
+          onClick={() => onRowClick(entry)}
+        />
+      ))}
+    </>
+  );
+});
+
+// ── Entry row (expanded child) ─────────────────────────────────────────────
+
+interface EntryRowProps {
+  entry: Timesheet;
+  entryIdx: number;
+  showDate: boolean;
+  startsAfterProjectHeader: boolean;
+  userRole: "admin" | "partner";
+  onClick: () => void;
+}
+
+const EntryRow = memo(function EntryRow({ entry, entryIdx, showDate, startsAfterProjectHeader, userRole, onClick }: EntryRowProps) {
+  const navigate = useNavigate();
+  const entryDate = new Date(entry.date);
+  const hoursWorked = entry.hours_worked || 0;
+  const rawDayType = entry.day_type || "—";
+  const normalizedDayType = rawDayType.toLocaleLowerCase("en-KE");
+  const dayTypeLabel = ({
+    weekday: "Weekday",
+    weekend: "Weekend",
+    holiday: "Public holiday",
+    "ngày thường": "Weekday",
+    "ngày nghỉ": "Day off",
+    "ngày lễ": "Public holiday",
+  } as Record<string, string>)[normalizedDayType] ?? rawDayType;
+  const shiftLabel = entry.hour_type || getPaytypeDetail(entry.paytype) || "—";
+  const normalizedShift = shiftLabel.toLocaleLowerCase("en-KE");
+  const displayShiftLabel = shiftLabel
+    .replace(/tăng ca/gi, "Overtime")
+    .replace(/ca đêm/gi, "Night shift")
+    .replace(/ca ngày/gi, "Day shift");
+  const isOvertime = normalizedShift.includes("tăng ca") || normalizedShift.includes("overtime");
+  const isNightShift = normalizedShift.includes("đêm") || normalizedShift.includes("night");
+  const isHoliday = normalizedDayType.includes("lễ") || normalizedDayType.includes("holiday");
+  const isDayOff = normalizedDayType.includes("nghỉ") || normalizedDayType.includes("weekend") || normalizedDayType.includes("day off");
+  const isShortShift = hoursWorked > 0 && hoursWorked < 8;
+
+  return (
+    <TableRow
+      onClick={onClick}
+      className={cn(
+        "cursor-pointer transition-colors hover:bg-utility-gray-200",
+        "bg-utility-gray-200/60",
+        entryIdx === 0 && !startsAfterProjectHeader ? "border-t border-utility-gray-300" : "border-t border-utility-gray-300/60",
+      )}
+    >
+      <TableCell className="p-0 relative">
+        {(!entry.payrate || entry.payrate === 0) && <span className="absolute left-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />}
+      </TableCell>
+      <TableCell className="py-2 px-3 pl-6">
+        <div className="flex min-h-9 items-center gap-2">
+          {showDate ? (
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-7 min-w-9 items-center justify-center rounded-md bg-utility-gray-50 px-1.5 text-xs font-bold uppercase text-slate-600 ring-1 ring-inset ring-utility-gray-300">
+                {format(entryDate, "EEE")}
+              </span>
+              <p className="text-xs font-bold tabular-nums text-foreground">{format(entryDate, "dd/MM/yyyy")}</p>
+            </div>
+          ) : (
+            <span className="ml-4 flex items-center gap-1.5 text-xs font-medium text-muted-foreground" aria-label="Same day">
+              <span className="h-4 w-px bg-border" />
+              <span className="h-1.5 w-1.5 rounded-full bg-border" />
+            </span>
+          )}
+          {entry.force_payroll && <Star className="h-3 w-3 text-yellow-800 fill-yellow-500 shrink-0" />}
+        </div>
+      </TableCell>
+      <TableCell className="py-2 px-3">
+        <span
+          className={cn(
+            "inline-flex h-7 items-center rounded-md px-2.5 text-xs font-semibold capitalize ring-1 ring-inset",
+            isHoliday
+              ? "bg-utility-gray-50 text-rose-700 ring-rose-200"
+              : isDayOff
+                ? "bg-utility-gray-50 text-teal-700 ring-teal-200"
+                : "bg-utility-gray-50 text-slate-700 ring-utility-gray-300",
+          )}
+        >
+          {dayTypeLabel}
+        </span>
+      </TableCell>
+      <TableCell className="py-2 px-3">
+        <span
+          className={cn(
+            "inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold capitalize",
+            isOvertime
+              ? "bg-utility-gray-50 text-amber-700 ring-1 ring-inset ring-amber-200"
+              : isNightShift
+                ? "bg-utility-gray-50 text-teal-700 ring-1 ring-inset ring-teal-200"
+                : "bg-utility-gray-50 text-sky-700 ring-1 ring-inset ring-sky-200",
+          )}
+        >
+          {isOvertime ? (
+            <TimerReset className="h-3.5 w-3.5" />
+          ) : isNightShift ? (
+            <Moon className="h-3.5 w-3.5" />
+          ) : (
+            <SunMedium className="h-3.5 w-3.5" />
+          )}
+          {displayShiftLabel}
+        </span>
+      </TableCell>
+      <TableCell className="border-l border-border/30 py-2 px-3 text-right">
+        <span
+          className={cn(
+            "text-xs font-bold tabular-nums",
+            isShortShift ? "text-amber-700" : "text-foreground",
+          )}
+        >
+          {formatTimesheetHours(hoursWorked)}h
+        </span>
+      </TableCell>
+      <TableCell className="py-2 px-3 text-right">
+        <p className={cn(
+          "text-xs tabular-nums",
+          (!entry.payrate || entry.payrate === 0) ? "text-red-700 font-semibold" : "font-medium text-muted-foreground",
+        )}>
+          {(!entry.payrate || entry.payrate === 0) && userRole === "partner" ? (
+            <span
+              className="cursor-pointer hover:underline"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/partner/projects/${entry.project_id}/payrates/new/edit`);
+              }}
+            >
+              ⚠ Not set
+            </span>
+          ) : `${entry.payrate?.toLocaleString("en-KE")}${entry.projectIsFlexible ? "₫/shift" : "₫/hour"}`}
+        </p>
+      </TableCell>
+      <TableCell className="py-2 px-3 text-right">
+        <div className="flex items-center justify-end gap-1">
+          <span className="text-xs font-bold text-foreground tabular-nums">
+            {(entry.amount || 0).toLocaleString("en-KE")}
+            <span className="ml-[0.2em] align-[0.1em] text-[0.58em] font-bold tracking-normal text-muted-foreground">₫</span>
+          </span>
+        </div>
+      </TableCell>
+      <TableCell className="py-2 px-2">
+        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground mx-auto" />
+      </TableCell>
+    </TableRow>
+  );
+});

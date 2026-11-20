@@ -1,0 +1,29 @@
+{
+  "name": "@montezuma/shared-stamps",
+  "version": "1.0.0",
+  "description": "Dynamic stamp & seal generator for funeral home documents (SVG, PNG, PDFKit)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rimraf dist",
+    "prepublishOnly": "npm run clean && npm run build",
+    "dev": "echo 'Shared stamps package ready'"
+  },
+  "dependencies": {
+    "luxon": "^3.4.1",
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "@types/luxon": "^3.4.2",
+    "@types/node": "^22.13.10",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.8.2"
+  },
+  "peerDependencies": {
+    "pdfkit": "^0.13.0 || ^0.15.0 || ^0.19.0"
+  }
+}

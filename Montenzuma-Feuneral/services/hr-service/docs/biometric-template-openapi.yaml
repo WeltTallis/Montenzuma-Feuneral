@@ -1,0 +1,338 @@
+openapi: 3.1.0
+info:
+  title: RestPoint HR Biometric Template API
+  version: 0.1.0
+  description: |
+    Contract only. No biometric-template route is currently implemented or enabled.
+    This contract describes encrypted template enrollment after a compatible
+    ZKTeco push protocol, RestPoint tenant mapping, and tenant key management
+    have been implemented and security-reviewed.
+
+    Plain fingerprint images and plaintext templates are never accepted.
+    RestPoint stores opaque, envelope-encrypted templates and does not perform
+    fingerprint matching. Request bodies and credentials must be redacted from
+    logs. TLS is required.
+x-restpoint-enabled: false
+servers:
+  - url: /api/v1/restpoint/hr/api/v1
+    description: Gateway path; currently disabled for biometric templates
+paths:
+  /biometrics/templates:
+    post:
+      operationId: enrollEncryptedBiometricTemplate
+      summary: Submit an encrypted fingerprint template from a registered device
+      description: |
+        Future device-push endpoint. The device credential resolves to one
+        registered device and tenant; tenant and employee ownership are never
+        selected from caller-supplied tenant headers. The server resolves
+        device_user_id through that device's employee mapping.
+
+        Devices must sign the exact request timestamp and raw body with their
+        provisioned secret. A device that cannot make this authenticated request
+        format is not compatible with this contract. The endpoint remains
+        disabled until the HR API verifies RestPoint tenant identity and the
+        tenant's envelope-encryption key service.
+      security:
+        - attendanceDeviceCredential: []
+      parameters:
+        - name: X-Device-Timestamp
+          in: header
+          required: true
+          description: Unix timestamp in seconds; requests outside the replay window are rejected.
+          schema:
+            type: string
+            pattern: '^[0-9]{10}$'
+        - name: X-Device-Signature
+          in: header
+          required: true
+          description: Lowercase hex HMAC-SHA256 of timestamp, a dot, and the exact raw request body.
+          schema:
+            type: string
+            pattern: '^[a-fA-F0-9]{64}$'
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Unique enrollment request identifier used to prevent duplicate uploads.
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EncryptedTemplateEnrollment'
+      responses:
+        '201':
+          description: Encrypted template accepted; response contains metadata only.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateMetadataResponse'
+        '400':
+          description: Invalid envelope or enrollment metadata.
+        '401':
+          description: Device credential or signature is invalid or stale.
+        '403':
+          description: Device, tenant, employee mapping, or processing authorization is inactive.
+        '409':
+          description: Idempotency key or enrollment identifier conflicts with an existing record.
+        '413':
+          description: Encrypted envelope exceeds the configured request limit.
+        '503':
+          description: Feature is disabled until tenant identity and key management are configured.
+    get:
+      operationId: listBiometricTemplateMetadata
+      summary: List template metadata without returning biometric material
+      description: HR administrators may list metadata for their verified tenant. Encrypted payloads and keys are never returned by this operation.
+      security:
+        - restPointBearer: []
+      parameters:
+        - name: employee_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 256
+      responses:
+        '200':
+          description: Paginated metadata for the caller's verified tenant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateMetadataList'
+        '401':
+          description: RestPoint authentication is invalid.
+        '403':
+          description: Caller is not authorised to manage biometric templates.
+        '503':
+          description: Feature is disabled until tenant identity and key management are configured.
+  /biometrics/templates/{templateId}:
+    delete:
+      operationId: deleteBiometricTemplate
+      summary: Revoke and delete an enrolled template
+      description: |
+        Deletes the encrypted payload and wrapped data key for the caller's
+        verified tenant and records an immutable audit event. A deletion reason
+        is required. Any retention or legal hold policy must be checked before
+        deletion.
+      security:
+        - restPointBearer: []
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - reason
+              properties:
+                reason:
+                  type: string
+                  minLength: 5
+                  maxLength: 500
+      responses:
+        '204':
+          description: Template deleted and deletion audited.
+        '401':
+          description: RestPoint authentication is invalid.
+        '403':
+          description: Caller is not authorised for this employee or tenant.
+        '404':
+          description: Template does not exist in the caller's tenant.
+        '409':
+          description: A legal hold or retention rule prevents deletion.
+        '503':
+          description: Feature is disabled until tenant identity and key management are configured.
+components:
+  securitySchemes:
+    attendanceDeviceCredential:
+      type: http
+      scheme: bearer
+      bearerFormat: Opaque device secret
+      description: One-time-provisioned device credential, stored only as a verifier and mapped server-side to one tenant and device.
+    restPointBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: RestPoint session token; tenant identity must be derived from verified claims, not request headers.
+  schemas:
+    EncryptedTemplateEnrollment:
+      type: object
+      additionalProperties: false
+      required:
+        - enrollment_id
+        - device_user_id
+        - finger_slot
+        - template_format
+        - template_version
+        - captured_at
+        - processing_basis_reference
+        - envelope
+      properties:
+        enrollment_id:
+          type: string
+          format: uuid
+        device_user_id:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: '^[A-Za-z0-9._:-]+$'
+        finger_slot:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Vendor-neutral slot label mapped by the device adapter.
+        template_format:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Opaque vendor template-format identifier; never treated as plaintext.
+        template_version:
+          type: string
+          minLength: 1
+          maxLength: 32
+        captured_at:
+          type: string
+          format: date-time
+        processing_basis_reference:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Reference to the tenant's documented lawful processing basis and employee notice/consent record.
+        envelope:
+          $ref: '#/components/schemas/EncryptedEnvelope'
+    EncryptedEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+        - content_algorithm
+        - key_wrap_algorithm
+        - key_id
+        - nonce
+        - wrapped_data_key
+        - ciphertext
+      properties:
+        content_algorithm:
+          type: string
+          const: A256GCM
+          description: AES-256-GCM; ciphertext includes the authentication tag.
+        key_wrap_algorithm:
+          type: string
+          enum:
+            - RSA-OAEP-256
+            - ECDH-ES+A256KW
+          description: Approved tenant KMS envelope-key wrapping algorithm identifier.
+        key_id:
+          type: string
+          minLength: 1
+          maxLength: 256
+          description: Opaque identifier of the tenant-owned KMS key; not key material.
+        nonce:
+          type: string
+          contentEncoding: base64
+          minLength: 16
+          maxLength: 16
+          description: Base64 encoding of a 12-byte, unique AES-GCM nonce.
+        wrapped_data_key:
+          type: string
+          contentEncoding: base64
+          minLength: 1
+          maxLength: 4096
+        ciphertext:
+          type: string
+          contentEncoding: base64
+          minLength: 1
+          maxLength: 2097152
+          description: Base64-encoded encrypted template bytes; plaintext is never accepted.
+        aad_version:
+          type: string
+          const: restpoint-biometric-v1
+          description: AAD binds tenant, device, employee mapping, enrollment, finger slot, and template format.
+    TemplateMetadata:
+      type: object
+      additionalProperties: false
+      required:
+        - template_id
+        - employee_id
+        - device_id
+        - finger_slot
+        - template_format
+        - status
+        - created_at
+      properties:
+        template_id:
+          type: string
+          format: uuid
+        employee_id:
+          type: string
+          format: uuid
+        device_id:
+          type: string
+          pattern: '^[a-f0-9]{24}$'
+        finger_slot:
+          type: string
+        template_format:
+          type: string
+        status:
+          type: string
+          enum:
+            - active
+            - revoked
+        created_at:
+          type: string
+          format: date-time
+    TemplateMetadataResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          $ref: '#/components/schemas/TemplateMetadata'
+    TemplateMetadataList:
+      type: object
+      additionalProperties: false
+      required:
+        - success
+        - data
+        - next_cursor
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TemplateMetadata'
+        next_cursor:
+          type:
+            - string
+            - 'null'

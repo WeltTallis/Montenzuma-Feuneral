@@ -1,0 +1,63 @@
+pipeline {
+    agent any
+
+    // GitHub connection credentials - configured in Jenkins Credentials Store
+    // STORE: Credential ID 'github-credentials' with Username/Password or PAT
+    //       or 'github-token' with GitHub Personal Access Token
+    environment {
+        // GitHub credentials ID (set in Jenkins: Credentials -> Global credentials -> Add)
+        // Use 'Username with password' or 'Secret text' for PAT
+        GITHUB_CREDENTIALS_ID = 'github-credentials'
+
+        // Deployment target server IP - configure as Jenkins credential 'deploy-server-ip'
+        // Format: 'username@ip-address' or just IP, e.g., '192.168.1.100' or 'user@207.180.209.14'
+        DEPLOY_SERVER = credentials('deploy-server-ip')
+
+        // Environment configuration
+        NODE_ENV = 'production'
+
+        // Project configuration
+        PROJECT_NAME = 'restpoint'
+        NODE_VERSION = '22.x'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm ci --legacy-peer-deps'
+            }
+        }
+
+        stage('Linting') {
+            steps {
+                sh 'npm run lint'
+            }
+        }
+
+        stage('Path Sanity') {
+            steps {
+                sh 'npm run check:paths'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    dockerImage = docker.build("backend-api:${env.BUILD_ID}")
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}

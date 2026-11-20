@@ -1,0 +1,33 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": ".",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "allowJs": true,
+    "typeRoots": [
+      "./src/types",
+      "./types",
+      "../../node_modules/@types"
+    ],
+    "types": ["node", "express", "express-session"]
+  },
+  "include": [
+    "*.ts",
+    "src/**/*.ts",
+    "src/types/**/*.d.ts",
+    "controllers/**/*.ts",
+    "middleware/**/*.ts",
+    "routes/**/*.ts",
+    "config/**/*.ts",
+    "scripts/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.js"
+  ]
+}

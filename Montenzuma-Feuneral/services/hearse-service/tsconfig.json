@@ -1,0 +1,46 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "../../",
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": true,
+    "composite": false,
+    "strict": false,
+    "noImplicitAny": false,
+    "noUncheckedIndexedAccess": false,
+    "skipLibCheck": true,
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "server.ts",
+    "routes/**/*.ts",
+    "controllers/**/*.ts",
+    "models/**/*.ts",
+    "services/**/*.ts",
+    "utils/**/*.ts",
+    "utilities/**/*.ts",
+    "config/**/*.ts",
+    "../../shared/**/*.ts",
+    "../../packages/shared-config/src/**/*.ts",
+    "../../packages/shared-logger/src/**/*.ts",
+    "../../packages/shared-utils/src/**/*.ts",
+    "../../packages/shared-services/src/**/*.ts",
+    "../../app-global/**/*.ts",
+    "../../app-global/**/*.js",
+    "../../configurations/**/*.ts",
+    "../../services/auth-service/src/types/**/*.ts",
+    "migrate-tenant-tables.js",
+    "migrations/**/*.js",
+    "database.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.spec.ts",
+    "**/*.test.ts"
+  ]
+}

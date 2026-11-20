@@ -1,0 +1,221 @@
+import { Input } from '@hr/components/ui/input';
+import { Label } from '@hr/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@hr/components/ui/select';
+import { Textarea } from '@hr/components/ui/textarea';
+import { Project } from '@hr/types/api/project.types';
+import { getProjectStatus } from '@hr/utils/kenyan';
+import { SalaryPeriodFields } from '@hr/components/projects/SalaryPeriodFields';
+import {
+  Clock,
+  TrendingUp,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  Pause
+} from 'lucide-react';
+
+interface ProjectFormFieldsProps {
+  formData: Partial<Project>;
+  setFormData: (data: Partial<Project>) => void;
+  errors: Record<string, string>;
+  isEditing: boolean;
+}
+
+const projectStatuses = [
+  { value: 'draft', label: getProjectStatus('draft'), color: 'bg-muted', icon: Clock },
+  { value: 'active', label: getProjectStatus('active'), color: 'bg-green-500', icon: TrendingUp },
+  { value: 'paused', label: getProjectStatus('paused'), color: 'bg-orange-500', icon: Pause },
+  { value: 'completed', label: getProjectStatus('completed'), color: 'bg-blue-600', icon: CheckCircle },
+  { value: 'cancelled', label: getProjectStatus('cancelled'), color: 'bg-red-500', icon: XCircle }
+];
+
+export function ProjectNameField({ formData, setFormData, errors, isEditing }: ProjectFormFieldsProps) {
+  return (
+    <div>
+      <Label htmlFor="name">Project name *</Label>
+      <Input
+        id="name"
+        value={formData.name || ''}
+        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+        disabled={!isEditing}
+        className={errors.name ? 'border-red-500' : ''}
+      />
+      {errors.name && <p className="typography-body-medium text-red-700 mt-1">{errors.name}</p>}
+    </div>
+  );
+}
+
+export function ProjectClientField({ formData, setFormData, errors, isEditing }: ProjectFormFieldsProps) {
+  return (
+    <div>
+      <Label htmlFor="client_name">Client *</Label>
+      <Input
+        id="client_name"
+        value={formData.client_name || ''}
+        onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
+        disabled={!isEditing}
+        className={errors.client_name ? 'border-red-500' : ''}
+      />
+      {errors.client_name && <p className="typography-body-medium text-red-700 mt-1">{errors.client_name}</p>}
+    </div>
+  );
+}
+
+export function ProjectDescriptionField({ formData, setFormData, isEditing }: Omit<ProjectFormFieldsProps, 'errors'>) {
+  return (
+    <div>
+      <Label htmlFor="description">Mô tả dự án</Label>
+      <Input
+        id="description"
+        value={formData.description || ''}
+        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+        disabled={!isEditing}
+      />
+    </div>
+  );
+}
+
+export function ProjectStatusField({ formData, setFormData, isEditing }: Omit<ProjectFormFieldsProps, 'errors'>) {
+  return (
+    <div>
+      <Label htmlFor="status">Status</Label>
+      <Select
+        value={formData.status}
+        onValueChange={(value) => setFormData({ ...formData, status: value as Project['status'] })}
+        disabled={!isEditing}
+      >
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {projectStatuses.map((status) => (
+            <SelectItem key={status.value} value={status.value}>
+              <div className="flex items-center gap-2">
+                <status.icon className="h-4 w-4" />
+                {status.label}
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+export function ProjectEmployeeCountField({ formData, setFormData, errors, isEditing }: ProjectFormFieldsProps) {
+  return (
+    <div>
+      <Label htmlFor="employee_count">Số nhân viên</Label>
+      <Input
+        id="employee_count"
+        type="number"
+        min="1"
+        value={formData.employee_count || 1}
+        onChange={(e) => setFormData({ ...formData, employee_count: parseInt(e.target.value) || 1 })}
+        disabled={!isEditing}
+        className={errors.employee_count ? 'border-red-500' : ''}
+      />
+      {errors.employee_count && <p className="typography-body-medium text-red-700 mt-1">{errors.employee_count}</p>}
+    </div>
+  );
+}
+
+export function ProjectBudgetField({ formData, setFormData, errors, isEditing }: ProjectFormFieldsProps) {
+  return (
+    <div>
+      <Label htmlFor="budget">Budget</Label>
+      <Input
+        id="budget"
+        type="number"
+        value={formData.budget || ''}
+        onChange={(e) => setFormData({ ...formData, budget: parseInt(e.target.value) || 0 })}
+        disabled={!isEditing}
+        placeholder="100000000"
+        className={errors.budget ? 'border-red-500' : ''}
+      />
+      {errors.budget && <p className="typography-body-medium text-red-700 mt-1">{errors.budget}</p>}
+    </div>
+  );
+}
+
+export function ProjectDateFields({ formData, setFormData, errors, isEditing }: ProjectFormFieldsProps) {
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      <div>
+        <Label htmlFor="start_date">Start date</Label>
+        <Input
+          id="start_date"
+          type="date"
+          value={formData.start_date || ''}
+          onChange={(e) => {
+            setFormData({
+              ...formData,
+              start_date: e.target.value
+            });
+          }}
+          disabled={!isEditing}
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="end_date">End date</Label>
+        <Input
+          id="end_date"
+          type="date"
+          value={formData.end_date || ''}
+          onChange={(e) => {
+            setFormData({
+              ...formData,
+              end_date: e.target.value
+            });
+          }}
+          disabled={!isEditing}
+          className={errors.end_date ? 'border-red-500' : ''}
+        />
+        {errors.end_date && <p className="typography-body-medium text-red-700 mt-1">{errors.end_date}</p>}
+      </div>
+    </div>
+  );
+}
+
+export function ProjectDescriptionTextarea({ formData, setFormData, isEditing }: Omit<ProjectFormFieldsProps, 'errors'>) {
+  return (
+    <div>
+      <Label htmlFor="description">Mô tả dự án</Label>
+      <Textarea
+        id="description"
+        value={formData.description || ''}
+        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+        disabled={!isEditing}
+        rows={4}
+        placeholder="Describe the project in detail..."
+      />
+    </div>
+  );
+}
+
+export function ProjectSalaryPeriodFields({ formData, setFormData, isEditing }: Omit<ProjectFormFieldsProps, 'errors'>) {
+  const handleSalaryPeriodFromChange = (value: number | null) => {
+    setFormData({
+      ...formData,
+      salary_period_from: value
+    });
+  };
+
+  const handleSalaryPeriodToChange = (value: number | null) => {
+    setFormData({
+      ...formData,
+      salary_period_to: value
+    });
+  };
+
+  return (
+    <SalaryPeriodFields
+      salaryPeriodFrom={formData.salary_period_from}
+      salaryPeriodTo={formData.salary_period_to}
+      onSalaryPeriodFromChange={handleSalaryPeriodFromChange}
+      onSalaryPeriodToChange={handleSalaryPeriodToChange}
+      disabled={!isEditing}
+    />
+  );
+}

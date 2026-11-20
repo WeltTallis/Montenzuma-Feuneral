@@ -1,0 +1,176 @@
+import { memo, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { cn } from '@hr/lib/utils';
+// W13a follow-up (approved): icon slot widened from LucideIcon so both lucide
+// and @untitledui/icons components fit (UU's are plain FunctionComponents).
+import type { ComponentType, SVGProps } from 'react';
+import { Skeleton } from '@hr/components/ui/skeleton';
+import { useCountUp } from '@hr/hooks/useCountUp';
+
+export interface StatItem {
+  label: string | React.ReactNode;
+  value: string | number;
+  unit?: string;
+  variant?: 'default' | 'muted' | 'accent';
+  onClick?: () => void;
+  isPressed?: boolean;
+}
+
+export interface GroupedStatCardProps {
+  title: string;
+  icon?: ComponentType<SVGProps<SVGSVGElement>>;
+  stats: StatItem[];
+  onClick?: () => void;
+  isLoading?: boolean;
+  className?: string;
+  /** Collapses the stat strip behind the title toggle (default: open). */
+  defaultCollapsed?: boolean;
+}
+
+export const GroupedStatCard = ({ title, icon: Icon, stats, onClick, isLoading, className, defaultCollapsed = false }: GroupedStatCardProps) => {
+  const [expanded, setExpanded] = useState(!defaultCollapsed);
+  const stripCls = cn(
+    'overflow-hidden rounded-2xl border border-border/40 bg-card shadow-none',
+    'grid grid-cols-1 gap-px min-[380px]:grid-cols-2 sm:flex',
+  );
+
+  if (isLoading) {
+    return (
+      <div className={cn('space-y-1.5', className)}>
+        <div className="flex items-center gap-1.5 px-0.5">
+          <Skeleton className="h-3 w-3 rounded" />
+          <Skeleton className="h-3 w-20" />
+        </div>
+        <div className={stripCls}>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex flex-col items-center gap-1.5 px-3 py-3 flex-1 min-w-0">
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-3 w-14" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!stats.length) return null;
+
+  return (
+    <div
+      className={cn('space-y-1.5', onClick && 'cursor-pointer', className)}
+      onClick={onClick}
+    >
+      {defaultCollapsed ? (
+        <button
+          type="button"
+          aria-expanded={expanded}
+          onClick={(event) => {
+            event.stopPropagation();
+            setExpanded((value) => !value);
+          }}
+          className="flex w-full items-center gap-1.5 px-0.5 text-left"
+        >
+          <span className="flex min-w-0 items-center gap-1.5">
+            {Icon && <Icon className="h-3 w-3 text-primary shrink-0" />}
+            <span className="font-display text-[13px] font-bold tracking-tight text-muted-foreground">
+              {title}
+            </span>
+          </span>
+          <span className="ml-auto flex items-center gap-1 text-xs tabular-nums text-muted-foreground">
+            {stats.length}
+            <ChevronDown
+              className={cn('h-3.5 w-3.5 transition-transform', expanded && 'rotate-180')}
+              aria-hidden="true"
+            />
+          </span>
+        </button>
+      ) : (
+        <div className="flex items-center gap-1.5 px-0.5">
+          {Icon && <Icon className="h-3 w-3 text-primary shrink-0" />}
+          <span className="font-display text-[13px] font-bold tracking-tight text-muted-foreground">
+            {title}
+          </span>
+        </div>
+      )}
+
+      {expanded && (
+        <div className={stripCls}>
+          {stats.map((stat, i) => (
+            <AnimatedStatCell
+              key={i}
+              stat={stat}
+              // With an odd number of stats the two-column strip would leave a
+              // blank cell in the last row; let the final stat fill it instead.
+              span={stats.length % 2 === 1 && i === stats.length - 1 ? 2 : undefined}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const AnimatedStatCell = memo(function AnimatedStatCell({
+  stat,
+  span,
+}: {
+  stat: StatItem;
+  span?: number;
+}) {
+  const isNumeric = typeof stat.value === 'number';
+  const animatedValue = useCountUp(isNumeric ? (stat.value as number) : 0, 600);
+
+  const formatted = isNumeric
+    ? animatedValue.toLocaleString('en-KE')
+    : (stat.value as string);
+
+  // gridColumn is inert once the strip switches to flex at sm+.
+  const gridStyle = span ? { gridColumn: `span ${span}` } : undefined;
+  const isAccent = stat.variant === 'accent';
+  const cellClassName = cn(
+    'flex flex-col items-center justify-center gap-1 px-3 py-3 flex-1 min-w-0 transition-colors',
+    isAccent ? 'bg-primary/5' : 'bg-card',
+    stat.onClick && 'cursor-pointer hover:bg-muted/50 active:bg-muted/80',
+  );
+  const content = (
+    <>
+      <span className={cn(
+        'w-full break-words text-center font-display text-sm font-extrabold tabular-nums leading-tight tracking-tight sm:text-base',
+        isAccent ? 'text-primary' : 'text-foreground',
+      )}>
+        {formatted}
+        {stat.unit && (
+          <span className="ml-[0.2em] align-[0.1em] text-[0.58em] font-bold tracking-normal text-muted-foreground">
+            {stat.unit.trim()}
+          </span>
+        )}
+      </span>
+      <span className="mt-0.5 w-full break-words px-1 text-center text-xs font-medium leading-tight text-muted-foreground">
+        {stat.label}
+      </span>
+    </>
+  );
+
+  if (stat.onClick) {
+    return (
+      <button
+        type="button"
+        aria-pressed={stat.isPressed}
+        onClick={(event) => {
+          event.stopPropagation();
+          stat.onClick?.();
+        }}
+        className={cellClassName}
+        style={gridStyle}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className={cellClassName} style={gridStyle}>
+      {content}
+    </div>
+  );
+});

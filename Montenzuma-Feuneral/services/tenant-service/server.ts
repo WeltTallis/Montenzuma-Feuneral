@@ -1,0 +1,1039 @@
+﻿
+import { errorHandler, notFoundHandler, asyncHandler } from '../app-global/middlewares/errorHandler';
+import express, { Application, Request, Response, NextFunction } from 'express';
+import { TenantModel, getUploadsBaseDir } from './models/Tenant.model';
+import onboardingRoutes from './routes/onboardingRoutes';
+import systemAdminRoutes from './routes/systemAdminRoutes';
+import blogEngagementRoutes from './routes/blogEngagementRoutes';
+import { UserController } from './controllers/userController';
+import { BranchController } from './controllers/branchController';
+import rateLimit from 'express-rate-limit';
+import * as mysql from 'mysql2/promise';
+import { upload } from './config/multer';
+import cors from 'cors';
+import path from 'path';
+import * as fs from 'fs';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+// Security middleware (shared CommonJS). Required AFTER dotenv.config() rather
+// than via a hoisted `import` so the module is evaluated once the environment
+// is populated.
+// @ts-ignore - authMiddleware is CommonJS JavaScript, not TypeScript
+const { requireSystemAdmin } = require('../app-global/middlewares/authMiddleware');
+
+// Start provision worker if enabled
+if (process.env.START_PROVISION_WORKER !== 'false') {
+  try {
+    require('./scripts/provision-worker');
+    console.log('Provision worker started');
+  } catch (err) {
+    console.warn('Failed to start provision worker:', err);
+  }
+}
+
+
+// ============================================
+// EXPRESS APP SETUP
+// ============================================
+const app: Application = express();
+const PORT = process.env.PORT || 5002;
+
+// Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// ============================================
+// CORS — REMOVED COMPLETELY
+// ============================================
+const corsOrigin = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+  // The API Gateway handles public CORS validation.
+  // Internal microservices should allow all origins passed by the gateway.
+  return callback(null, true);
+};
+
+app.use(cors({
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-CSRF-Token',
+    'x-tenant-slug',
+    'x-tenant-id',
+    'x-request-VARCHAR(255)',
+    'x-client-id',
+    'x-session-fingerprint',
+    'Origin',
+    'X-Requested-With',
+    'Accept'
+  ]
+}));
+
+// Serve uploaded files from the SHARED global uploads folder
+// (the exact same folder all microservices SAVE to via GLOBAL_UPLOADS_DIR),
+// exposed to the browser through the API gateway origin at /uploads/...
+const uploadsDir = process.env.GLOBAL_UPLOAD_PATH || process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
+app.use('/uploads', express.static(uploadsDir));
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
+// ============================================
+// RATE LIMITING
+// ============================================
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
+  message: { success: false, message: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { success: false, message: 'Too many auth attempts. Try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// ============================================
+// SIMPLIFIED ROUTES (tenantSlug only) - MUST BE FIRST
+// ============================================
+// These routes use only tenantSlug and must be defined BEFORE
+// the /tenant/:tenantSlug/:dbName middleware to avoid conflicts
+// Pattern: /tenant/:tenantSlug/:resource
+// Example: /tenant/donholm-feuneral-donholm/settings
+// ============================================
+
+// Simplified settings route (tenantSlug only)
+app.get('/tenant/:tenantSlug/settings', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  const tenant = await TenantModel.findBySubdomain(tenantSlug);
+
+  if (!tenant) {
+    return res.status(404).json({ success: false, message: 'Tenant not found' });
+  }
+
+  // Ensure the tenant DB has a branches table + a default "Main" branch, so
+  // tenants provisioned without one still render (first branch = Main).
+  await TenantModel.ensureMainBranch({
+    db_name: tenant.db_name,
+    tenant_slug: tenant.tenant_slug,
+    tenant_name: tenant.tenant_name,
+  });
+
+  const conn = await mysql.createConnection({
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '3306'),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: tenant.db_name
+  });
+
+  try {
+    // Count branches defensively so a transient/missing table still returns
+    // the org info (never throw and blank the Settings page).
+    let branchCount = 0;
+    try {
+      const [branches] = await conn.query('SELECT COUNT(*) as count FROM branches WHERE is_active = TRUE');
+      branchCount = (branches as any[])[0]?.count || 0;
+    } catch (countErr: any) {
+      console.warn('[settings] branch count failed:', (countErr && countErr.message) || countErr);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        deploymentType: branchCount > 1 ? 'multi' : 'single',
+        branchCount,
+        tenantId: tenant.tenant_id,
+        tenantName: tenant.tenant_name,
+        tenantSlug: tenant.tenant_slug,
+        country: tenant.country,
+        location: tenant.location,
+        email: tenant.email,
+        // Phone + logo used to be omitted here, which is why the Settings page
+        // could never render the company logo or a phone number (the
+        // localStorage branding fallback is often empty right after login).
+        phone: tenant.phone,
+        logoUrl: tenant.logo_url,
+        logo_url: tenant.logo_url,
+        status: tenant.status
+      }
+    });
+  } finally {
+    await conn.end();
+  }
+}));
+
+// ============================================
+// ORGANIZATION INFORMATION (edit company name / phone / email / location /
+// country + logo). These are the fields shown in Settings → Organization.
+// ============================================
+
+// Small helper: first defined (non-null) value among the accepted aliases.
+const firstDefined = (body: Record<string, any>, keys: string[]) => {
+  for (const key of keys) {
+    const value = body[key];
+    if (value !== undefined && value !== null) return value;
+  }
+  return undefined;
+};
+
+const trimmedString = (value: unknown) => (typeof value === 'string' ? value.trim() : value);
+
+// Update the editable organization information.
+app.put('/tenant/:tenantSlug/settings', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  const tenant = await TenantModel.findBySubdomain(tenantSlug);
+
+  if (!tenant) {
+    return res.status(404).json({ success: false, message: 'Tenant not found' });
+  }
+
+  const body: Record<string, any> = (req.body && typeof req.body === 'object') ? req.body : {};
+  const updates: {
+    tenant_name?: string;
+    phone?: string | null;
+    email?: string;
+    location?: string | null;
+    country?: string | null;
+    logo_url?: string | null;
+  } = {};
+
+  // ── Organization name (required column, so an empty value is rejected) ──
+  const rawName = trimmedString(firstDefined(body, ['tenantName', 'tenant_name', 'name', 'organizationName', 'organization_name']));
+  if (rawName !== undefined) {
+    if (typeof rawName !== 'string' || rawName.length < 2) {
+      return res.status(400).json({ success: false, message: 'Organization name must be at least 2 characters.' });
+    }
+    updates.tenant_name = rawName;
+  }
+
+  // ── Phone (optional: an empty string clears it) ──
+  const rawPhone = trimmedString(firstDefined(body, ['phone', 'tenantPhone', 'tenant_phone']));
+  if (rawPhone !== undefined) {
+    if (typeof rawPhone !== 'string') {
+      return res.status(400).json({ success: false, message: 'Enter a valid phone number.' });
+    }
+    if (rawPhone !== '' && !/^[+()\-.\s\d]{7,25}$/.test(rawPhone)) {
+      return res.status(400).json({ success: false, message: 'Enter a valid phone number (digits, spaces and + - ( ) . only).' });
+    }
+    updates.phone = rawPhone;
+  }
+
+  // ── Email (required column: must stay a valid address) ──
+  const rawEmail = trimmedString(firstDefined(body, ['email', 'tenantEmail', 'tenant_email']));
+  if (rawEmail !== undefined) {
+    if (typeof rawEmail !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail)) {
+      return res.status(400).json({ success: false, message: 'Enter a valid email address.' });
+    }
+    updates.email = rawEmail.toLowerCase();
+  }
+
+  // ── Location / country / logo (optional) ──
+  const rawLocation = trimmedString(firstDefined(body, ['location', 'tenantLocation', 'address']));
+  if (rawLocation !== undefined) {
+    if (typeof rawLocation !== 'string') {
+      return res.status(400).json({ success: false, message: 'Enter a valid location.' });
+    }
+    updates.location = rawLocation;
+  }
+
+  const rawCountry = trimmedString(firstDefined(body, ['country', 'tenantCountry']));
+  if (rawCountry !== undefined) {
+    if (typeof rawCountry !== 'string') {
+      return res.status(400).json({ success: false, message: 'Enter a valid country.' });
+    }
+    updates.country = rawCountry;
+  }
+
+  const rawLogo = trimmedString(firstDefined(body, ['logoUrl', 'logo_url', 'logo']));
+  if (rawLogo !== undefined) {
+    if (typeof rawLogo !== 'string') {
+      return res.status(400).json({ success: false, message: 'Enter a valid logo URL.' });
+    }
+    updates.logo_url = rawLogo;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ success: false, message: 'No organization information to update.' });
+  }
+
+  await TenantModel.updateProfile(tenant.tenant_id, updates);
+
+  // Read the row back so the client always renders exactly what was stored.
+  const updated = await TenantModel.findById(tenant.tenant_id);
+  const current = updated || tenant;
+
+  res.json({
+    success: true,
+    message: 'Organization information updated.',
+    data: {
+      tenantName: current.tenant_name,
+      tenantSlug: current.tenant_slug,
+      phone: current.phone,
+      email: current.email,
+      location: current.location,
+      country: current.country,
+      logoUrl: current.logo_url,
+      logo_url: current.logo_url
+    }
+  });
+}));
+
+// Upload / replace the organization logo.
+//
+// Stored in the SAME canonical folder the onboarding flow uses
+// (<uploads>/tenants/<slug>/logos/) and persisted as a ROOT-RELATIVE
+// `/uploads/...` path — never an internal http://api-gateway URL, which the
+// browser blocks as mixed content on HTTPS pages. nginx serves /uploads/* from
+// the tenant-service static mount, so the relative path resolves on every
+// origin (dev gateway + production).
+const logoUpload = (req: Request, res: Response, next: NextFunction) => {
+  upload.single('logo')(req, res, (err: any) => {
+    if (err) {
+      return res.status(400).json({
+        success: false,
+        message: err.message || 'Logo upload failed. Use a JPG, PNG, GIF, WEBP or SVG image.'
+      });
+    }
+    next();
+  });
+};
+
+app.post('/tenant/:tenantSlug/logo', logoUpload, asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  const tenant = await TenantModel.findBySubdomain(tenantSlug);
+
+  if (!tenant) {
+    return res.status(404).json({ success: false, message: 'Tenant not found' });
+  }
+
+  const file = (req as any).file;
+  if (!file) {
+    return res.status(400).json({ success: false, message: 'Select a logo image to upload (multipart field name: logo).' });
+  }
+
+  let logoPath: string;
+  try {
+    const logoDir = path.join(getUploadsBaseDir(), 'tenants', tenant.tenant_slug, 'logos');
+    await fs.promises.mkdir(logoDir, { recursive: true });
+
+    const ext = (path.extname(file.originalname) || '.png').toLowerCase();
+    const filename = `logo_${Date.now()}${ext}`;
+    const destination = path.join(logoDir, filename);
+
+    try {
+      // Same volume → atomic move.
+      await fs.promises.rename(file.path, destination);
+    } catch {
+      // Different volumes (multer temp dir vs mounted uploads volume) → copy.
+      await fs.promises.copyFile(file.path, destination);
+      await fs.promises.unlink(file.path).catch(() => { /* best effort */ });
+    }
+
+    logoPath = `/uploads/tenants/${tenant.tenant_slug}/logos/${filename}`;
+  } catch (logoErr: any) {
+    // Never leave the temp upload behind when the save failed.
+    try { await fs.promises.unlink(file.path); } catch { /* best effort */ }
+    console.warn('[logo] upload failed:', (logoErr && logoErr.message) || logoErr);
+    return res.status(500).json({ success: false, message: 'Could not save the logo. Please try again.' });
+  }
+
+  await TenantModel.updateProfile(tenant.tenant_id, { logo_url: logoPath });
+
+  res.json({
+    success: true,
+    message: 'Logo updated.',
+    data: { logoUrl: logoPath, logo_url: logoPath }
+  });
+}));
+
+// ============================================
+// MORTUARY CHARGE SETTINGS ROUTES
+// ============================================
+
+// Helper to ensure mortuary_charge_settings table exists
+const ensureMortuarySettingsTable = async (conn: mysql.Connection) => {
+  await conn.query(`
+    CREATE TABLE IF NOT EXISTS mortuary_charge_settings (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      tenant_slug VARCHAR(255) NOT NULL UNIQUE,
+      daily_storage_rate DECIMAL(12,2) NOT NULL DEFAULT 500.00,
+      initial_admission_fee DECIMAL(12,2) NOT NULL DEFAULT 2000.00,
+      embalming_fee DECIMAL(12,2) NOT NULL DEFAULT 5000.00,
+      viewing_fee_per_session DECIMAL(12,2) NOT NULL DEFAULT 1000.00,
+      certificate_processing_fee DECIMAL(12,2) NOT NULL DEFAULT 500.00,
+      currency VARCHAR(10) NOT NULL DEFAULT 'KES',
+      charge_type ENUM('daily','hourly') NOT NULL DEFAULT 'daily',
+      free_days INT NOT NULL DEFAULT 0,
+      notes TEXT,
+      is_active BOOLEAN DEFAULT TRUE,
+      created_at VARCHAR(255),
+      updated_at VARCHAR(255)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+};
+
+// GET mortuary charge settings for a tenant
+app.get('/tenant/:tenantSlug/mortuary-charges', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  const tenant = await TenantModel.findBySubdomain(tenantSlug);
+
+  if (!tenant) {
+    return res.status(404).json({ success: false, message: 'Tenant not found' });
+  }
+
+  const conn = await mysql.createConnection({
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '3306'),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: tenant.db_name
+  });
+
+  try {
+    await ensureMortuarySettingsTable(conn);
+
+    const [rows] = await conn.query(
+      'SELECT * FROM mortuary_charge_settings WHERE tenant_slug = ?',
+      [tenantSlug]
+    );
+    const settings = (rows as any[]);
+
+    if (settings.length === 0) {
+      // Return defaults
+      res.json({
+        success: true,
+        data: {
+          tenant_slug: tenantSlug,
+          daily_storage_rate: 500.00,
+          initial_admission_fee: 2000.00,
+          embalming_fee: 5000.00,
+          viewing_fee_per_session: 1000.00,
+          certificate_processing_fee: 500.00,
+          currency: 'KES',
+          charge_type: 'daily',
+          free_days: 0,
+          notes: null,
+          is_new: true
+        }
+      });
+    } else {
+      res.json({ success: true, data: settings[0] });
+    }
+  } finally {
+    await conn.end();
+  }
+}));
+
+// PUT mortuary charge settings for a tenant
+app.put('/tenant/:tenantSlug/mortuary-charges', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  const tenant = await TenantModel.findBySubdomain(tenantSlug);
+
+  if (!tenant) {
+    return res.status(404).json({ success: false, message: 'Tenant not found' });
+  }
+
+  const {
+    daily_storage_rate,
+    initial_admission_fee,
+    embalming_fee,
+    viewing_fee_per_session,
+    certificate_processing_fee,
+    currency,
+    charge_type,
+    free_days,
+    notes
+  } = req.body;
+
+  const conn = await mysql.createConnection({
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '3306'),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: tenant.db_name
+  });
+
+  try {
+    await ensureMortuarySettingsTable(conn);
+
+    await conn.query(
+      `INSERT INTO mortuary_charge_settings
+        (tenant_slug, daily_storage_rate, initial_admission_fee, embalming_fee, viewing_fee_per_session, certificate_processing_fee, currency, charge_type, free_days, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+        daily_storage_rate = VALUES(daily_storage_rate),
+        initial_admission_fee = VALUES(initial_admission_fee),
+        embalming_fee = VALUES(embalming_fee),
+        viewing_fee_per_session = VALUES(viewing_fee_per_session),
+        certificate_processing_fee = VALUES(certificate_processing_fee),
+        currency = VALUES(currency),
+        charge_type = VALUES(charge_type),
+        free_days = VALUES(free_days),
+        notes = VALUES(notes),
+        updated_at = NOW()`,
+      [
+        tenantSlug,
+        parseFloat(daily_storage_rate) || 500,
+        parseFloat(initial_admission_fee) || 2000,
+        parseFloat(embalming_fee) || 5000,
+        parseFloat(viewing_fee_per_session) || 1000,
+        parseFloat(certificate_processing_fee) || 500,
+        currency || 'KES',
+        charge_type || 'daily',
+        parseInt(free_days) || 0,
+        notes || null
+      ]
+    );
+
+    const [rows] = await conn.query(
+      'SELECT * FROM mortuary_charge_settings WHERE tenant_slug = ?',
+      [tenantSlug]
+    );
+
+    res.json({ success: true, message: 'Mortuary charge settings saved successfully', data: (rows as any[])[0] });
+  } finally {
+    await conn.end();
+  }
+}));
+
+// GET deceased with calculated mortuary charges
+app.get('/tenant/:tenantSlug/mortuary-charges/deceased-preview', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  const tenant = await TenantModel.findBySubdomain(tenantSlug);
+
+  if (!tenant) {
+    return res.status(404).json({ success: false, message: 'Tenant not found' });
+  }
+
+  const conn = await mysql.createConnection({
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '3306'),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: tenant.db_name
+  });
+
+  try {
+    await ensureMortuarySettingsTable(conn);
+
+    // Get charge settings
+    const [settingsRows] = await conn.query(
+      'SELECT * FROM mortuary_charge_settings WHERE tenant_slug = ?',
+      [tenantSlug]
+    );
+    const settings = (settingsRows as any[])[0] || {
+      daily_storage_rate: 500,
+      initial_admission_fee: 2000,
+      embalming_fee: 5000,
+      currency: 'KES',
+      free_days: 0
+    };
+
+    // Bodies still in our care. The release sync flips admission_status /
+    // release_status / body_status and stamps dispatch_date; the legacy `status`
+    // column stays 'active' forever, so filtering on that alone kept released
+    // bodies in the storage bill. dispatch_date is carried through so the day
+    // count below can stop at handover.
+    const [deceased] = await conn.query(
+      `SELECT deceased_id, full_name, date_admitted, dispatch_date, admission_status
+       FROM deceased
+       WHERE is_deleted = FALSE
+         AND COALESCE(admission_status, 'admitted') NOT IN ('released', 'buried')
+         AND COALESCE(release_status, 'pending') <> 'released'
+         AND LOWER(COALESCE(body_status, '')) NOT LIKE '%released%'
+         AND LOWER(COALESCE(body_status, '')) NOT LIKE '%buried%'
+       ORDER BY date_admitted ASC`
+    );
+
+    const deceasedList = (deceased as any[]).map(d => {
+      const admittedDate = new Date(d.date_admitted);
+      // Storage runs to the day the body left, or to today while it is held.
+      const endDate = d.dispatch_date ? new Date(d.dispatch_date) : new Date();
+      const totalDays = Math.max(0, Math.floor((endDate.getTime() - admittedDate.getTime()) / (1000 * 60 * 60 * 24)));
+      const billableDays = Math.max(0, totalDays - (settings.free_days || 0));
+      const storageFee = billableDays * parseFloat(settings.daily_storage_rate);
+      const totalFee = storageFee + parseFloat(settings.initial_admission_fee);
+
+      return {
+        deceased_id: d.deceased_id,
+        full_name: d.full_name,
+        date_admitted: d.date_admitted,
+        admission_status: d.admission_status,
+        total_days: totalDays,
+        billable_days: billableDays,
+        daily_rate: parseFloat(settings.daily_storage_rate),
+        storage_fee: storageFee,
+        initial_admission_fee: parseFloat(settings.initial_admission_fee),
+        total_estimated_fee: totalFee,
+        currency: settings.currency
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        settings,
+        deceased: deceasedList,
+        summary: {
+          total_deceased: deceasedList.length,
+          total_estimated_revenue: deceasedList.reduce((sum: number, d: any) => sum + d.total_estimated_fee, 0),
+          currency: settings.currency
+        }
+      }
+    });
+  } finally {
+    await conn.end();
+  }
+}));
+
+// Simplified user routes (tenantSlug only)
+app.get('/tenant/:tenantSlug/users', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  const tenant = await TenantModel.findBySubdomain(tenantSlug);
+
+  if (!tenant) {
+    return res.status(404).json({ success: false, message: 'Tenant not found' });
+  }
+
+  const userController = new UserController();
+  const originalDbName = (req as any).dbName;
+  (req as any).dbName = tenant.db_name;
+  await userController.getUsers(req, res);
+  (req as any).dbName = originalDbName;
+}));
+
+// Update a tenant user's profile (and optional password).
+app.put('/tenant/:tenantSlug/users/:userId', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  const tenant = await TenantModel.findBySubdomain(tenantSlug);
+
+  if (!tenant) {
+    return res.status(404).json({ success: false, message: 'Tenant not found' });
+  }
+
+  const userController = new UserController();
+  const originalDbName = (req as any).dbName;
+  (req as any).dbName = tenant.db_name;
+  await userController.updateUser(req, res);
+  (req as any).dbName = originalDbName;
+}));
+
+// Simplified branches route (tenantSlug only)
+app.get('/tenant/:tenantSlug/branches', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  const tenant = await TenantModel.findBySubdomain(tenantSlug);
+
+  if (!tenant) {
+    return res.status(404).json({ success: false, message: 'Tenant not found' });
+  }
+
+  const userController = new UserController();
+  const originalDbName = (req as any).dbName;
+  (req as any).dbName = tenant.db_name;
+  await userController.getBranches(req, res);
+  (req as any).dbName = originalDbName;
+}));
+
+// ============================================
+// BRANCH CONNECTION ROUTES (Inter-branch communication)
+// ============================================
+// These routes allow branches to establish connections with each other
+// so they can communicate (e.g., request coffin inventory from a partner branch)
+const branchController = new BranchController();
+
+// Create a new branch (with auto-connect to existing branches)
+app.post('/tenant/:tenantSlug/branches', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  (req.headers as any)['x-tenant-slug'] = tenantSlug;
+  await branchController.createBranch(req, res);
+}));
+
+// List all branch connections for a tenant
+app.get('/tenant/:tenantSlug/branches/connections', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  (req.headers as any)['x-tenant-slug'] = tenantSlug;
+  await branchController.listConnections(req, res);
+}));
+
+// List connections for a specific branch
+app.get('/tenant/:tenantSlug/branches/:branchId/connections', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  (req.headers as any)['x-tenant-slug'] = tenantSlug;
+  await branchController.listBranchConnections(req, res);
+}));
+
+// Create a connection between two branches
+app.post('/tenant/:tenantSlug/branches/connections', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  (req.headers as any)['x-tenant-slug'] = tenantSlug;
+  await branchController.createConnection(req, res);
+}));
+
+// Update a branch connection status
+app.put('/tenant/:tenantSlug/branches/connections/:connectionId', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  (req.headers as any)['x-tenant-slug'] = tenantSlug;
+  await branchController.updateConnection(req, res);
+}));
+
+// Delete a branch connection
+app.delete('/tenant/:tenantSlug/branches/connections/:connectionId', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  (req.headers as any)['x-tenant-slug'] = tenantSlug;
+  await branchController.deleteConnection(req, res);
+}));
+
+// Auto-connect all branches to each other
+app.post('/tenant/:tenantSlug/branches/auto-connect', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  (req.headers as any)['x-tenant-slug'] = tenantSlug;
+  await branchController.autoConnect(req, res);
+}));
+
+// Check if two branches can communicate
+app.get('/tenant/:tenantSlug/branches/:branchId/connections/check/:connectedBranchId', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  (req.headers as any)['x-tenant-slug'] = tenantSlug;
+  await branchController.checkConnection(req, res);
+}));
+
+// Create user route (tenantSlug only)
+app.post('/tenant/:tenantSlug/users/register', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  const tenant = await TenantModel.findBySubdomain(tenantSlug);
+
+  if (!tenant) {
+    return res.status(404).json({ success: false, message: 'Tenant not found' });
+  }
+
+  // Set req.user for the controller (it expects user.tenantSlug)
+  (req as any).user = {
+    userId: 1, // Admin user creating this user
+    tenantSlug: tenantSlug
+  };
+
+  const userController = new UserController();
+  const originalDbName = (req as any).dbName;
+  (req as any).dbName = tenant.db_name;
+  await userController.registerUser(req, res);
+  (req as any).dbName = originalDbName;
+}));
+
+// Assign/reassign a user to a branch (tenantSlug only). Users always carry
+// tenant_id + branch_id so they log in to the correct tenant and branch.
+app.put('/tenant/:tenantSlug/users/:userId/branch', asyncHandler(async (req: Request, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  const tenant = await TenantModel.findBySubdomain(tenantSlug);
+
+  if (!tenant) {
+    return res.status(404).json({ success: false, message: 'Tenant not found' });
+  }
+
+  (req as any).user = {
+    userId: 1,
+    tenantSlug: tenantSlug
+  };
+
+  const userController = new UserController();
+  const originalDbName = (req as any).dbName;
+  (req as any).dbName = tenant.db_name;
+  await userController.updateUserBranch(req, res);
+  (req as any).dbName = originalDbName;
+}));
+
+// ============================================
+// BRANCH-AWARE ROUTING MIDDLEWARE (USING DB NAME)
+// ============================================
+// For multi-tenant: URLs include database name directly
+// Pattern: /tenant/:tenantSlug/:dbName/:resource
+// Example: /tenant/thika-feuneral/thika_feuneral_thika/all-deceased
+// Example: /tenant/thika-feuneral/thika_feuneral_wamasaa/all-deceased
+// ============================================
+
+interface BranchRequest extends Request {
+  branchDbName?: string;
+  tenantSlug?: string;
+}
+
+// Middleware to extract tenant and database from URL
+app.use('/tenant/:tenantSlug/:dbName', asyncHandler(async (req: BranchRequest, res: Response, next: NextFunction) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  const dbName = Array.isArray(req.params.dbName) ? req.params.dbName[0] : req.params.dbName;
+
+  if (!tenantSlug || !dbName) {
+    return res.status(400).json({ success: false, message: 'Tenant slug and database name are required' });
+  }
+
+  // Find tenant
+  const tenant = await TenantModel.findBySubdomain(tenantSlug);
+  if (!tenant) {
+    return res.status(404).json({ success: false, message: 'Tenant not found' });
+  }
+
+  // The dbName from URL IS the branch database name
+  // Verify it exists by checking if it matches tenant.db_name (primary) or any branch
+  let branchDbName = dbName;
+
+  // If it's not the primary DB, verify it's a valid branch DB
+  if (dbName !== tenant.db_name) {
+    const verifiedDbName = await TenantModel.getBranchDbName(tenant.db_name, dbName);
+    if (!verifiedDbName) {
+      return res.status(404).json({ success: false, message: 'Branch database not found' });
+    }
+    branchDbName = verifiedDbName;
+  }
+
+  // Attach to request for use in controllers
+  req.tenantSlug = tenantSlug;
+  req.branchDbName = branchDbName;
+
+  next();
+}));
+
+// Branch-aware user routes (with dbName)
+app.get('/tenant/:tenantSlug/:dbName/users', asyncHandler(async (req: BranchRequest, res: Response) => {
+  const userController = new UserController();
+  const originalDbName = (req as any).dbName;
+  (req as any).dbName = req.branchDbName;
+  await userController.getUsers(req, res);
+  (req as any).dbName = originalDbName;
+}));
+
+// Branch-aware branches route (with dbName)
+app.get('/tenant/:tenantSlug/:dbName/branches', asyncHandler(async (req: BranchRequest, res: Response) => {
+  const userController = new UserController();
+  const originalDbName = (req as any).dbName;
+  (req as any).dbName = req.branchDbName;
+  await userController.getBranches(req, res);
+  (req as any).dbName = originalDbName;
+}));
+
+// Branch-aware settings route (with dbName)
+app.get('/tenant/:tenantSlug/:dbName/settings', asyncHandler(async (req: BranchRequest, res: Response) => {
+  const tenantSlug = Array.isArray(req.params.tenantSlug) ? req.params.tenantSlug[0] : req.params.tenantSlug;
+  const tenant = await TenantModel.findBySubdomain(tenantSlug);
+  if (!tenant) {
+    return res.status(404).json({ success: false, message: 'Tenant not found' });
+  }
+
+  const conn = await mysql.createConnection({
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '3306'),
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: tenant.db_name
+  });
+
+  try {
+    const [branches] = await conn.query('SELECT COUNT(*) as count FROM branches WHERE is_active = TRUE');
+    const branchCount = (branches as any[])[0]?.count || 0;
+
+    res.json({
+      success: true,
+      data: {
+        deploymentType: branchCount > 1 ? 'multi' : 'single',
+        branchCount,
+        tenantName: tenant.tenant_name,
+        tenantSlug: tenant.tenant_slug,
+        country: tenant.country,
+        location: tenant.location,
+        email: tenant.email,
+        phone: tenant.phone,
+        logoUrl: tenant.logo_url,
+        logo_url: tenant.logo_url
+      }
+    });
+  } finally {
+    await conn.end();
+  }
+}));
+
+// Get tenant settings (deployment type, etc.)
+// Public endpoint - no auth required for basic tenant info
+app.get('/tenant/settings', asyncHandler(async (req: Request, res: Response) => {
+  try {
+    // Try to get tenant from header or query param
+    const headerSlug = req.headers['x-tenant-slug'] as string;
+    const querySlug = req.query.slug;
+    const querySlugStr = typeof querySlug === 'string' ? querySlug : (Array.isArray(querySlug) ? querySlug[0] : '');
+    const tenantSlug = headerSlug || querySlugStr;
+
+    if (!tenantSlug || typeof tenantSlug !== 'string') {
+      // Return default settings if no tenant specified
+      res.json({
+        success: true,
+        data: {
+          deploymentType: 'single',
+          branchCount: 0,
+          tenantName: '',
+          tenantSlug: ''
+        }
+      });
+      return;
+    }
+
+    const tenant = await TenantModel.findBySubdomain(tenantSlug);
+
+    if (!tenant) {
+      res.status(404).json({ success: false, message: 'Tenant not found' });
+      return;
+    }
+
+    const conn = await mysql.createConnection({
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '3306'),
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || '',
+      database: tenant.db_name
+    });
+
+    try {
+      // Get branches count
+      const [branches] = await conn.query('SELECT COUNT(*) as count FROM branches WHERE is_active = TRUE');
+      const branchCount = (branches as any[])[0]?.count || 0;
+
+      // Get deployment type from tenant_tracking database
+      const serverConn = await mysql.createConnection({
+        host: process.env.DB_HOST || 'localhost',
+        port: parseInt(process.env.DB_PORT || '3306'),
+        user: process.env.DB_USER || 'root',
+        password: process.env.DB_PASSWORD || '',
+        database: 'tenant_tracking'
+      });
+
+      let deploymentType = 'single';
+      try {
+        const [tracking] = await serverConn.query(
+          'SELECT deployment_type FROM tenants WHERE tenant_slug = ?',
+          [tenantSlug]
+        );
+        const trackingData = tracking as any[];
+        if (trackingData.length > 0 && trackingData[0].deployment_type) {
+          deploymentType = trackingData[0].deployment_type;
+        } else {
+          // Fallback: determine from branch count
+          deploymentType = branchCount > 1 ? 'multi' : 'single';
+        }
+      } catch (err) {
+        // If column doesn't exist, use branch count
+        deploymentType = branchCount > 1 ? 'multi' : 'single';
+      } finally {
+        await serverConn.end();
+      }
+
+      res.json({
+        success: true,
+        data: {
+          deploymentType,
+          branchCount,
+          tenantName: tenant.tenant_name,
+          tenantSlug: tenant.tenant_slug,
+          country: tenant.country,
+          location: tenant.location,
+          email: tenant.email,
+          phone: tenant.phone,
+          logoUrl: tenant.logo_url,
+          logo_url: tenant.logo_url
+        }
+      });
+    } finally {
+      await conn.end();
+    }
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Failed to fetch settings', error: error.message });
+  }
+}));
+
+// ============================================
+// ONBOARDING ROUTES (Public - No tenant context required)
+// ============================================
+app.use('/onboarding', onboardingRoutes);
+
+// ============================================
+// SYSTEM ADMIN ROUTES
+// ============================================
+// SECURITY: previously mounted with no authentication at all, exposing tenant
+// enumeration and suspend/stop/subscription mutation to anonymous callers.
+app.use('/system-admin', requireSystemAdmin, systemAdminRoutes);
+
+// ============================================
+// BLOG ENGAGEMENT (Restpoint Journal - views / likes / comments)
+// Persisted in a JSON file; reached through the API gateway at
+// /api/v1/restpoint/blog-engagement/...
+// ============================================
+app.use('/blog-engagement', blogEngagementRoutes);
+
+// ============================================
+// HEALTH CHECK
+// ============================================
+app.get('/health', (req: Request, res: Response) => {
+  res.json({
+    status: 'OK',
+    service: 'tenant-service',
+    timestamp: new Date().toISOString(),
+    database: process.env.MASTER_DB_NAME || 'master_db'
+  });
+});
+
+// Test endpoint
+app.get('/test', (req: Request, res: Response) => {
+  res.json({
+    message: 'Tenant service is running!',
+    endpoints: {
+      register: 'POST /api/onboarding/organization',
+      registerViaGateway: 'POST /api/v1/restpoint/tenant/onboarding/organization',
+      login: 'POST /api/onboarding/login',
+      getOrg: 'GET /api/onboarding/organization',
+      health: 'GET /health'
+    },
+    config: {
+      dbHost: process.env.MASTER_DB_HOST || 'localhost',
+      dbName: process.env.MASTER_DB_NAME || 'master_db'
+    }
+  });
+});
+
+// ============================================
+// 404 HANDLER
+// ============================================
+app.use(notFoundHandler);
+
+// ============================================
+// ERROR HANDLER
+// ============================================
+app.use(errorHandler);
+
+// ============================================
+// START SERVER
+// ============================================
+const HOST = process.env.HOST || '0.0.0.0';
+app.listen(Number(PORT), HOST, () => {
+  console.log(`Tenant service running on port ${PORT}`);
+  console.log(`Health check: http://${HOST}:${PORT}/health`);
+  console.log(`${new Date().toISOString()}`);
+
+  // AUTO-CREATE: Ensure tenant_tracking database and tables exist
+  // This must run BEFORE the sweep that queries tenant_tracking.tenants
+  TenantModel.ensureTenantTrackingSchema()
+    .then(() => {
+      // Startup sweep: make sure EVERY tenant's MAIN (parent) branch carries its
+      // own complete slug (`org-home-nairobi`, never the bare tenant slug) and
+      // that a Main branch exists at all. Idempotent + non-fatal.
+      TenantModel.normalizeAllTenantMainBranches().catch((e) =>
+        console.warn('Main-branch normalization sweep failed:', (e && e.message) || e)
+      );
+    })
+    .catch((e) => {
+      console.warn('Schema auto-creation failed, sweep skipped:', (e && e.message) || e);
+    });
+});

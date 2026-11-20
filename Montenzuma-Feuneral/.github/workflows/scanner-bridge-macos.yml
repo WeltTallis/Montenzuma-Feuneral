@@ -1,0 +1,129 @@
+# Builds the Restpoint Scanner Bridge installers.
+name: Scanner Bridge installers
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - 'mac-pkg-v*'
+    paths:
+      - 'services/scanner-bridge/src/**'
+      - 'services/scanner-bridge/scripts/**'
+      - 'services/scanner-bridge/installer.cjs'
+      - 'services/scanner-bridge/package.json'
+      - 'services/scanner-bridge/package-lock.json'
+      - 'package-lock.json'
+      - '.github/workflows/scanner-bridge-macos.yml'
+
+# Never let two builds race to commit the .pkg.
+concurrency:
+  group: scanner-bridge-installers
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  # ── Windows ─
+  build-windows:
+    name: Windows .exe
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+   
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Type-check the agent
+        working-directory: services/scanner-bridge
+        run: npm run typecheck
+
+      - name: Test the agent
+        working-directory: services/scanner-bridge
+        run: npm test
+
+      - name: Build the Windows installer
+        working-directory: services/scanner-bridge
+        run: npm run build:installer
+
+      - name: Verify the .exe was produced
+        shell: pwsh
+        run: |
+          $p = 'services/scanner-bridge/dist/Setup-Restpoint-Scanner-Bridge.exe'
+          if (-not (Test-Path $p)) { Write-Error "No installer was produced at $p"; exit 1 }
+          $size = (Get-Item $p).Length
+          if ($size -lt 1MB) { Write-Error "Installer is only $size bytes - the agent is probably not embedded"; exit 1 }
+          # Confirm it is a real PE executable.
+          $mz = [System.IO.File]::ReadAllBytes($p)[0..1]
+          if ($mz[0] -ne 0x4D -or $mz[1] -ne 0x5A) { Write-Error 'Not a Windows executable (no MZ header)'; exit 1 }
+          Write-Output "::notice::Valid Windows installer, $([math]::Round($size/1MB,1)) MB"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Restpoint-Scanner-Bridge-Windows
+          path: services/scanner-bridge/dist/Setup-Restpoint-Scanner-Bridge.exe
+          if-no-files-found: error
+
+  # ── macOS ────
+  build-pkg:
+    name: macOS .pkg
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Test the agent
+        working-directory: services/scanner-bridge
+        run: npm test
+
+      - name: Build the macOS .pkg
+        working-directory: services/scanner-bridge
+        run: npm run build:mac
+
+      # Guard against the failure this repo already hit: a build step that warns
+
+      - name: Verify the .pkg is a real installer
+        run: |
+          set -euo pipefail
+          PKG="services/scanner-bridge/dist/Restpoint-Scanner-Bridge.pkg"
+          if [ ! -f "$PKG" ]; then
+            echo "::error::No .pkg was produced at $PKG"
+            exit 1
+          fi
+          echo "size: $(du -h "$PKG" | cut -f1)"
+          # A .pkg is a XAR archive; its table of contents lists the Payload.
+          xar -tf "$PKG"
+          xar -tf "$PKG" | grep -q '^Payload$' \
+            || { echo "::error::$PKG has no Payload - not a valid installer package"; exit 1; }
+          echo "::notice::Valid macOS installer package confirmed."
+
+      - name: Commit the .pkg into the client downloads folder
+        run: |
+          git config user.name "restpoint-pkg-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add FrontendClient/client/public/downloads/macbook/Restpoint-Scanner-Bridge.pkg
+          if git diff --cached --quiet; then
+            echo "No .pkg changes to commit."
+          else
+            git commit -m "chore(scanner-bridge): refresh macOS .pkg [skip ci]"
+            git push
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Restpoint-Scanner-Bridge-macos-pkg
+          path: services/scanner-bridge/dist/Restpoint-Scanner-Bridge.pkg
+          if-no-files-found: error

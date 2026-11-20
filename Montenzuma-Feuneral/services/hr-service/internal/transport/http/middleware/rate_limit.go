@@ -1,0 +1,277 @@
+package middleware
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"strconv"
+	"strings"
+	"time"
+
+	"api-server/internal/constants"
+	"api-server/internal/pkg/clock"
+	"api-server/internal/transport/http/response"
+
+	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
+	"github.com/ulule/limiter/v3"
+	limiterGin "github.com/ulule/limiter/v3/drivers/middleware/gin"
+	limiterRedis "github.com/ulule/limiter/v3/drivers/store/redis"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/unicode/norm"
+)
+
+// RateLimitConfig holds configuration for rate limiting using ulule/limiter
+type RateLimitConfig struct {
+	Rate     string // rate format like "100-M" (100/minute), "1000-H" (1000/hour)
+	RedisURL string // Redis connection URL
+}
+
+// ipKeyGetter returns the real client IP via gin's trusted-proxy-aware c.ClientIP().
+// Using c.ClientIP() instead of the default limiterGin key getter (which reads
+// X-Real-IP / X-Forwarded-For directly) ensures the rate limit is scoped per
+// actual client IP, not per proxy IP, and honours gin's SetTrustedProxies config.
+func ipKeyGetter(c *gin.Context) string {
+	return c.ClientIP()
+}
+
+// rateLimitReachedHandler writes the 429 response carrying the actual seconds
+// until the window resets (not a hard-coded 60). ulule/limiter's gin middleware
+// writes the X-RateLimit-* headers as RESPONSE headers (c.Header →
+// c.Writer.Header()) just before invoking this handler. NOTE: c.GetHeader()
+// reads REQUEST headers (c.Request.Header), so it would never see them — read
+// the value back from the response writer instead. Reset is a Unix-seconds
+// timestamp.
+func rateLimitReachedHandler(c *gin.Context) {
+	retryAfter := 60
+	if resetStr := c.Writer.Header().Get("X-RateLimit-Reset"); resetStr != "" {
+		if resetTs, err := strconv.ParseInt(resetStr, 10, 64); err == nil {
+			now := clock.Now().Unix()
+			if delta := resetTs - now; delta > 0 {
+				retryAfter = int(delta)
+			}
+		}
+	}
+	response.TooManyRequests(c, constants.MsgRateLimitExceededVN, retryAfter)
+}
+
+// createRateLimiterWithKey builds a ulule/limiter middleware keyed by the given
+// keyGetter. All rate limiters share this plumbing; only the key function
+// differs (per-IP, per-account, etc.).
+func createRateLimiterWithKey(config RateLimitConfig, keyGetter func(*gin.Context) string) gin.HandlerFunc {
+	// Parse rate from config
+	rate, err := limiter.NewRateFromFormatted(config.Rate)
+	if err != nil {
+		log.Printf("Error parsing rate %s: %v, using default", config.Rate, err)
+		// Fallback to a default rate if parsing fails
+		rate = limiter.Rate{
+			Period: time.Minute,
+			Limit:  1000,
+		}
+	}
+
+	// Create Redis client
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: config.RedisURL,
+	})
+
+	// Create Redis store for limiter
+	store, err := limiterRedis.NewStore(redisClient)
+	if err != nil {
+		log.Fatalf("Failed to create Redis store for rate limiter: %v", err)
+	}
+
+	// Create limiter instance
+	instance := limiter.New(store, rate)
+
+	// Attach middleware with the requested key getter and a shared JSON 429 response.
+	return limiterGin.NewMiddleware(instance,
+		limiterGin.WithKeyGetter(keyGetter),
+		limiterGin.WithLimitReachedHandler(rateLimitReachedHandler),
+	)
+}
+
+// CreateRateLimiter creates a new rate limiter using ulule/limiter with Redis store.
+// Each counter is keyed per client IP (see ipKeyGetter above).
+func CreateRateLimiter(config RateLimitConfig) gin.HandlerFunc {
+	return createRateLimiterWithKey(config, ipKeyGetter)
+}
+
+// CreateLoginRateLimit creates a rate limiter specifically for login attempts.
+// Limit: 10 attempts per minute per ACCOUNT — keyed by the username/CCCD/mobile
+// the caller submitted (see loginAccountKeyGetter), NOT by source IP. Per-account
+// keying means a distributed attacker rotating IPs cannot bypass the cap when
+// hammering one account. When the body carries no identifier (malformed request,
+// or a non-login endpoint mounted on this limiter), the key falls back to the
+// client IP so anonymous traffic never collapses into a single global bucket.
+func CreateLoginRateLimit(redisURL string) gin.HandlerFunc {
+	return createRateLimiterWithKey(RateLimitConfig{
+		Rate:     "10-M",
+		RedisURL: redisURL,
+	}, loginAccountKeyGetter)
+}
+
+// loginAccountKeyGetter extracts the account identifier from the login request
+// body and returns a per-account limiter key, so the 10/min login cap is
+// enforced per account, not per IP. For /auth/login the identifier is the
+// submitted username/CCCD/mobile; for the OTP second step (/auth/login/verify,
+// /auth/login/resend) it is the otp_session_id, which is bound 1:1 to one
+// account for the duration of the OTP flow. The body is read with a small cap
+// and restored, so the downstream handler's BindJSON re-reads it normally. When
+// the body carries no identifier, the key falls back to the client IP — this
+// keeps isolation per-source instead of collapsing every anonymous request into
+// one shared (global) bucket.
+func loginAccountKeyGetter(c *gin.Context) string {
+	const maxBody = 4 << 10 // 4 KiB — login payloads are tiny; bound memory use
+	if c.Request != nil && c.Request.Body != nil {
+		raw, err := io.ReadAll(io.LimitReader(c.Request.Body, maxBody))
+		// Always restore the body so the handler can re-read it.
+		c.Request.Body = io.NopCloser(bytes.NewReader(raw))
+		if err == nil {
+			var payload struct {
+				Username     string `json:"username"`
+				OTPSessionID string `json:"otp_session_id"`
+			}
+			if json.Unmarshal(raw, &payload) == nil {
+				if id := strings.TrimSpace(payload.Username); id != "" {
+					if len(id) > 255 {
+						id = id[:255]
+					}
+					return "account:" + strings.ToLower(id)
+				}
+				if id := strings.TrimSpace(payload.OTPSessionID); id != "" {
+					if len(id) > 255 {
+						id = id[:255]
+					}
+					return "otp-session:" + id
+				}
+			}
+		}
+	}
+	// No identifier in the body — keep per-source isolation (never global).
+	return "ip:" + c.ClientIP()
+}
+
+// CreateAPIRateLimit creates a rate limiter for general API requests.
+// Limit: 10000 requests per minute per IP.
+func CreateAPIRateLimit(redisURL string) gin.HandlerFunc {
+	return CreateRateLimiter(RateLimitConfig{
+		Rate:     "10000-M",
+		RedisURL: redisURL,
+	})
+}
+
+// CreateStrictRateLimit creates a stricter rate limiter for sensitive endpoints.
+// Limit: 1000 requests per minute per IP.
+func CreateStrictRateLimit(redisURL string) gin.HandlerFunc {
+	return CreateRateLimiter(RateLimitConfig{
+		Rate:     "1000-M",
+		RedisURL: redisURL,
+	})
+}
+
+// CreateUserRateLimit creates a rate limiter with a custom rate string.
+func CreateUserRateLimit(rate string, redisURL string) gin.HandlerFunc {
+	return CreateRateLimiter(RateLimitConfig{
+		Rate:     rate,
+		RedisURL: redisURL,
+	})
+}
+
+// CreateEndpointRateLimit creates a rate limiter for specific endpoints.
+func CreateEndpointRateLimit(rate string, redisURL string) gin.HandlerFunc {
+	return CreateRateLimiter(RateLimitConfig{
+		Rate:     rate,
+		RedisURL: redisURL,
+	})
+}
+
+// CreatePasswordResetRateLimit caps password-reset requests per EMAIL ADDRESS
+// (read from the request body), not per IP — a rotating-IP attacker must not
+// bypass the cap. Falls back to the client IP when the body has no email.
+// perHour is the allowed requests per normalized email per hour.
+func CreatePasswordResetRateLimit(redisURL string, perHour int) gin.HandlerFunc {
+	if perHour <= 0 {
+		perHour = 3
+	}
+	rate := fmt.Sprintf("%d-H", perHour)
+	return createRateLimiterWithKey(RateLimitConfig{Rate: rate, RedisURL: redisURL}, passwordResetEmailKeyGetter)
+}
+
+// passwordResetEmailKeyGetter extracts the email from the request body and
+// returns a per-email limiter key. Red Team H1: the email is Unicode case-folded
+// + NFKC-normalized + zero-width-stripped so it folds at least as much as the
+// DB's utf8mb4_0900_ai_ci comparison (Alice@ / Álice@ / alice@\u200b collapse to
+// one bucket). Red Team M1: the body is restored after reading or the downstream
+// handler's BindJSON sees EOF and 400s every reset request.
+func passwordResetEmailKeyGetter(c *gin.Context) string {
+	const maxBody = 4 << 10
+	if c.Request != nil && c.Request.Body != nil {
+		raw, err := io.ReadAll(io.LimitReader(c.Request.Body, maxBody))
+		c.Request.Body = io.NopCloser(bytes.NewReader(raw)) // CRITICAL: restore body
+		if err == nil {
+			var payload struct {
+				Email string `json:"email"`
+			}
+			if json.Unmarshal(raw, &payload) == nil {
+				if e := strings.TrimSpace(payload.Email); e != "" {
+					normalized := normalizeEmailForRateLimit(e)
+					if len(normalized) > 255 {
+						normalized = normalized[:255]
+					}
+					return "pwreset-email:" + normalized
+				}
+			}
+		}
+	}
+	return "ip:" + c.ClientIP()
+}
+
+// normalizeEmailForRateLimit applies NFKC normalization + Unicode case-folding +
+// zero-width stripping so the limiter key matches MySQL's utf8mb4_0900_ai_ci
+// comparison semantics — the canonical collation since migration 111; the folding
+// here stays deliberately broader, never narrower. strings.ToLower alone is
+// ASCII-only and would let "Alice@x" / "Álice@x" / "alice@\u200bx" bypass the
+// per-email cap.
+func normalizeEmailForRateLimit(email string) string {
+	// NFKC first so compatibility chars fold (e.g. fullwidth ＠ → @).
+	n := norm.NFKC.String(email)
+	// Unicode case-fold (broader than ASCII ToLower — handles İ, ı, ß, etc.).
+	n = cases.Fold().String(n)
+	// Strip zero-width chars TrimSpace misses.
+	n = strings.Map(func(r rune) rune {
+		switch r {
+		case '\u200b', '\u200c', '\u200d', '\ufeff': // ZWSP, ZWNJ, ZWJ, BOM
+			return -1
+		}
+		return r
+	}, n)
+	return strings.TrimSpace(n)
+}
+
+// CreateAdBannerClickRateLimit caps ad CTA click reporting per ACCOUNT (the
+// authenticated user id), not per IP. Per-IP keys on this stack share one
+// Redis counter across every per-IP limiter — the global API limiter inflates
+// that counter past 30 within a normal page burst, so a per-IP click cap
+// would 429 the first tap after any activity. Keying by the authenticated
+// user id (auth middleware runs before route middleware) gives the click
+// limiter an isolated keyspace, matching how the login limiter is keyed.
+func CreateAdBannerClickRateLimit(redisURL string) gin.HandlerFunc {
+	return createRateLimiterWithKey(
+		RateLimitConfig{Rate: "30-M", RedisURL: redisURL},
+		adBannerClickAccountKeyGetter,
+	)
+}
+
+func adBannerClickAccountKeyGetter(c *gin.Context) string {
+	if v, ok := c.Get(constants.CtxUserID); ok {
+		if id, ok := v.(uint); ok && id != 0 {
+			return "adclick-account:" + strconv.FormatUint(uint64(id), 10)
+		}
+	}
+	// Unauthenticated fallback (normally unreachable — Authenticate runs first
+	// and rejects); namespaced so it never joins the shared per-IP counter.
+	return "adclick-ip:" + c.ClientIP()
+}

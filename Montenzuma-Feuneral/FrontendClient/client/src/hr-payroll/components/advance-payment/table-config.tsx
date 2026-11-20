@@ -1,0 +1,509 @@
+import type { ColumnDef } from "@tanstack/react-table";
+import type { MobileField } from "@hr/components/ui/responsive-table";
+import type {
+  AdvancePaymentListItem,
+  FlexPayEmployeeListItem,
+} from "@hr/types/api/advance-payment.types";
+import { Badge } from "@hr/components/ui/badge";
+import { cn } from "@hr/lib/utils";
+import { Button } from "@hr/components/ui/button";
+import { AdvanceRequestToggle } from "@hr/components/advance-payment/AdvanceRequestToggle";
+import { ArrowDown, ArrowUp, ChevronSelectorVertical, DotsHorizontal, RefreshCw05, X } from "@untitledui/icons";
+import { EmptyState } from "@hr/components/shared/EmptyState";
+import { formatCurrency } from "@hr/utils/formatters";
+import { format, differenceInMinutes } from "date-fns";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@hr/components/ui/dropdown-menu";
+import {
+  getKenyanAdvancePaymentStatus,
+  getAdvancePaymentStatusColor,
+  formatPaymentLatency,
+  getPaymentLatencyColor,
+} from "@hr/utils/advancePaymentHelpers";
+
+/** Latency seconds from createdAt to paidAt/completedAt, or null if unpaid. */
+function latencySeconds(row: AdvancePaymentListItem): number | null {
+  const paidAt = row.paidAt ?? row.completedAt;
+  if (!paidAt) return null;
+  return Math.max(
+    0,
+    Math.round((new Date(paidAt).getTime() - new Date(row.createdAt).getTime()) / 1000),
+  );
+}
+
+/** Shared payment latency cell so the desktop column and mobile card stay consistent. */
+function LatencyCell({ row, mobile = false }: { row: AdvancePaymentListItem; mobile?: boolean }) {
+  const secs = latencySeconds(row);
+  if (secs === null) {
+    return (
+      <span className={mobile ? "text-[13px] text-muted-foreground" : "text-xs text-muted-foreground"}>
+        —
+      </span>
+    );
+  }
+  const text = formatPaymentLatency(row.createdAt, row.paidAt, row.completedAt);
+  return (
+    <span
+      className={cn(
+        "tabular-nums",
+        mobile ? "text-[13px]" : "text-xs",
+        getPaymentLatencyColor(secs),
+      )}
+      title={`Created: ${format(new Date(row.createdAt), "dd/MM/yyyy HH:mm")} · Paid: ${format(new Date(row.paidAt ?? row.completedAt!), "dd/MM/yyyy HH:mm")}`}
+    >
+      {text}
+    </span>
+  );
+}
+
+export interface ActionContext {
+  onCancel: (id: number) => void;
+  onRetry?: (id: number) => void;
+  isRetrying?: boolean;
+  retryingId?: number;
+  /** Set of request IDs currently polling for disbursement status */
+  pollingIds?: Set<number>;
+}
+
+export function getAdvancePaymentColumns(
+  ctx: ActionContext,
+): ColumnDef<AdvancePaymentListItem>[] {
+  return [
+    {
+      accessorKey: "employeeName",
+      header: "Employees",
+      size: 130,
+      cell: ({ row }) => (
+        <div>
+          <div className="text-xs font-medium leading-tight">{row.original.employeeName}</div>
+          <div className="text-xs text-muted-foreground mt-0.5 tabular-nums">
+            {row.original.employeeCCCD}
+          </div>
+          {row.original.projectName && (
+            <div
+              className="text-xs text-muted-foreground mt-0.5 truncate max-w-[120px]"
+              title={`Project: ${row.original.projectName}`}
+            >
+              {row.original.projectName}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "requestAmount",
+      header: "Requested",
+      size: 100,
+      meta: { align: "right" },
+      cell: ({ row }) => (
+        <span className="text-xs tabular-nums">
+          {formatCurrency(row.original.requestAmount)}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "fee",
+      header: "Fee",
+      size: 80,
+      meta: { align: "right" },
+      cell: ({ row }) => (
+        <div className="text-xs text-muted-foreground tabular-nums text-right">
+          {formatCurrency(row.original.fee)}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "netAmount",
+      header: "Net amount",
+      size: 100,
+      meta: { align: "right" },
+      cell: ({ row }) => (
+        <div className="text-xs font-semibold tabular-nums text-right text-[hsl(var(--success))]">
+          {formatCurrency(row.original.netAmount)}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      size: 120,
+      cell: ({ row }) => {
+        const status = row.original.status;
+        const isPolling = ctx.pollingIds?.has(row.original.id);
+        const label = getKenyanAdvancePaymentStatus(status);
+        const dot =
+          status === "COMPLETED" ? "bg-emerald-500"
+          : status === "FAILED" ? "bg-red-500"
+          : status === "PENDING" ? "bg-amber-500"
+          : status === "APPROVED" ? "bg-blue-500"
+          : "bg-gray-400";
+        return (
+          <div className="flex items-center gap-1.5 whitespace-nowrap">
+            <span className={cn("h-2 w-2 shrink-0 rounded-full", dot)} />
+            <span className="text-xs">{label}</span>
+            {isPolling && (
+              <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-blue-300 border-t-blue-600" />
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      id: "latency",
+      header: "Payment time",
+      size: 110,
+      meta: { align: "right" },
+      cell: ({ row }) => <LatencyCell row={row.original} />,
+    },
+    {
+      accessorKey: "paidAt",
+      header: "Payment",
+      size: 130,
+      cell: ({ row }) => {
+        const paidAt = row.original.paidAt ?? row.original.completedAt;
+        const createdAt = row.original.createdAt;
+        if (!paidAt) {
+          return (
+            <span
+              className="text-xs text-muted-foreground tabular-nums whitespace-nowrap"
+              title={createdAt ? `Created: ${format(new Date(createdAt), "dd/MM/yyyy HH:mm")}` : undefined}
+            >
+              Awaiting payment
+            </span>
+          );
+        }
+        const latency = formatPaymentLatency(createdAt, paidAt);
+        return (
+          <div
+            className="text-xs text-muted-foreground tabular-nums whitespace-nowrap cursor-help"
+            title={`Created: ${format(new Date(createdAt), "dd/MM/yyyy HH:mm")} · Processed in ${latency}`}
+          >
+            {format(new Date(paidAt), "dd/MM/yyyy HH:mm", { locale: vi })}
+          </div>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: "",
+      size: 40,
+      cell: ({ row }) => {
+        const { status, id } = row.original;
+        const isCancellable = status === "PENDING" || status === "APPROVED";
+        const isRetryable = status === "APPROVED" || status === "FAILED";
+        const hasActions = isCancellable || (isRetryable && ctx.onRetry);
+        if (!hasActions) return null;
+
+        const isRetrying = ctx.isRetrying && ctx.retryingId === id;
+
+        return (
+          <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label={`Actions for ${row.original.employeeName}'s advance payment request`} className="h-9 w-9 shrink-0">
+                  <DotsHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                {isRetryable && ctx.onRetry && (
+                  <DropdownMenuItem
+                    onClick={() => ctx.onRetry!(id)}
+                    disabled={isRetrying}
+                    className="text-blue-700 focus:text-blue-700"
+                  >
+                    <RefreshCw05 className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
+                    {isRetrying ? "Submitting..." : "Retry"}
+                  </DropdownMenuItem>
+                )}
+                {isCancellable && (
+                  <DropdownMenuItem
+                    onClick={() => ctx.onCancel(id)}
+                    className="text-red-700 focus:text-red-800"
+                  >
+                    <X className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
+                    Cancel request
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+    },
+  ];
+}
+
+export interface SortContext {
+  sortBy?: string;
+  sortOrder?: "ASC" | "DESC";
+  onSort: (field: string) => void;
+}
+
+function SortHeader({ label, field, ctx }: { label: string; field: string; ctx: SortContext }) {
+  const isActive = ctx.sortBy === field;
+  const Icon = isActive ? (ctx.sortOrder === "ASC" ? ArrowUp : ArrowDown) : ChevronSelectorVertical;
+  return (
+    <button
+      className="flex items-center gap-1 hover:text-foreground transition-colors"
+      onClick={() => ctx.onSort(field)}
+    >
+      {label}
+      <Icon className={`h-3 w-3 ${isActive ? "text-foreground" : "text-muted-foreground"}`} aria-hidden="true" />
+    </button>
+  );
+}
+
+// Shared kill-switch renderer: one place for the fallback semantics so the
+// desktop column, the mobile card fields, and the employee list card cannot
+// drift. Rendered only when the row carries a project (the PATCH needs its id).
+export function renderAdvanceToggle(row: FlexPayEmployeeListItem) {
+  if (!row.project) return "-";
+  return (
+    <AdvanceRequestToggle
+      projectId={row.project.id}
+      employeeId={row.employeeId}
+      employeeName={row.fullname}
+      enabled={row.project.advance_request_enabled !== false}
+    />
+  );
+}
+
+export function getFlexPayColumns(sort: SortContext): ColumnDef<FlexPayEmployeeListItem>[] {
+  return [
+  {
+    accessorKey: "fullname",
+    header: "Employees",
+    size: 130,
+    cell: ({ row }) => (
+      <div>
+        <div className="text-xs font-medium leading-tight">{row.original.fullname}</div>
+        <div className="text-xs text-muted-foreground mt-0.5 tabular-nums">{row.original.cccd}</div>
+        <div className="text-xs text-muted-foreground mt-0.5 truncate max-w-[120px]">
+          {row.original.project?.name || "-"}
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: "bank",
+    header: "Bank",
+    size: 140,
+    cell: ({ row }) => {
+      const bank = row.original.bank;
+      if (!bank || !bank.accountNumber) {
+        return <span className="text-xs text-muted-foreground">-</span>;
+      }
+      return (
+        <div>
+          <div className="text-xs truncate max-w-[140px]">{bank.bankName || "-"}</div>
+          <div className="text-xs text-muted-foreground tabular-nums mt-0.5">
+            {bank.accountNumber}
+          </div>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "maxAdvanceAmount",
+    header: () => <SortHeader label="Limit" field="max_advance_amount" ctx={sort} />,
+    size: 90,
+    cell: ({ row }) => (
+      <div className="text-xs font-medium tabular-nums">
+        {formatCurrency(row.original.maxAdvanceAmount)}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "utilizedAmount",
+    header: () => <SortHeader label="Used" field="utilized_amount" ctx={sort} />,
+    size: 90,
+    cell: ({ row }) => (
+      <div className="text-xs text-orange-700 tabular-nums">
+        {formatCurrency(row.original.utilizedAmount)}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "pendingAmount",
+    header: () => <SortHeader label="Pending" field="pending_amount" ctx={sort} />,
+    size: 90,
+    cell: ({ row }) => (
+      <div className="text-xs text-amber-700 tabular-nums">
+        {formatCurrency(row.original.pendingAmount)}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "availableAmount",
+    header: () => <SortHeader label="Available" field="available_amount" ctx={sort} />,
+    size: 90,
+    cell: ({ row }) => (
+      <div className="text-xs font-semibold text-emerald-700 tabular-nums">
+        {formatCurrency(row.original.availableAmount)}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "totalFeeGenerated",
+    header: "Fees earned",
+    size: 80,
+    cell: ({ row }) => (
+      <div className="text-xs text-muted-foreground tabular-nums">
+        {formatCurrency(row.original.totalFeeGenerated)}
+      </div>
+    ),
+  },
+  {
+    id: "advanceRequest",
+    header: "Salary advance",
+    size: 110,
+    cell: ({ row }) => renderAdvanceToggle(row.original),
+  },
+];
+}
+
+export const requestMobileFields: MobileField<AdvancePaymentListItem>[] = [
+  {
+    key: "requestAmount",
+    label: "Amount",
+    priority: 1,
+    render: (row) => (
+      <div className="flex flex-col items-end gap-1">
+        <span className="text-[15px] font-bold text-foreground tabular-nums leading-none">
+          {formatCurrency(row.requestAmount)}
+        </span>
+        <Badge
+          variant="outline"
+          className={`text-xs px-1.5 py-0.5 font-semibold leading-none h-auto ${getAdvancePaymentStatusColor(row.status)}`}
+        >
+          {getKenyanAdvancePaymentStatus(row.status)}
+        </Badge>
+      </div>
+    ),
+  },
+  {
+    key: "netAmount",
+    label: "Net amount",
+    priority: 2,
+    render: (row) => (
+      <div className="text-[13px] font-semibold text-emerald-700 tabular-nums">
+        {formatCurrency(row.netAmount)}
+      </div>
+    ),
+  },
+  {
+    key: "fee",
+    label: "Fee",
+    priority: 2,
+    render: (row) => (
+      <div className="text-[13px] text-muted-foreground tabular-nums">
+        {formatCurrency(row.fee)}
+      </div>
+    ),
+  },
+  {
+    key: "createdAt",
+    label: "Created on",
+    priority: 2,
+    render: (row) => (
+      <div className="text-[13px] text-muted-foreground tabular-nums">
+        {format(new Date(row.createdAt), "dd/MM/yyyy HH:mm")}
+      </div>
+    ),
+  },
+  {
+    key: "paidAt",
+    label: "Payment",
+    priority: 2,
+    render: (row) => {
+      const paidAt = row.paidAt ?? row.completedAt;
+      if (!paidAt) return <span className="text-[13px] text-muted-foreground">—</span>;
+      return (
+        <div className="text-[13px] text-muted-foreground tabular-nums">
+          {format(new Date(paidAt), "dd/MM/yyyy HH:mm")}
+        </div>
+      );
+    },
+  },
+  {
+    key: "latency",
+    label: "Payment time",
+    priority: 3,
+    render: (row) => <LatencyCell row={row} mobile />,
+  },
+];
+
+export const flexPayMobileFields: MobileField<FlexPayEmployeeListItem>[] = [
+
+  {
+    key: "maxAdvanceAmount",
+    label: "Limit",
+    priority: 1,
+    render: (row) => (
+      <div className="text-[13px] font-medium text-fg-tertiary">{formatCurrency(row.maxAdvanceAmount)}</div>
+    ),
+  },
+  {
+    key: "availableAmount",
+    label: "Available",
+    priority: 1,
+    render: (row) => (
+      <div className="text-[14px] font-bold text-emerald-700">
+        {formatCurrency(row.availableAmount)}
+      </div>
+    ),
+  },
+  {
+    key: "utilizedAmount",
+    label: "Used",
+    priority: 2,
+    render: (row) => (
+      <div className="text-orange-700">
+        {formatCurrency(row.utilizedAmount)}
+      </div>
+    ),
+  },
+  {
+    key: "bank",
+    label: "Bank",
+    priority: 2,
+    render: (row) => {
+      const bank = row.bank;
+      if (!bank || !bank.accountNumber) return "-";
+      return (
+        <div className="text-sm">
+          <div className="truncate">{bank.bankName || "-"}</div>
+          <div className="text-xs text-muted-foreground">
+            {bank.accountNumber}
+          </div>
+        </div>
+      );
+    },
+  },
+  {
+    key: "advanceRequest",
+    label: "Salary advance",
+    priority: 2,
+    render: renderAdvanceToggle,
+  },
+];
+
+export const requestEmptyState = (
+  <EmptyState
+    title="No requests yet"
+    description="Employee advance payment requests will appear here once submitted."
+    size="sm"
+  />
+);
+
+export const flexPayEmptyState = (
+  <EmptyState
+    title="No data available"
+    description="Import a payroll file to view the employee list."
+    size="sm"
+  />
+);

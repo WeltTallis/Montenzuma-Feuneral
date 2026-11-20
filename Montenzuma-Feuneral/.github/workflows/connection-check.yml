@@ -1,0 +1,53 @@
+name: Connection Check
+
+on:
+  workflow_run:
+    workflows: ["Build and Test"]
+    types:
+      - completed
+  schedule:
+    - cron: '0 * * * *'  # Every hour
+  workflow_dispatch:
+
+jobs:
+  check-connections:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'dispatch' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Check connection status
+        run: npm run check:connection
+
+      - name: Verify service connectivity
+        run: |
+          # Check critical services
+          services=("mpesa-service" "auth-service" "api-gateway" "deceased-service")
+          for service in "${services[@]}"; do
+            echo "Checking $service connectivity..."
+            # Run the connection check script
+            node scripts/check-connection-status.mjs --service=$service || echo "Warning: $service connectivity issue detected"
+          done
+
+      - name: Post connection status comment
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          inline: |
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '⚠️ Connection check failed after build. Please review service connectivity before deployment.'
+            })

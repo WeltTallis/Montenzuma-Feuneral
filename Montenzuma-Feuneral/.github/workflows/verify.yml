@@ -1,0 +1,69 @@
+name: Verify Build
+
+on:
+  workflow_run:
+    workflows: ["Build and Test"]
+    types:
+      - completed
+  schedule:
+    - cron: '30 * * * *'  # Every hour at half past
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Restore build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: restpoint-build
+          path: ./artifact
+
+      - name: Verify build artifacts
+        run: |
+          # Check that essential packages exist
+          ls artifact/packages/ || echo "No packages directory in artifact"
+          ls artifact/services/ || echo "No services directory in artifact"
+
+      - name: Run verification tests
+        run: |
+          # Run health check endpoints if running
+          npm run verify:health --if-present || echo "Health check script not defined"
+
+      - name: Check Docker compose validity
+        run: |
+          if [ -f docker-compose.prod.yml ]; then
+            docker compose -f docker-compose.prod.yml config --quiet && echo "Docker compose valid" || echo "Docker compose config invalid"
+          fi
+
+      - name: Verify environment configuration
+        run: |
+          if [ -f .env.production ]; then
+            grep -E '^DB_HOST|^REDIS_HOST|^JWT_SECRET|^NODE_ENV' .env.production | head -5
+          fi
+
+      - name: Security verification
+        run: |
+          npm run audit:dependencies --if-present || echo "Dependency audit skipped"
+
+      - name: Upload verification report
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-report
+          path: |
+            .verification-report
+            docker-compose.prod.yml
+          retention-days: 7

@@ -1,0 +1,168 @@
+import { useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+// UU PRO restyle (W13a): lucide → verified @untitledui/icons; the shared
+// icon slots are widened to ComponentType<SVGProps> (W13a follow-up).
+import { Activity, ArrowLeft, User01 } from "@untitledui/icons";
+import { format, parseISO } from "date-fns";
+import { Skeleton } from "@hr/components/ui/skeleton";
+import { Button } from "@hr/components/ui/button";
+import { UserAvatar } from "@hr/components/ui/user-avatar";
+import { MobilePageHeader } from "@hr/components/shared/MobilePageHeader";
+import { EmptyState } from "@hr/components/shared/EmptyState";
+import { EmployeeDetailsSheet } from "@hr/components/employees/details/EmployeeDetailsSheet";
+import { useActiveEmployeesBySchedule } from "@hr/hooks/api/useDashboard";
+import { useEmployee, useUpdateEmployee, useDeleteEmployee } from "@hr/hooks/api/useEmployees";
+import type { Employee } from "@hr/types/api/employee.types";
+import type { Bank } from "@hr/types/api/bank.types";
+
+type Schedule = "weekly" | "monthly" | "flexible";
+
+const SCHEDULE_LABELS: Record<Schedule, string> = {
+  weekly: "Weekly payroll",
+  monthly: "Monthly payroll",
+  flexible: "Flexible",
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Administrator",
+  partner: "Management",
+  employee: "Staff",
+};
+
+const SCHEDULE_BADGE_LABELS: Record<string, string> = {
+  weekly: "Weekly payroll",
+  monthly: "Monthly payroll",
+  flexible: "Flexible",
+};
+
+const ActivityUsersPage = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
+
+  const schedule = searchParams.get("schedule") as Schedule | null;
+  const month = searchParams.get("month") ?? undefined;
+
+  const { data: users, isLoading } = useActiveEmployeesBySchedule(schedule, month);
+  const { data: selectedEmployee } = useEmployee(
+    selectedEmployeeId ?? 0,
+    !!selectedEmployeeId,
+  );
+  const updateEmployeeMutation = useUpdateEmployee();
+  const deleteEmployeeMutation = useDeleteEmployee();
+
+  const handleUpdate = async (
+    employeeId: number,
+    employeeData: Partial<Employee>,
+    bankObject?: Bank | null,
+  ) => {
+    updateEmployeeMutation.mutate({
+      id: employeeId,
+      data: employeeData as Partial<Employee>,
+      bank: bankObject,
+    });
+  };
+
+  const handleDelete = (employee: Employee) => {
+    deleteEmployeeMutation.mutate(employee.id, {
+      onSuccess: () => setSelectedEmployeeId(null),
+    });
+  };
+
+  const title = schedule ? SCHEDULE_LABELS[schedule] : "Staff who have logged in";
+  const subtitle = month
+    ? `Month ${month.split("-").reverse().join("/")}`
+    : "All time";
+
+  return (
+    <div className="admin-dashboard-activity-page flex min-h-full flex-col pb-[calc(5rem+env(safe-area-inset-bottom))]">
+      <MobilePageHeader
+        icon={Activity}
+        title={title}
+        subtitle={subtitle}
+        sticky={false}
+        bordered={false}
+        actions={
+          <Button variant="ghost" size="icon" className="h-11 w-11" onClick={() => navigate(-1)} aria-label="Back to Overview">
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        }
+      />
+
+      {/* Content */}
+      <div className="flex-1 px-4 py-3">
+        {isLoading ? (
+          <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="rounded-xl border p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-9 w-9 rounded-full shrink-0" />
+                  <div className="space-y-1.5 flex-1 min-w-0">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-2.5 w-16" />
+                  </div>
+                </div>
+                <Skeleton className="h-2.5 w-20" />
+              </div>
+            ))}
+          </div>
+        ) : !users || users.length === 0 ? (
+          <EmptyState
+            icon={User01}
+            title="No staff have logged in"
+          />
+        ) : (
+          <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
+            {users.map((user) => (
+              <button
+                key={user.user_id}
+                className="flex flex-col gap-2 rounded-xl border border-input bg-card p-3 text-left transition-colors hover:bg-utility-gray-50 active:bg-utility-gray-100 motion-reduce:transition-none touch-manipulation focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
+                onClick={() => setSelectedEmployeeId(user.employee_id)}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <UserAvatar
+                    name={user.fullname}
+                    username={user.username}
+                    size="md"
+                    className="shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-fg-primary truncate leading-tight">
+                      {user.fullname}
+                    </p>
+                    <p className="text-xs text-fg-tertiary truncate">
+                      @{user.username}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-1 text-xs text-fg-tertiary">
+                  <span>{ROLE_LABELS[user.role] ?? user.role}</span>
+                  <span>
+                    {SCHEDULE_BADGE_LABELS[user.payment_schedule] ??
+                      user.payment_schedule}
+                  </span>
+                </div>
+                {user.last_login && (
+                  <p className="text-xs text-fg-tertiary leading-none">
+                    {format(parseISO(user.last_login), "dd/MM/yyyy HH:mm", {
+                    })}
+                  </p>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <EmployeeDetailsSheet
+        employee={selectedEmployee}
+        isOpen={!!selectedEmployeeId}
+        onClose={() => setSelectedEmployeeId(null)}
+        onUpdate={handleUpdate}
+        onDelete={handleDelete}
+      />
+    </div>
+  );
+};
+
+export default ActivityUsersPage;

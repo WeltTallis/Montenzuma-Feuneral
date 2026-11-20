@@ -1,0 +1,218 @@
+import { memo } from "react";
+import { cn } from "@hr/lib/utils";
+import { Skeleton } from "@hr/components/ui/skeleton";
+// W13c: lucide → verified @untitledui/icons (same glyph semantics).
+import { CheckCircle } from "@untitledui/icons";
+import { formatCurrency } from "@hr/utils/formatters";
+
+export interface AdvPartnerStatusOverviewProps {
+  totalPaid: number;
+  totalPending: number;
+  totalFailed: number;
+  totalCancelled: number;
+  totalRequests: number;
+  totalPaidAmount?: number;
+  totalPendingAmount?: number;
+  totalFailedAmount?: number;
+  totalCancelledAmount?: number;
+  /** From backend — totalPaid / (totalRequests - totalCancelled) * 100 */
+  successRate: number;
+  isLoading?: boolean;
+  className?: string;
+  /** Strip the card chrome (border/bg/padding) so the pipeline can be embedded
+   *  in a shared surface, e.g. the admin "pipeline + health" band. */
+  bare?: boolean;
+}
+
+interface StatusCellDef {
+  key: string;
+  label: string;
+  /** Progress-rail segment fill. */
+  barClass: string;
+  /** Status-cell dot fill. */
+  dotClass: string;
+  getValue: (props: AdvPartnerStatusOverviewProps) => number;
+  getAmount: (props: AdvPartnerStatusOverviewProps) => number | undefined;
+}
+
+const CELLS: StatusCellDef[] = [
+  {
+    key: "completed",
+    label: "Completed",
+    barClass: "bg-gradient-to-r from-emerald-500 to-emerald-400",
+    dotClass: "bg-emerald-500",
+    getValue: (p) => p.totalPaid,
+    getAmount: (p) => p.totalPaidAmount,
+  },
+  {
+    key: "pending",
+    label: "Pending",
+    barClass: "bg-amber-400",
+    dotClass: "bg-amber-400",
+    getValue: (p) => p.totalPending,
+    getAmount: (p) => p.totalPendingAmount,
+  },
+  {
+    key: "failed",
+    label: "Failed",
+    barClass: "bg-rose-500",
+    dotClass: "bg-rose-500",
+    getValue: (p) => p.totalFailed,
+    getAmount: (p) => p.totalFailedAmount,
+  },
+  {
+    key: "cancelled",
+    label: "Cancelled",
+    barClass: "bg-slate-400",
+    dotClass: "bg-slate-400",
+    getValue: (p) => p.totalCancelled,
+    getAmount: (p) => p.totalCancelledAmount,
+  },
+];
+
+export const AdvPartnerStatusOverview = memo(function AdvPartnerStatusOverview({
+  totalPaid,
+  totalPending,
+  totalFailed,
+  totalCancelled,
+  totalRequests,
+  totalPaidAmount,
+  totalPendingAmount,
+  totalFailedAmount,
+  totalCancelledAmount,
+  successRate,
+  isLoading = false,
+  className,
+  bare = false,
+}: AdvPartnerStatusOverviewProps) {
+  const props = {
+    totalPaid,
+    totalPending,
+    totalFailed,
+    totalCancelled,
+    totalRequests,
+    totalPaidAmount,
+    totalPendingAmount,
+    totalFailedAmount,
+    totalCancelledAmount,
+    successRate,
+  };
+
+  const chrome = bare
+    ? "rounded-none border-0 bg-transparent p-4 shadow-none"
+    : "rounded-xl border border-border/70 bg-card p-4 shadow-[0_1px_2px_0_rgb(15_23_42/0.04)]";
+
+  return (
+    <section
+      aria-label="Request progress"
+      className={cn("flex h-full flex-col justify-center", chrome, className)}
+    >
+      {/* Header — title + total + success rate badges */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <h2 className="text-[13px] font-bold tracking-tight text-foreground">
+            Request progress
+          </h2>
+          <span className="rounded bg-muted px-1.5 py-px font-financial text-xs font-medium tabular-nums text-muted-foreground">
+            {totalRequests}
+          </span>
+          {totalRequests > 0 && (
+            <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-px font-financial text-xs font-medium tabular-nums text-foreground/70">
+              <CheckCircle className="h-3 w-3" />
+              {successRate.toFixed(0)}%
+            </span>
+          )}
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="mt-3 space-y-3">
+          <Skeleton className="h-1.5 w-full rounded-full" />
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
+            <Skeleton className="h-9 rounded-lg" />
+            <Skeleton className="h-9 rounded-lg" />
+            <Skeleton className="h-9 rounded-lg" />
+            <Skeleton className="h-9 rounded-lg" />
+          </div>
+        </div>
+      ) : totalRequests === 0 ? (
+        <div className="mt-3 flex min-h-10 items-center rounded-lg border border-dashed border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          No requests for the selected period
+        </div>
+      ) : (
+        <>
+          {/* Segmented distribution rail — LED-style notched meter; numbers
+              live in the cells below so no segment ever clips its value. Not a
+              progress indicator, so no progressbar role (screen readers would
+              announce a misleading completion percentage). */}
+          <div
+            className={cn(
+              "relative mt-2.5 h-2 overflow-hidden rounded-full bg-muted ring-1 ring-inset ring-black/[0.06]",
+              totalPaid > 0 && "shadow-[0_0_10px_rgba(16,185,129,0.20)]",
+            )}
+            aria-hidden="true"
+          >
+            <div className="absolute inset-0 flex">
+              {CELLS.map((cell) => {
+                const value = cell.getValue(props);
+                const width = totalRequests > 0 ? (value / totalRequests) * 100 : 0;
+                if (width === 0) return null;
+
+                return (
+                  <div
+                    key={cell.key}
+                    title={`${cell.label}: ${value}`}
+                    aria-label={`${cell.label}: ${value}`}
+                    className={cn(
+                      "h-full transition-[filter] hover:brightness-110",
+                      cell.barClass,
+                    )}
+                    style={{ width: `${width}%` }}
+                  />
+                );
+              })}
+            </div>
+            {/* Tick separators — notch track + fill with the band surface
+                color to get the discrete LED-cell look. */}
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{
+                backgroundImage:
+                  "repeating-linear-gradient(90deg, transparent 0, transparent 10px, #ffffff 10px, #ffffff 12px)",
+              }}
+            />
+          </div>
+
+          {/* Status cells — dot + uppercase micro label over count + amount */}
+          <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4 lg:gap-x-3">
+            {CELLS.map((cell) => {
+              const value = cell.getValue(props);
+              const amount = cell.getAmount(props);
+
+              return (
+                <div key={cell.key} className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", cell.dotClass)} />
+                    <span className="truncate text-xs font-semibold uppercase leading-tight tracking-[0.08em] text-muted-foreground">
+                      {cell.label}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-baseline gap-x-1.5">
+                    <span className="font-financial text-[17px] font-semibold leading-none tracking-[-0.01em] tabular-nums text-foreground">
+                      {value}
+                    </span>
+                    {amount !== undefined && (
+                      <span className="font-financial text-xs font-medium leading-none text-muted-foreground tabular-nums">
+                        {formatCurrency(amount)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </section>
+  );
+});

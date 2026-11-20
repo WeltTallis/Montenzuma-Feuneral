@@ -1,0 +1,23 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": ".",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "allowJs": true,
+    "types": ["node", "express"],
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "*",
+    "controllers/**/*",
+    "models/**/*",
+    "routes/**/*",
+    "middlewares/**/*"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

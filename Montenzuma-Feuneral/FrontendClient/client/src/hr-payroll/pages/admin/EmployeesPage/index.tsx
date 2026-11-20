@@ -1,0 +1,298 @@
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useEmployeeData } from "@hr/hooks/employees/useEmployeeData";
+import { Skeleton } from "@hr/components/ui/skeleton";
+import { createEmployeeMobileConfig } from "@hr/config/employee-table-mobile";
+import { createEmployeeColumns } from "@hr/config/employee-table-desktop";
+import {
+  AdminPageCanvas,
+  AdminPageHeaderCard,
+  AdminSectionCard,
+  AdminFilterRow,
+} from "@hr/components/shared/AdminPageFrame";
+import { InlineStatStrip } from "@hr/components/shared/InlineStatStrip";
+import { useEmployeeStatsConfig } from "@hr/hooks/useEmployeeStatsConfig";
+import { EmployeeFiltersBar } from "@hr/components/employees/EmployeeFiltersBar";
+import { EmployeePageHeader } from "@hr/components/employees/EmployeePageHeader";
+import { EmployeeListContent } from "@hr/components/employees/EmployeeListContent";
+import { useEmployeeModals } from "@hr/hooks/useModalNavigation";
+import { useEmployeeInfiniteScroll } from "@hr/hooks/employees/useEmployeeInfiniteScroll";
+import { formatCurrency } from "@hr/utils/formatters";
+import { Employee, EmployeeFilters } from "@hr/types/api/employee.types";
+import { useEmployeeExport } from "@hr/hooks/employees/useEmployeeExport";
+import { useAssignableProjects } from "@hr/hooks/api/useProjects";
+import { ExportEmployeesModal } from "@hr/components/modals/ExportEmployeesModal";
+import { ExportPaidNoMobileModal } from "@hr/components/modals/ExportPaidNoMobileModal";
+import { ImportMobilesModal } from "@hr/components/modals/ImportMobilesModal";
+import { MissingBankDetailsSection } from "@hr/components/employees/MissingBankDetailsSection";
+import { PaginationControls } from "@hr/components/ui/pagination-controls";
+import { useTableSorting } from "@hr/utils/sorting";
+
+import type { ColumnDef } from "@tanstack/react-table";
+
+import { EMPLOYEE_SORT_FIELD_MAP } from "./constants";
+
+const EmployeesPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const {
+    employees,
+    loading,
+    searchEmployees,
+    searchTerm,
+    updateFilters,
+    clearFilters,
+    currentFilters,
+    pagination,
+    onPageChange,
+    onPageSizeChange,
+    onSortChange,
+  } = useEmployeeData();
+
+  const { sorting, onSortingChange } = useTableSorting(
+    currentFilters.sortBy || "created_at",
+    currentFilters.sortOrder || "desc",
+    onSortChange,
+    EMPLOYEE_SORT_FIELD_MAP,
+  );
+
+  const employeeStats = useEmployeeStatsConfig({
+    formatCurrency,
+    currentFilters,
+    updateFilters,
+    clearFilters,
+  });
+  const { exportEmployees, exportPaidWithoutMobile, isExporting } = useEmployeeExport();
+  const { data: projectsData } = useAssignableProjects();
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [paidNoMobileModalOpen, setPaidNoMobileModalOpen] = useState(false);
+  const [importMobilesModalOpen, setImportMobilesModalOpen] = useState(false);
+
+  const { openEmployeeDetails, openAddEmployee } = useEmployeeModals();
+
+  useEffect(() => {
+    const action = searchParams.get("action");
+    if (action === "add") {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("action");
+      newParams.set("modal", "add_employee");
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    const status = searchParams.get("status") as
+      | "working"
+      | "unassigned"
+      | null;
+
+    if (status) {
+      const filtersToApply: Partial<EmployeeFilters> = {};
+      if (status) filtersToApply.status = status;
+
+      updateFilters(filtersToApply);
+
+      const newParams = new URLSearchParams(searchParams);
+      if (status) newParams.delete("status");
+
+      if (newParams.toString() !== searchParams.toString()) {
+        setSearchParams(newParams, { replace: true });
+      }
+    }
+  }, [searchParams, updateFilters, setSearchParams]);
+
+  const handleExportEmployees = () => {
+    setExportModalOpen(true);
+  };
+
+  const handleExportConfirm = useCallback((projectIds?: number[]) => {
+    exportEmployees(projectIds);
+  }, [exportEmployees]);
+
+  const handleExportPaidNoMobile = useCallback((months: number) => {
+    exportPaidWithoutMobile(months);
+  }, [exportPaidWithoutMobile]);
+
+  const projectsForExport = useMemo(() =>
+    projectsData?.data?.map((p) => ({
+      id: p.id,
+      name: p.name,
+      code: p.code,
+    })) ?? [], [projectsData]);
+
+  const handleSearchFocus = () => {
+    const searchInput = document.querySelector(
+      'input[placeholder*="tìm kiếm"], input[placeholder*="Search"]',
+    ) as HTMLInputElement;
+    if (searchInput) {
+      searchInput.focus();
+      searchInput.select();
+    }
+  };
+
+  const handleOpenEmployeeSheet = useCallback(
+    (employee: Employee) => {
+      openEmployeeDetails(employee.id.toString());
+    },
+    [openEmployeeDetails],
+  );
+
+  const infiniteScroll = useEmployeeInfiniteScroll({
+    filteredEmployees: employees,
+  });
+
+  const columns: ColumnDef<Employee>[] = useMemo(
+    () =>
+      createEmployeeColumns({
+        onRowClick: handleOpenEmployeeSheet,
+      }),
+    [handleOpenEmployeeSheet],
+  );
+
+  const mobileConfig = useMemo(
+    () =>
+      createEmployeeMobileConfig({
+        formatCurrency,
+        onRowClick: handleOpenEmployeeSheet,
+      }),
+    [handleOpenEmployeeSheet],
+  );
+
+  if (loading) {
+    return (
+      <AdminPageCanvas>
+        <AdminPageHeaderCard>
+          <Skeleton className="h-8 w-44" />
+          <Skeleton className="mt-2 h-4 w-72" />
+        </AdminPageHeaderCard>
+        <Skeleton className="h-14 rounded-xl" />
+        <AdminSectionCard>
+          <Skeleton className="m-3 h-11 rounded-xl sm:m-4" />
+          <div className="border-t border-utility-gray-200">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 border-b border-utility-gray-200 px-4 py-3 last:border-b-0">
+                <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-3.5 w-36" />
+                  <Skeleton className="h-2.5 w-24" />
+                </div>
+                <Skeleton className="h-3.5 w-28" />
+                <Skeleton className="h-3.5 w-20" />
+              </div>
+            ))}
+          </div>
+        </AdminSectionCard>
+      </AdminPageCanvas>
+    );
+  }
+
+  return (
+    <div className="min-h-full">
+      <AdminPageCanvas>
+        <AdminPageHeaderCard>
+          <EmployeePageHeader
+            totalEmployees={pagination.totalRecords}
+            onAddEmployeeClick={() => openAddEmployee()}
+            onExportClick={handleExportEmployees}
+            onExportNoMobileClick={() => setPaidNoMobileModalOpen(true)}
+            onImportMobilesClick={() => setImportMobilesModalOpen(true)}
+            onSearchFocus={handleSearchFocus}
+            isExporting={isExporting}
+          />
+        </AdminPageHeaderCard>
+
+        <InlineStatStrip
+          items={employeeStats.statsConfig.map(s => ({
+            label: s.title,
+            value: s.value,
+            highlight: s.isActive,
+          }))}
+          isLoading={employeeStats.isLoading}
+        />
+
+        <MissingBankDetailsSection onEmployeeClick={handleOpenEmployeeSheet} />
+
+        <AdminSectionCard aria-label="Employee list">
+          <AdminFilterRow>
+            <p className="text-sm font-semibold text-foreground">Employees</p>
+            <div className="flex flex-1 items-center justify-end">
+              <EmployeeFiltersBar
+                searchTerm={searchTerm}
+                onSearchChange={searchEmployees}
+                statusFilter={currentFilters.status}
+                onStatusFilterChange={(status) => updateFilters({ status })}
+                month={currentFilters.month}
+                onMonthChange={(month) => updateFilters({ month })}
+                fromDate={currentFilters.fromDate}
+                toDate={currentFilters.toDate}
+                onDateRangeChange={(from, to) =>
+                  updateFilters({ fromDate: from, toDate: to })
+                }
+                projectId={currentFilters.projectId || null}
+                onProjectChange={(projectId) =>
+                  updateFilters({ projectId: projectId || undefined })
+                }
+                projects={projectsData?.data?.map((p) => ({
+                  id: p.id,
+                  name: p.name,
+                  code: p.code,
+                }))}
+                className="rounded-none border-0 bg-transparent px-0 py-0 backdrop-blur-none"
+              />
+            </div>
+          </AdminFilterRow>
+
+          <EmployeeListContent
+            filteredEmployees={employees}
+            dataToDisplay={employees}
+            columns={columns}
+            mobileFields={mobileConfig.mobileFields}
+            rowTitle={mobileConfig.rowTitle}
+            rowSubtitle={mobileConfig.rowSubtitle}
+            rowActions={[]}
+            searchTerm={searchTerm}
+            isMobile={false}
+            hasMore={false}
+            isLoadingMore={false}
+            loadMore={() => {}}
+            onRowClick={handleOpenEmployeeSheet}
+            onClearSearch={() => searchEmployees("")}
+            onAddEmployee={() => openAddEmployee()}
+            sorting={sorting}
+            onSortingChange={onSortingChange}
+            embedded
+          />
+
+          <div className="border-t border-utility-gray-200 px-3 py-2.5 sm:px-5">
+            <PaginationControls
+              pagination={pagination}
+              onPageChange={onPageChange}
+              onPageSizeChange={onPageSizeChange}
+            />
+          </div>
+        </AdminSectionCard>
+      </AdminPageCanvas>
+
+      <ExportEmployeesModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        onExport={handleExportConfirm}
+        projects={projectsForExport}
+        isExporting={isExporting}
+      />
+
+      <ExportPaidNoMobileModal
+        open={paidNoMobileModalOpen}
+        onClose={() => setPaidNoMobileModalOpen(false)}
+        onExport={handleExportPaidNoMobile}
+        isExporting={isExporting}
+      />
+
+      <ImportMobilesModal
+        open={importMobilesModalOpen}
+        onClose={() => setImportMobilesModalOpen(false)}
+      />
+    </div>
+  );
+};
+
+export default EmployeesPage;

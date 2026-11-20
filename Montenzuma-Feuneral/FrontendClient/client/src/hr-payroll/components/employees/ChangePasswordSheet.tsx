@@ -1,0 +1,327 @@
+import { useEffect, useRef, useState } from "react";
+import { CheckCircle, Circle, Eye, EyeOff } from "@untitledui/icons";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@hr/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@hr/components/ui/dialog";
+import { Input } from "@hr/components/ui/input";
+import { Label } from "@hr/components/ui/label";
+import { useIsMobile } from '@hr/hooks/useBreakpoint';
+import { getErrorMessage } from "@hr/utils/error-handler";
+
+interface ChangePasswordSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: {
+    currentPassword: string;
+    newPassword: string;
+  }) => Promise<void>;
+  isPending: boolean;
+}
+
+const PASSWORD_FIELDS = [
+  {
+    id: "cp",
+    label: "Mật khẩu hiện tại",
+    placeholder: "Import mật khẩu hiện tại",
+  },
+  { id: "np", label: "Mật khẩu mới", placeholder: "Tối thiểu 8 ký tự" },
+  {
+    id: "cfp",
+    label: "Confirm mật khẩu mới",
+    placeholder: "Import lại mật khẩu mới",
+  },
+] as const;
+
+// The special-character clause must match the BACKEND validator's enumerated
+// set (internal/pkg/password/validator.go: "!@#$%^&*()_+-=[]{}|;:,.<>?").
+// A broader rule such as [^A-Za-z0-9] lets characters like ~ pass the UI,
+// then get rejected by the server after submit.
+const SPECIAL_CHAR_REGEX = /[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/;
+
+/**
+ * Live requirement checklist for the new-password field. Each rule mirrors
+ * one clause of the backend validator so the ticks can never disagree with
+ * what submit rejects — same pattern as ForceChangePasswordDialog.
+ */
+const PASSWORD_RULES: ReadonlyArray<{
+  label: string;
+  test: (value: string) => boolean;
+}> = [
+  { label: "8 ký tự trở lên", test: (value) => value.length >= 8 },
+  { label: "Chữ hoa", test: (value) => /[A-Z]/.test(value) },
+  { label: "Chữ thường", test: (value) => /[a-z]/.test(value) },
+  { label: "Chữ số", test: (value) => /[0-9]/.test(value) },
+  { label: "Ký tự đặc biệt", test: (value) => SPECIAL_CHAR_REGEX.test(value) },
+  { label: "Tối đa 72 ký tự", test: (value) => value.length <= 72 },
+];
+
+// Same field/button styling as ForceChangePasswordDialog so the employee
+// portal's two password surfaces stay visually identical.
+const passwordFieldClass =
+  "employee-type-body min-h-12 h-12 w-full rounded-xl border border-[var(--employee-border-strong)] bg-white px-3.5 pr-14 text-[var(--employee-text)] transition-colors placeholder:text-[var(--employee-text-muted)] focus-visible:border-[var(--employee-accent)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--employee-accent-ring)] disabled:cursor-not-allowed disabled:opacity-60 sm:h-12 sm:pl-3.5 sm:pr-14";
+
+const revealButtonClass =
+  "absolute inset-y-0.5 right-0.5 inline-flex w-11 items-center justify-center rounded-lg text-[var(--employee-text-secondary)] transition-colors hover:bg-[var(--employee-surface-muted)] hover:text-[var(--employee-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--employee-focus-ring)] disabled:opacity-60";
+
+export function ChangePasswordSheet({
+  open,
+  onOpenChange,
+  onSubmit,
+  isPending,
+}: ChangePasswordSheetProps) {
+  const isMobile = useIsMobile();
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  // Unmet rules stay neutral while typing; they only turn red after a submit
+  // attempt (same pre-submit neutrality as ForceChangePasswordDialog), so the
+  // checklist never reads as failure while the user is still composing.
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const submittingRef = useRef(false);
+
+  useEffect(() => {
+    if (open) return;
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setShowCurrent(false);
+    setShowNew(false);
+    setShowConfirm(false);
+    setAttemptedSubmit(false);
+    setSubmitError(null);
+  }, [open]);
+
+  // Client-side guard so mismatched or incomplete input fails fast with
+  // Kenyan messages instead of a round-trip to the server validator.
+  // The empty-confirm case only surfaces the message after a submit attempt —
+  // silently doing nothing on tap reads as a broken button.
+  const confirmMismatch =
+    confirmPassword !== newPassword &&
+    (confirmPassword.length > 0 || attemptedSubmit);
+  const newPasswordFailedRule = PASSWORD_RULES.find(
+    (rule) => !rule.test(newPassword),
+  );
+
+  const fieldValues = [
+    {
+      ...PASSWORD_FIELDS[0],
+      value: currentPassword,
+      onChange: setCurrentPassword,
+      show: showCurrent,
+      toggle: () => setShowCurrent((v) => !v),
+    },
+    {
+      ...PASSWORD_FIELDS[1],
+      value: newPassword,
+      onChange: setNewPassword,
+      show: showNew,
+      toggle: () => setShowNew((v) => !v),
+    },
+    {
+      ...PASSWORD_FIELDS[2],
+      value: confirmPassword,
+      onChange: setConfirmPassword,
+      show: showConfirm,
+      toggle: () => setShowConfirm((v) => !v),
+    },
+  ];
+
+  const handleSubmit = async () => {
+    if (isPending || submittingRef.current) return;
+    setAttemptedSubmit(true);
+    setSubmitError(null);
+    if (
+      newPasswordFailedRule ||
+      confirmPassword !== newPassword ||
+      currentPassword.length === 0
+    ) {
+      return;
+    }
+    submittingRef.current = true;
+    try {
+      await onSubmit({ currentPassword, newPassword });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setAttemptedSubmit(false);
+    } catch (error) {
+      setSubmitError(getErrorMessage(error));
+    } finally {
+      submittingRef.current = false;
+    }
+  };
+
+  const formContent = (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        void handleSubmit();
+      }}
+      className="space-y-4"
+    >
+      {fieldValues.map((field) => (
+        <div key={field.id}>
+          <Label
+            htmlFor={field.id}
+            className="employee-type-label mb-1.5 block text-[var(--employee-text)]"
+          >
+            {field.label}
+          </Label>
+          <div className="relative">
+            <Input
+              id={field.id}
+              type={field.show ? "text" : "password"}
+              value={field.value}
+              onChange={(e) => {
+                field.onChange(e.target.value);
+                setSubmitError(null);
+              }}
+              aria-required="true"
+              aria-invalid={field.id === "cp"
+                ? attemptedSubmit && currentPassword.length === 0
+                : field.id === "np"
+                  ? attemptedSubmit && !!newPasswordFailedRule
+                  : confirmMismatch}
+              aria-describedby={field.id === "np"
+                ? "password-requirements"
+                : field.id === "cp" && attemptedSubmit && !currentPassword
+                  ? "current-password-error"
+                  : field.id === "cfp" && confirmMismatch
+                    ? "confirm-password-error"
+                    : undefined}
+              autoComplete={
+                field.id === "cp" ? "current-password" : "new-password"
+              }
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder={field.placeholder}
+              className={passwordFieldClass}
+              disabled={isPending}
+            />
+            <button
+              type="button"
+              className={revealButtonClass}
+              onClick={field.toggle}
+              disabled={isPending}
+              aria-label={`${field.show ? "Ẩn" : "Hiện"} ${field.label.toLowerCase()}`}
+              aria-pressed={field.show}
+            >
+              {field.show ? (
+                <EyeOff className="h-[1.125rem] w-[1.125rem]" />
+              ) : (
+                <Eye className="h-[1.125rem] w-[1.125rem]" />
+              )}
+            </button>
+          </div>
+          {field.id === "np" && (
+            <ul id="password-requirements" className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1.5">
+              {PASSWORD_RULES.map((rule) => {
+                const met = rule.test(newPassword);
+                return (
+                  <li
+                    key={rule.label}
+                    className={`employee-type-body-sm flex items-center gap-1.5 ${
+                      met
+                        ? "text-[var(--employee-accent)]"
+                        : attemptedSubmit
+                          ? "text-[var(--employee-error)]"
+                          : "text-[var(--employee-text-secondary)]"
+                    }`}
+                  >
+                    {met ? (
+                      <CheckCircle
+                        className="h-4 w-4 shrink-0"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <Circle
+                        className="h-4 w-4 shrink-0 opacity-60"
+                        aria-hidden="true"
+                      />
+                    )}
+                    <span className="min-w-0">{rule.label}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {field.id === "cp" && attemptedSubmit && !currentPassword && (
+            <p id="current-password-error" role="alert" className="employee-type-body-sm mt-1.5 text-[var(--employee-error)]">
+              Import mật khẩu hiện tại.
+            </p>
+          )}
+          {field.id === "cfp" && confirmMismatch && (
+            <p id="confirm-password-error" role="alert" className="employee-type-body-sm mt-1.5 text-[var(--employee-error)]">
+              Confirm mật khẩu chưa khớp.
+            </p>
+          )}
+        </div>
+      ))}
+      {submitError && (
+        <p role="alert" className="employee-type-body-sm rounded-xl bg-[var(--employee-error-soft)] p-3 text-[var(--employee-error)]">{submitError}</p>
+      )}
+      <button
+        type="submit"
+        disabled={isPending}
+        className="employee-type-action inline-flex h-12 w-full items-center justify-center rounded-xl bg-[var(--employee-accent)] px-4 text-white shadow-[var(--employee-cta-shadow)] transition-colors hover:bg-[var(--employee-accent-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--employee-focus-ring)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60"
+      >
+        {isPending ? "Đang đổi..." : "Đổi mật khẩu"}
+      </button>
+    </form>
+  );
+
+  if (isMobile) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent
+          side="bottom"
+          className="h-auto max-h-[85vh] rounded-t-3xl px-5"
+          data-employee-ui=""
+          data-theme="employee"
+        >
+          <SheetHeader className="border-b border-[var(--employee-border)] pb-4">
+            <SheetTitle className="employee-type-card-title text-[var(--employee-text)]">
+              Đổi mật khẩu
+            </SheetTitle>
+            <SheetDescription className="employee-type-body-sm text-[var(--employee-text-secondary)]">
+              Mật khẩu mới sẽ dùng cho lần đăng nhập sau.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-4 min-h-0 overflow-y-auto" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}>
+            {formContent}
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm rounded-2xl" data-employee-ui="" data-theme="employee">
+        <DialogHeader>
+          <DialogTitle className="employee-type-card-title text-white">
+            Đổi mật khẩu
+          </DialogTitle>
+          <DialogDescription className="employee-type-body-sm text-white/90">Mật khẩu mới sẽ dùng cho lần đăng nhập sau.</DialogDescription>
+        </DialogHeader>
+        <div className="min-h-0 overflow-y-auto">{formContent}</div>
+      </DialogContent>
+    </Dialog>
+  );
+}

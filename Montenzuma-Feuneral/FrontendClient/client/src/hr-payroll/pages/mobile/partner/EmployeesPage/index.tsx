@@ -1,0 +1,482 @@
+import { useState, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { MobileSearchInput } from "@hr/components/shared/MobileSearchInput";
+import { MobilePageHeader } from "@hr/components/shared/MobilePageHeader";
+import { MobileStatStrip } from "@hr/components/shared/MobileStatStrip";
+import { MobilePageShell, MobileSurface } from "@hr/components/shared/MobilePageShell";
+import { MobilePagination } from "@hr/components/shared/MobilePagination";
+import { Button } from "@hr/components/ui/button";
+import { Badge } from "@hr/components/ui/badge";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@hr/components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@hr/components/ui/select";
+import { SearchableSelect } from "@hr/components/ui/searchable-select";
+import { Skeleton } from "@hr/components/ui/skeleton";
+import { EmployeeMobileCard } from "@hr/components/employees/EmployeeMobileCard";
+import { EmployeeEmptyStates } from "@hr/components/employees/EmployeeEmptyStates";
+import { usePartnerEmployeesData } from "@hr/hooks/partner-employees/usePartnerEmployeesData";
+import { useEmployeesSummary } from "@hr/hooks/api/useEmployees";
+import { useEmployeeModals } from "@hr/hooks/useModalNavigation";
+import { useAssignableProjects } from "@hr/hooks/api/useProjects";
+import { useEmployeeExport } from "@hr/hooks/employees/useEmployeeExport";
+import { ExportEmployeesModal } from "@hr/components/modals/ExportEmployeesModal";
+import { MissingBankDetailsSection } from "@hr/components/employees/MissingBankDetailsSection";
+import { Users } from "lucide-react";
+import { Download01, FilterLines, Plus, XClose } from "@untitledui/icons";
+import type { Employee } from "@hr/types/api/employee.types";
+
+// Generate last 12 months
+const getMonthOptions = () => {
+  const options: { value: string; label: string }[] = [];
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    const label = `T${date.getMonth() + 1}/${date.getFullYear()}`;
+    options.push({ value, label });
+  }
+  return options;
+};
+
+const monthOptions = getMonthOptions();
+
+const EmployeesPageMobile = () => {
+  const navigate = useNavigate();
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+
+  const {
+    employees,
+    isLoading,
+    searchEmployees,
+    clearSearch,
+    searchTerm,
+    projectId,
+    filterByProject,
+    statusFilter,
+    month,
+    updateStatusFilter,
+    updateMonth,
+    clearAllFilters,
+    sortBy,
+    sortOrder,
+    handleSortChange,
+    pagination,
+    handlePageChange,
+  } = usePartnerEmployeesData();
+
+  const { data: employeesSummary, isLoading: summaryLoading } =
+    useEmployeesSummary();
+  const { data: projectsData } = useAssignableProjects();
+  const { exportEmployees, isExporting } = useEmployeeExport();
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const { openEmployeeDetails, openAddEmployee } = useEmployeeModals();
+
+  const handleEmployeeClick = useCallback(
+    (employee: Employee) => {
+      openEmployeeDetails(employee.id.toString());
+    },
+    [openEmployeeDetails],
+  );
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (statusFilter) count++;
+    if (month) count++;
+    if (projectId) count++;
+    return count;
+  }, [statusFilter, month, projectId]);
+
+  const projects = useMemo(
+    () =>
+      projectsData?.data?.map((p) => ({
+        id: p.id,
+        name: p.name,
+        code: p.code,
+      })) ?? [],
+    [projectsData],
+  );
+
+  const stats = useMemo(() => {
+    if (employeesSummary) {
+      return [
+        {
+          label: "Tổng",
+          value: employeesSummary.total_employees,
+          filter: null as "working" | "unassigned" | null,
+        },
+        {
+          label: "Đang làm",
+          value: employeesSummary.total_working_employees,
+          filter: "working" as const,
+        },
+        {
+          label: "Chưa phân",
+          value:
+            employeesSummary.total_employees -
+            employeesSummary.total_working_employees,
+          filter: "unassigned" as const,
+        },
+        {
+          label: "This month",
+          value: employeesSummary.employees_hired_this_month,
+          filter: null as "working" | "unassigned" | null,
+        },
+      ];
+    }
+    return [];
+  }, [employeesSummary]);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col h-full">
+        {/* Header skeleton */}
+        <div className="px-4 pt-4 pb-3 flex items-center justify-between">
+          <Skeleton className="h-7 w-28" />
+          <Skeleton className="h-9 w-16" />
+        </div>
+        {/* Stats skeleton */}
+        <div className="grid grid-cols-4 gap-1.5 px-4 pb-3">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-16 rounded-xl" />
+          ))}
+        </div>
+        {/* Search skeleton */}
+        <div className="px-4 pb-3">
+          <Skeleton className="h-11 w-full rounded-xl" />
+        </div>
+        {/* Cards skeleton */}
+        <div className="px-4 space-y-3">
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-28 w-full rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <MobilePageShell className="space-y-3">
+      {/* ── Header ── */}
+      <MobilePageHeader
+        title="Employees"
+        className="px-0"
+        icon={Users}
+        sticky={false}
+        bordered={false}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-11 w-11 p-0 shrink-0 rounded-xl border-border bg-card"
+              aria-label="Export danh sách nhân viên"
+              onClick={() => setExportModalOpen(true)}
+              disabled={isExporting}
+            >
+              <Download01 className="h-4 w-4" aria-hidden="true" />
+              <span className="sr-only">{isExporting ? "Đang xuất" : "Export"}</span>
+            </Button>
+            <Button
+              size="sm"
+              className="h-11 px-3 shrink-0 rounded-xl"
+              onClick={() => openAddEmployee()}
+            >
+              <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
+              Add
+            </Button>
+          </div>
+        }
+      />
+
+      {/* ── Stats strip ── */}
+      {!summaryLoading && stats.length > 0 && (
+        <div className="px-4 pb-3">
+          <MobileStatStrip
+            items={stats.map((stat) => {
+              const isActive =
+                stat.filter !== null && statusFilter === stat.filter;
+              return {
+                key: stat.label,
+                label: stat.label,
+                value: stat.value.toLocaleString("en-KE"),
+                active: isActive,
+                onClick: stat.filter
+                  ? () =>
+                      updateStatusFilter(isActive ? undefined : stat.filter)
+                  : undefined,
+              };
+            })}
+          />
+        </div>
+      )}
+      {summaryLoading && (
+        <div className="grid grid-cols-4 gap-1.5 px-4 pb-3">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-16 rounded-xl" />
+          ))}
+        </div>
+      )}
+
+      {/* ── Search + Filter ── */}
+      <MobileSurface className="flex gap-2 p-3">
+        <MobileSearchInput
+          value={searchTerm}
+          onSearch={searchEmployees}
+          placeholder="Search nhân viên..."
+          className="w-full"
+        />
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-11 w-11 rounded-2xl border-border bg-card shrink-0 relative shadow-sm"
+          onClick={() => setFilterSheetOpen(true)}
+          aria-label="Bộ lọc"
+        >
+          <FilterLines className="h-4 w-4" aria-hidden="true" />
+          {activeFilterCount > 0 && (
+            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-xs text-white flex items-center justify-center font-bold">
+              {activeFilterCount}
+            </span>
+          )}
+        </Button>
+      </MobileSurface>
+
+      {/* ── Active filter chips — real buttons so they are keyboard reachable
+             and meet the 44px touch target. ── */}
+      {activeFilterCount > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          {statusFilter && (
+            <button
+              type="button"
+              onClick={() => updateStatusFilter(undefined)}
+              aria-label={`Bỏ lọc trạng thái: ${statusFilter === "working" ? "Đang làm việc" : "Chưa phân công"}`}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-border bg-secondary px-3 text-xs font-medium text-secondary-foreground"
+            >
+              {statusFilter === "working" ? "Đang làm việc" : "Chưa phân công"}
+              <XClose aria-hidden="true" className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {month && (
+            <button
+              type="button"
+              onClick={() => updateMonth(undefined)}
+              aria-label={`Bỏ lọc tháng: ${monthOptions.find((m) => m.value === month)?.label ?? month}`}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-border bg-secondary px-3 text-xs font-medium text-secondary-foreground"
+            >
+              {monthOptions.find((m) => m.value === month)?.label ?? month}
+              <XClose aria-hidden="true" className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {projectId && (
+            <button
+              type="button"
+              onClick={() => filterByProject(null)}
+              aria-label={`Bỏ lọc dự án: ${projects.find((p) => p.id === projectId)?.name ?? "Projects"}`}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-border bg-secondary px-3 text-xs font-medium text-secondary-foreground"
+            >
+              {projects.find((p) => p.id === projectId)?.name ?? "Projects"}
+              <XClose aria-hidden="true" className="h-3.5 w-3.5" />
+            </button>
+          )}
+          <button
+            onClick={clearAllFilters}
+            className="min-h-11 px-1 text-xs text-muted-foreground underline underline-offset-2"
+          >
+            Delete tất cả
+          </button>
+        </div>
+      )}
+
+      {/* ── Employee list ── */}
+      <div className="flex-1 space-y-3">
+        <MissingBankDetailsSection onEmployeeClick={handleEmployeeClick} />
+        {employees.length === 0 ? (
+          <EmployeeEmptyStates
+            searchTerm={searchTerm}
+            onClearSearch={() => searchEmployees("")}
+            onAddEmployee={() => openAddEmployee()}
+          />
+        ) : (
+          <>
+            <div className="space-y-2">
+              {employees.map((employee) => (
+                <EmployeeMobileCard
+                  key={employee.id}
+                  employee={employee}
+                  onClick={handleEmployeeClick}
+                  onPendingTimesheets={(selectedEmployee) =>
+                    navigate(`/partner/timesheet?employee=${selectedEmployee.id}`)
+                  }
+                />
+              ))}
+            </div>
+            <MobilePagination
+              pagination={pagination}
+              onPageChange={handlePageChange}
+            />
+          </>
+        )}
+      </div>
+
+      {/* ── Filter sheet ── */}
+      <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
+        <SheetContent
+          side="bottom"
+          className="max-h-[85dvh] overflow-y-auto rounded-t-3xl border-border bg-card px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-2"
+        >
+          <div className="mx-auto mt-2 mb-1 h-1 w-10 rounded-full bg-muted-foreground/30" />
+          <SheetHeader className="pb-3">
+            <SheetTitle className="text-base font-semibold text-center">Bộ lọc</SheetTitle>
+          </SheetHeader>
+
+          <div className="space-y-4">
+            {/* Status */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Status
+              </label>
+              <Select
+                value={statusFilter ?? "all"}
+                onValueChange={(v) =>
+                  updateStatusFilter(
+                    v === "all" ? undefined : (v as "working" | "unassigned"),
+                  )
+                }
+              >
+                <SelectTrigger className="h-11 rounded-xl">
+                  <SelectValue placeholder="All trạng thái" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All trạng thái</SelectItem>
+                  <SelectItem value="working">Đang làm việc</SelectItem>
+                  <SelectItem value="unassigned">Chưa phân công</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Month */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Tháng
+              </label>
+              <Select
+                value={month ?? "all"}
+                onValueChange={(v) =>
+                  updateMonth(v === "all" ? undefined : v)
+                }
+              >
+                <SelectTrigger className="h-11 rounded-xl">
+                  <SelectValue placeholder="All tháng" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All tháng</SelectItem>
+                  {monthOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Project */}
+            {projects.length > 0 && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Projects
+                </label>
+                <SearchableSelect
+                  value={projectId ? projectId.toString() : "all"}
+                  onChange={(v) =>
+                    filterByProject(v === "all" ? null : parseInt(v))
+                  }
+                  searchPlaceholder="Tìm dự án..."
+                  options={[
+                    { value: "all", label: "All dự án" },
+                    ...projects.map((p) => ({
+                      value: p.id.toString(),
+                      label: p.name,
+                    })),
+                  ]}
+                />
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Sort
+              </label>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                <Select
+                  value={sortBy}
+                  onValueChange={(value) => handleSortChange(value, sortOrder)}
+                >
+                  <SelectTrigger className="h-11 min-w-0 rounded-xl">
+                    <SelectValue placeholder="Sort theo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fullname">Tên nhân viên</SelectItem>
+                    <SelectItem value="created_at">Created on</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 min-w-20 rounded-xl"
+                  onClick={() =>
+                    handleSortChange(
+                      sortBy,
+                      sortOrder === "asc" ? "desc" : "asc",
+                    )
+                  }
+                >
+                  {sortOrder === "asc" ? "Tăng" : "Giảm"}
+                </Button>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="grid grid-cols-1 gap-3 pt-4 min-[380px]:grid-cols-2">
+              <Button
+                variant="outline"
+                className="flex-1 h-11 rounded-xl"
+                onClick={() => {
+                  clearAllFilters();
+                  setFilterSheetOpen(false);
+                }}
+              >
+                Delete bộ lọc
+              </Button>
+              <Button
+                className="flex-1 h-11 rounded-xl"
+                onClick={() => setFilterSheetOpen(false)}
+              >
+                Áp dụng
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <ExportEmployeesModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        onExport={(projectIds) => exportEmployees(projectIds)}
+        projects={projects}
+        isExporting={isExporting}
+      />
+    </MobilePageShell>
+  );
+};
+
+export default EmployeesPageMobile;

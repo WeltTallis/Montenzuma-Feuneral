@@ -1,0 +1,198 @@
+import { format } from "date-fns";
+// W13c: lucide → verified @untitledui/icons.
+import { Users01, Wallet01 } from "@untitledui/icons";
+import { Badge } from "@hr/components/ui/badge";
+import {
+  Sheet,
+  SheetContent,
+} from "@hr/components/ui/sheet";
+import { MobileSheetHeader } from "@hr/components/shared/MobileSheetHeader";
+import { MobileCard } from "@hr/components/shared/MobileCard";
+import { MobileProgressBar } from "@hr/components/shared/MobileProgressBar";
+import { MobileFilterPill } from "@hr/components/shared/MobileFilterPill";
+import { useAdvancePayments } from "@hr/hooks/api/useAdvancePayments";
+import {
+  getKenyanAdvancePaymentStatus,
+  getAdvancePaymentStatusColor,
+} from "@hr/utils/advancePaymentHelpers";
+import { formatCurrency } from "@hr/utils/formatters";
+import type {
+  FlexPayEmployeeListItem,
+  AdvancePaymentListItem,
+} from "@hr/types/api/advance-payment.types";
+
+interface EmployeeDetailSheetProps {
+  employee: FlexPayEmployeeListItem | null;
+  onClose: () => void;
+}
+
+export function EmployeeDetailSheet({
+  employee,
+  onClose,
+}: EmployeeDetailSheetProps) {
+  const { data: employeeRequests } = useAdvancePayments(
+    { search: employee?.cccd, pageSize: 50 },
+    { enabled: employee !== null },
+  );
+
+  return (
+    <Sheet
+      open={employee !== null}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <SheetContent side="bottom" className="h-[92dvh] flex flex-col p-0">
+        {employee &&
+          (() => {
+            const emp = employee;
+            const usedPct =
+              emp.maxAdvanceAmount > 0
+                ? Math.round(
+                    (emp.utilizedAmount / emp.maxAdvanceAmount) * 100,
+                  )
+                : 0;
+            const requests = (employeeRequests?.data ??
+              []) as AdvancePaymentListItem[];
+
+            return (
+              <>
+                <MobileSheetHeader
+                  icon={Users01}
+                  title={emp.fullname}
+                  description={emp.cccd}
+                  onClose={onClose}
+                />
+
+                <div className="flex-1 overflow-y-auto">
+                  {/* Quick info pills */}
+                  <div className="flex items-center gap-2 px-4 pt-3">
+                    <MobileFilterPill>
+                      {emp.project?.name || "No project"}
+                    </MobileFilterPill>
+                    {emp.bank?.accountNumber && (
+                      <MobileFilterPill>
+                        {emp.bank.bankName || "Bank"}
+                      </MobileFilterPill>
+                    )}
+                  </div>
+
+                  {/* Advance usage card */}
+                  <div className="px-4 py-3">
+                    <MobileCard padding="lg" className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium text-muted-foreground">
+                          Salary advance limit
+                        </p>
+                        <p className="text-lg font-bold tabular-nums">
+                          {formatCurrency(emp.availableAmount)}
+                        </p>
+                      </div>
+                      <p className="text-xs text-muted-foreground -mt-2">
+                        Remaining balance
+                      </p>
+                      <MobileProgressBar
+                        value={usedPct}
+                        label="Đã sử dụng"
+                        displayValue={`${usedPct}%`}
+                      />
+                      <div className="grid grid-cols-1 gap-2 pt-1 sm:grid-cols-3">
+                        <div className="rounded-lg bg-muted/40 px-2.5 py-2">
+                          <p className="text-xs text-muted-foreground">Limit</p>
+                          <p className="text-xs font-semibold tabular-nums">{formatCurrency(emp.maxAdvanceAmount)}</p>
+                        </div>
+                        <div className="rounded-lg bg-utility-warning-50 px-2.5 py-2">
+                          <p className="text-xs text-muted-foreground">Used</p>
+                          <p className="text-xs font-semibold text-fg-warning-primary tabular-nums">{formatCurrency(emp.utilizedAmount)}</p>
+                        </div>
+                        <div className="rounded-lg bg-utility-warning-50/60 px-2.5 py-2">
+                          <p className="text-xs text-muted-foreground">Pending</p>
+                          <p className="text-xs font-semibold text-utility-warning-700 tabular-nums">{formatCurrency(emp.pendingAmount)}</p>
+                        </div>
+                      </div>
+                    </MobileCard>
+                  </div>
+
+                  {/* Info grid */}
+                  <div className="px-4 space-y-2 pb-3">
+                    {emp.bank?.accountNumber && (
+                      <MobileCard>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">
+                          Bank
+                        </p>
+                        <p className="text-sm">{emp.bank.bankName || "-"}</p>
+                        <p className="text-xs text-muted-foreground tabular-nums">
+                          {emp.bank.accountNumber}
+                        </p>
+                      </MobileCard>
+                    )}
+                    <div className="grid grid-cols-1 gap-2">
+                      <MobileCard className="text-center">
+                        <p className="text-xs text-muted-foreground">Fees charged</p>
+                        <p className="text-sm font-semibold tabular-nums mt-0.5">
+                          {formatCurrency(emp.totalFeeGenerated)}
+                        </p>
+                      </MobileCard>
+                    </div>
+                  </div>
+
+                  {/* Requests list */}
+                  <div className="border-t">
+                    <div className="px-4 py-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-medium text-muted-foreground">
+                          Advance requests
+                        </p>
+                        <span className="text-xs text-muted-foreground tabular-nums">
+                          {requests.length} requests
+                        </span>
+                      </div>
+                    </div>
+
+                    {requests.length === 0 ? (
+                      <div className="px-4 pb-6 text-center">
+                        <Wallet01 className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+                        <p className="text-xs text-muted-foreground">
+                          No requests yet
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="px-4 pb-4 space-y-2">
+                        {requests.map((req) => (
+                          <MobileCard key={req.id}>
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="text-sm font-semibold tabular-nums">
+                                {formatCurrency(req.requestAmount)}
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className={`${getAdvancePaymentStatusColor(req.status)} text-xs px-1.5 py-0 h-5`}
+                              >
+                                {getKenyanAdvancePaymentStatus(req.status)}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <span>Fee: {formatCurrency(req.fee)}</span>
+                              <span>
+                                Net amount: {formatCurrency(req.netAmount)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {format(
+                                new Date(req.createdAt),
+                                "dd/MM/yyyy HH:mm",
+                              )}
+                            </p>
+                          </MobileCard>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+      </SheetContent>
+    </Sheet>
+  );
+}

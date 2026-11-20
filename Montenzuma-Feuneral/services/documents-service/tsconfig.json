@@ -1,0 +1,25 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "../..",
+    "outDir": "../../dist",
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": true
+    ,"allowJs": true
+    ,"checkJs": false
+    ,"strict": false
+    ,"noImplicitAny": false
+    ,"useUnknownInCatchVariables": false
+  },
+  "include": [
+    "./**/*.ts",
+    "../../shared/**/*.ts",
+    "../app-global/**/*.ts",
+    "../app-global/**/*.js",
+    "../../packages/shared-utils/**/*.ts",
+    "../../packages/shared-utils/dist/**/*.js"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

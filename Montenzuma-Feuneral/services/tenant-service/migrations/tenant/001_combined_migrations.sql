@@ -1,0 +1,3 @@
+-- ARCHIVED: This migration was archived on 2026-07-14 to keep tenant creation migrations minimal and safe.
+-- Archived copy preserved as ARCHIVED_001_combined_migrations.sql in the same folder.
+-- If you need to restore it, copy ARCHIVED_001_combined_migrations.sql to 001_combined_migrations.sql and remove this header.

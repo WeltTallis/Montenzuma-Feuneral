@@ -1,0 +1,9 @@
+# ── Build artifacts (ship ONLY dist/agent.js to production) ──
+dist/
+release/
+
+# ── local scratch / test output ──
+test/*.txt
+test/*.log
+.env
+*.node

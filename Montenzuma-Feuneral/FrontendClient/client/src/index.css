@@ -1,0 +1,351 @@
+/* ==========================================================================
+   FONTS — the single source of truth for the whole app.
+   Every Google Font the app uses is requested in ONE combined URL below, so
+   the browser makes a single round-trip instead of one per component. Do NOT
+   add @import url('https://fonts.googleapis.com/...') to any component, CSS
+   module or <style> block: each one is a sequential network request that
+   delays first paint, and duplicates here silently over-fetch.
+   To add a family: extend the list below and delete nothing.
+
+   THIS @import MUST STAY AT THE TOP, ABOVE EVERY RULE (only @charset and
+   @layer may legally precede it). It used to sit below the @theme block,
+   which the CSS spec forbids — the bundler then silently DROPPED it, so no
+   web font ever loaded and the whole app fell back to system fonts.
+   ========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Alex+Brush&family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&family=DM+Sans:ital,wght@0,300..900;1,300..900&family=Fraunces:ital,opsz,wght@0,9..144,300..800;1,9..144,300..800&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Instrument+Sans:wght@400;500;600;700&family=Inter:ital,wght@0,300..900;1,300..900&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Julius+Sans+One&family=Karla:ital,wght@0,400..700;1,400..700&family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700&family=Mr+Dafoe&family=Roboto+Condensed:ital,wght@0,300..700;1,300..700&family=Saira:ital,wght@0,100..900;1,100..900&family=Share+Tech+Mono&family=Source+Sans+3:ital,wght@0,300..700;1,300..700&family=Space+Grotesk:wght@300..700&display=swap');
+
+
+/* Tailwind v4 utility layer (DeceasedSidePanel on the dashboard and other
+   components are styled with Tailwind classes, but Tailwind was never
+   imported into the app bundle, so every utility class resolved to NOTHING
+   and the dashboard side panel rendered completely unstyled).
+   Deliberately imports ONLY theme + utilities — NO preflight — so the global
+   reset is never applied and existing Bootstrap / custom CSS is untouched.
+   These live in cascade layers, and unlayered app CSS always wins over
+   layered utilities on conflicting properties. Processed inline at build
+   time by @tailwindcss/vite (no runtime round-trips). */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+
+/* ==========================================================================
+   Amani Cover colour tokens  (/amani/cover, /amani/cover/terms, /amani/cover/refer)
+
+   WHY AN "ac-" PREFIX INSTEAD OF THE ORIGINAL shadcn NAMES:
+   The redesign's globals.css maps the palette to the stock shadcn names --
+   --color-primary, --color-accent, --color-card … -- so the components can use
+   `bg-primary`, `text-accent`, `border-border`.
+
+   Those names CANNOT be reused here. Bootstrap already owns .text-primary and
+   .bg-primary, and ~100 places in this app rely on them (invoices, deceased
+   selectors, forms, tables). Bootstrap ships UNLAYERED, and unlayered CSS beats
+   anything in a cascade layer, so a Tailwind `bg-primary` utility would either
+   be dead on arrival on the Amani pages or — worse — recolour every Bootstrap
+   primary button in the product navy.
+
+   So the same palette is exposed under an `ac-` (Amani Cover) prefix instead.
+   Identical hex values, identical rendering, and no collision with anything
+   else in the app. Every `bg-primary` in the redesign becomes `bg-ac-primary`.
+
+   The raw values themselves are declared on .amani-cover in
+   src/modules/insurance/amani/AmaniCover.css, so they stay scoped to those
+   pages. `inline` makes each utility emit var(--ac-*) directly, so the value
+   resolves at the element — which is always inside .amani-cover.
+   ========================================================================== */
+@theme inline {
+  --color-ac-primary: var(--ac-primary);
+  --color-ac-ink: var(--ac-ink);
+  --color-ac-accent: var(--ac-accent);
+  --color-ac-highlight: var(--ac-highlight);
+  --color-ac-border: var(--ac-border);
+  --color-ac-input: var(--ac-input);
+  --color-ac-mutedfg: var(--ac-mutedfg);
+  --color-ac-bg: var(--ac-bg);
+  --color-ac-card: var(--ac-card);
+  --color-ac-onprimary: var(--ac-onprimary);
+  --color-ac-onaccent: var(--ac-onaccent);
+  --color-ac-oncard: var(--ac-oncard);
+  --color-ac-ring: var(--ac-ring);
+}
+
+
+/* (The Google Fonts @import that used to sit here was moved to the very top
+   of this file — see the FONTS note above the Tailwind imports. An @import
+   placed after the @theme block is invalid per the CSS spec and the bundler
+   silently drops it, so the web fonts never loaded.) */
+
+
+
+
+
+/* ==========================================================
+   Box Sizing
+   ========================================================== */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+
+    font-size: 16px;
+
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+body {
+    width: 100%;
+    min-width: 320px;
+    min-height: 100vh;
+
+    margin: 0;
+    padding: 0;
+
+    font-family:
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
+
+    font-size: 16px;
+    line-height: 1.5;
+
+    color: #111827;
+    background: #ffffff;
+
+
+
+    --ink: #141A17;
+    --pine: #1E3A32;
+
+    --paper: #FFFFFF;
+    ---paper2: #15171A;
+
+    --error: #8B1A1A;
+
+
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+
+
+/* ==========================================================
+   Dynamic Viewport Height
+   ========================================================== */
+
+@supports (height: 100dvh) {
+
+    body,
+    #root {
+        min-height: 100dvh;
+    }
+}
+
+
+/* ==========================================================
+   iOS Safari Fallback
+   ========================================================== */
+
+@supports (-webkit-touch-callout: none) {
+    html {
+        min-height: -webkit-fill-available;
+    }
+
+    body,
+    #root {
+        min-height: -webkit-fill-available;
+    }
+}
+
+
+/* ==========================================================
+   Hide Scrollbars
+   ========================================================== */
+
+/* Chromium / Chrome / Edge / Safari / Opera */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
+
+/* All scrollable elements */
+* {
+    scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+
+
+/* ==========================================================
+   Links
+   ========================================================== */
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+
+/* ==========================================================
+   Buttons / Forms
+   ========================================================== */
+
+button,
+input,
+textarea,
+select {
+    font: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+button,
+input,
+textarea,
+select {
+    margin: 0;
+}
+
+
+/* ==========================================================
+   Images / Media
+   ========================================================== */
+
+img,
+svg,
+video,
+canvas {
+    display: block;
+    max-width: 100%;
+}
+
+img {
+    height: auto;
+}
+
+/* ==========================================================
+   Typography
+   ========================================================== */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+    margin: 0;
+}
+
+/* ==========================================================
+   Lists
+   ========================================================== */
+
+ul,
+ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+
+/* ==========================================================
+   Safe Word Wrapping
+   ========================================================== */
+
+* {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+}
+
+
+/* ==========================================================
+   Mobile Tap Highlight
+   ========================================================== */
+
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+
+
+/* ==========================================================
+   Placeholder
+   ========================================================== */
+
+.sp-placeholder {
+    font-family: "Alex Brush", cursive !important;
+    font-size: 18px !important;
+    color: #b8c4d0 !important;
+}
+
+
+/* ==========================================================
+   Backdrop Blur Compatibility
+   ========================================================== */
+
+.card {
+    /* Fallback */
+    background: rgba(255, 255, 255, 0.9);
+
+
+    /* Safari */
+    -webkit-backdrop-filter: blur(10px);
+
+    /* Chrome / Edge / Opera */
+    backdrop-filter: blur(10px);
+}
+
+
+/* Fallback when backdrop-filter isn't supported */
+@supports not ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
+    .card {
+        background: rgba(255, 255, 255, 0.96);
+    }
+}
+
+
+
+
+:root {
+    --paper: #F5F1E8;
+    --lift: #FBF8F1;
+    --sunken: #ECE6D8;
+    --ink: #211E18;
+    --soft: #6B655A;
+    --hair: #DCD5C6;
+    --edge: #B9AF9C;
+    --ox: #7A2F26;
+    --c-intake: #54627A;
+    --c-rel: #48604B;
+    --c-pm: #7A2F26;
+    --serif: "Fraunces", Georgia, serif;
+    --mono: "IBM Plex Mono", ui-monospace, monospace;
+}

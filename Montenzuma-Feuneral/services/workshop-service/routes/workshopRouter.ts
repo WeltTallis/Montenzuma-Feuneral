@@ -1,0 +1,167 @@
+import express from 'express'
+// @ts-ignore - authMiddleware is JavaScript, not TypeScript
+const { protect, authorizeAny } = require('../../app-global/middlewares/authMiddleware')
+import {
+    getOrders,
+    getOrder,
+    createOrder,
+    updateOrder,
+    deleteOrder,
+    holdOrder,
+    releaseOrder
+} from '../controllers/coffinOrderController'
+
+import {
+    getMaterials,
+    getMaterial,
+    createMaterial,
+    updateMaterial,
+    deleteMaterial,
+    useMaterial
+} from '../controllers/materialController'
+import {
+    getStages,
+    updateStage,
+    assignWorker,
+    updateAssignment,
+    getAssignments
+} from '../controllers/productionController'
+import {
+    getDailyReport,
+    getWeeklyReport,
+    getInventoryReport,
+    getProductionReport,
+    getCostingReport,
+    getMonthlyAnalytics,
+    getWorkerProduction
+} from '../controllers/reportController'
+import {
+    getCoffinBookingsAnalytics,
+    getCoffinInventoryAnalytics,
+    getCoffinSalesAnalytics
+} from '../controllers/coffinAnalyticsController'
+import {
+    getWorkers,
+    createWorker,
+    updateWorker,
+    deleteWorker
+} from '../controllers/workerController'
+import {
+    generateWorkOrderPDF,
+    saveDesignSpec,
+    getDesignSpec,
+    recordMaterialIntake,
+    getMaterialIntakeHistory
+} from '../controllers/workOrderController'
+import {
+    assignWorkerToOrder,
+    recordMaterialUsage,
+    updateOrderStatus,
+    getTodayCompletedOrders,
+    getOrderTimeline,
+    completeProductionStage
+} from '../controllers/productionWorkflowController'
+import {
+    getInventory,
+    dispatchItem,
+    updateDispatchTarget,
+    restockItem,
+    getHistory,
+    getTargets,
+    setTarget,
+    getDriverPickups,
+    respondToPickup
+} from '../controllers/storeController'
+
+const workshopRouter = express.Router()
+
+// Apply authentication to all routes
+workshopRouter.use(protect)
+workshopRouter.use(authorizeAny as any)
+
+// ============ COFFIN ORDERS ============
+workshopRouter.get('/orders', getOrders)
+workshopRouter.post('/orders', createOrder)
+workshopRouter.get('/orders/:id', getOrder)
+workshopRouter.patch('/orders/:id', updateOrder)
+workshopRouter.delete('/orders/:id', deleteOrder)
+
+// Hold / release — pause a job (e.g. the assigned worker is on leave) and put
+// it back exactly where it was. Declared BEFORE '/orders/:id/...' style routes
+// would matter, but these are distinct literals so order is not load-bearing.
+workshopRouter.post('/orders/:id/hold', holdOrder)
+workshopRouter.post('/orders/:id/release', releaseOrder)
+
+// ============ PRODUCTION STAGES ============
+workshopRouter.get('/orders/:orderId/stages', getStages)
+workshopRouter.patch('/orders/:orderId/stages/:stageId', updateStage)
+
+// ============ WORKER ASSIGNMENTS ============
+workshopRouter.get('/assignments', getAssignments)
+workshopRouter.post('/orders/:orderId/assign', assignWorker)
+workshopRouter.patch('/assignments/:id', updateAssignment)
+
+// ============ MATERIALS ============
+workshopRouter.get('/materials', getMaterials)
+workshopRouter.post('/materials', createMaterial)
+workshopRouter.get('/materials/:id', getMaterial)
+workshopRouter.patch('/materials/:id', updateMaterial)
+workshopRouter.delete('/materials/:id', deleteMaterial)
+workshopRouter.post('/materials/use', useMaterial)
+
+// ============ WORKERS ============
+workshopRouter.get('/workers', getWorkers)
+workshopRouter.post('/workers', createWorker)
+workshopRouter.patch('/workers/:id', updateWorker)
+workshopRouter.delete('/workers/:id', deleteWorker)
+
+// ============ REPORTS & ANALYTICS ============
+workshopRouter.get('/reports/daily', getDailyReport)
+workshopRouter.get('/reports/weekly', getWeeklyReport)
+workshopRouter.get('/reports/inventory', getInventoryReport)
+workshopRouter.get('/reports/production', getProductionReport)
+workshopRouter.get('/reports/costing', getCostingReport)
+workshopRouter.get('/reports/worker-production', getWorkerProduction)
+workshopRouter.get('/analytics/monthly', getMonthlyAnalytics)
+workshopRouter.get('/analytics/coffins/inventory', getCoffinInventoryAnalytics)
+workshopRouter.get('/analytics/coffins/bookings', getCoffinBookingsAnalytics)
+workshopRouter.get('/analytics/coffins/sales', getCoffinSalesAnalytics)
+
+// ============ WORK ORDERS & DESIGNS ============
+workshopRouter.get('/orders/:id/work-order/pdf', generateWorkOrderPDF)
+workshopRouter.post('/orders/:id/design', saveDesignSpec)
+workshopRouter.get('/orders/:id/design', getDesignSpec)
+
+// ============ MATERIAL INTAKE ============
+workshopRouter.post('/materials/intake', recordMaterialIntake)
+workshopRouter.get('/materials/intake', getMaterialIntakeHistory)
+
+// ============ PRODUCTION WORKFLOW ============
+workshopRouter.post('/orders/:orderId/assign-worker', assignWorkerToOrder)
+workshopRouter.post('/orders/:orderId/use-material', recordMaterialUsage)
+workshopRouter.patch('/orders/:orderId/status', updateOrderStatus)
+workshopRouter.get('/orders/today/completed', getTodayCompletedOrders)
+workshopRouter.get('/orders/:orderId/timeline', getOrderTimeline)
+workshopRouter.post('/orders/:orderId/complete-stage', completeProductionStage)
+
+// ============ STORE MANAGEMENT ============
+workshopRouter.get('/store/inventory', getInventory)
+workshopRouter.get('/store/history', getHistory)
+workshopRouter.post('/store/dispatch', dispatchItem)
+workshopRouter.patch('/store/dispatch/:id/target', updateDispatchTarget)
+workshopRouter.post('/store/restock', restockItem)
+
+// Driver pickup feed. A "pickup" is a store dispatch that was assigned to a
+// driver — coffin collection assigned at the workshop counter and confirmed
+// from the Driver Portal. Both paths are literal/unique, so they cannot be
+// shadowed by the /store/:something routes above.
+workshopRouter.get('/store/pickups', getDriverPickups)
+workshopRouter.patch('/store/pickups/:id', respondToPickup)
+
+// Monthly coffin output target. GET is open to any workshop user (the analytics
+// read it to draw the progress bars); PUT changes the target, so it is gated to
+// workshop admins only — the same rule as "Register Worker" on the dashboard.
+workshopRouter.get('/store/targets', getTargets)
+workshopRouter.put('/store/targets', authorizeAny as any, setTarget)
+
+export { workshopRouter }

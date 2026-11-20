@@ -1,0 +1,125 @@
+// W13a follow-up (approved): icon slot widened from LucideIcon so both lucide
+// and @untitledui/icons components fit (UU's are plain FunctionComponents).
+import type { ComponentType, SVGProps } from 'react';
+import { ArrowLeft } from '@untitledui/icons';
+import { Button } from '@hr/components/ui/button';
+import { cn } from '@hr/lib/utils';
+
+interface MobilePageHeaderProps {
+  /** Page title — rendered in display font, extrabold */
+  title: string;
+  /** Optional subtitle below the title (date, record count, etc.) */
+  subtitle?: React.ReactNode;
+  /** Optional icon displayed in a soft colored container */
+  icon?: ComponentType<SVGProps<SVGSVGElement>>;
+  /** When provided, renders a back chevron button on the left.
+   *  Collapses the role of MobileSubPageHeader for drill-down pages. */
+  back?: () => void;
+  /** Action buttons rendered on the right side */
+  actions?: React.ReactNode;
+  /** Layout for header actions. Compact inline placement is the default for mobile. */
+  actionsLayout?: 'stacked' | 'inline';
+  /** Whether the header sticks to top on scroll (default: false — the header
+   *  scrolls away with the page so the full viewport belongs to content). */
+  sticky?: boolean;
+  /** Whether to show the bottom border (default: false — the header sits on
+   *  the page surface as a large title, not as a separate app bar). */
+  bordered?: boolean;
+  /** Optional class override */
+  className?: string;
+}
+
+/**
+ * Premium mobile page header — single canonical header for the admin mobile app.
+ *
+ * Design: sticky by default, opaque white surface, subtle border-bottom,
+ * soft primary icon chip, display-font title. Optional `back` handler turns
+ * it into a drill-down header (replaces MobileSubPageHeader usage).
+ *
+ * Typography: font-display text-[21px] font-extrabold tracking-tight.
+ */
+export const MobilePageHeader = ({
+  title,
+  subtitle,
+  icon: Icon,
+  back,
+  actions,
+  actionsLayout = 'inline',
+  sticky = false,
+  bordered = false,
+  className,
+}: MobilePageHeaderProps) => {
+  return (
+    <div
+      className={cn(
+        'z-20',
+        sticky || bordered ? 'bg-white' : 'bg-transparent',
+        bordered && 'border-b border-slate-300 shadow-[0_1px_0_rgba(15,23,42,0.04)]',
+        sticky && 'sticky top-0',
+        'px-4 pb-2 pt-2.5',
+        className,
+      )}
+      style={{
+        paddingTop: sticky
+          ? 'var(--mobile-header-top-padding, calc(env(safe-area-inset-top, 0px) + 1rem))'
+          : 'var(--mobile-nonsticky-header-top-padding, var(--mobile-header-top-padding, calc(env(safe-area-inset-top, 0px) + 1rem)))',
+      }}
+    >
+      <div
+        className={cn(
+          'w-full min-h-0 p-0 flex items-center justify-between gap-3',
+          // Inline actions stay beside the title while both fit; on very
+          // narrow phones (the title block cannot shrink past 10rem without
+          // breaking words mid-token) they wrap onto their own row instead.
+          actionsLayout === 'inline' ? 'flex-wrap' : 'flex-wrap sm:flex-nowrap',
+        )}
+      >
+        <div
+          className={cn(
+            'flex flex-1 items-center gap-2.5',
+            actionsLayout === 'inline' ? 'min-w-[10rem]' : 'min-w-0',
+          )}
+        >
+          {back && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="-ml-1 h-11 w-11 shrink-0 rounded-xl text-slate-700"
+              onClick={back}
+              aria-label="Back"
+            >
+              <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+            </Button>
+          )}
+          {Icon && (
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/10 bg-primary/[0.07]">
+              <Icon className="h-4 w-4 text-primary" strokeWidth={2} />
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <h1 className="break-words font-display text-[clamp(1.0625rem,4.6vw,1.1875rem)] font-extrabold leading-tight tracking-normal text-slate-950">
+              {title}
+            </h1>
+            {subtitle && (
+              <p className="mt-0.5 break-words text-xs font-medium leading-normal text-slate-600">
+                {subtitle}
+              </p>
+            )}
+          </div>
+        </div>
+        {actions && (
+          <div
+            className={cn(
+              'flex shrink-0 flex-wrap items-center justify-end gap-2 [&_button]:min-h-11 [&_button]:min-w-11 [&_button]:rounded-xl',
+              actionsLayout === 'inline'
+                ? 'ml-auto basis-auto max-w-[52%]'
+                : 'basis-full max-w-full sm:basis-auto sm:max-w-[56%]',
+            )}
+          >
+            {actions}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

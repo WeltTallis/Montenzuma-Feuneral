@@ -1,0 +1,81 @@
+/* 
+   Eternal Craft Workshop  Design Tokens
+   Central place for colors, spacing, radii, shadows, transitions.
+   Update here to re-theme the entire dashboard.
+    */
+:root {
+  /* ── Palette ── */
+  --ec-bg: #eef0f4;
+  --ec-surface: #ffffff;
+  --ec-surface-dark: #1a1a1a;
+  --ec-sidebar: #0a0a0a;
+  --ec-text: #1a1a1a;
+  --ec-text-muted: #8a8a8a;
+  --ec-text-secondary: #666666;
+  --ec-accent: #f4c430;
+  --ec-accent-dark: #e0b020;
+  --ec-border: #efefef;
+  --ec-border-muted: #f0f0f0;
+
+  /* ── Stage colors ── */
+  --ec-stage-building: #2563EB;
+  --ec-stage-building-bg: #EFF6FF;
+  --ec-stage-waiting: #D97706;
+  --ec-stage-waiting-bg: #FFFBEB;
+  --ec-stage-painting: #7C3AED;
+  --ec-stage-painting-bg: #F5F3FF;
+  --ec-stage-interior: #0891B2;
+  --ec-stage-interior-bg: #ECFEFF;
+  --ec-stage-store: #059669;
+  --ec-stage-store-bg: #ECFDF5;
+
+  /* ── Semantic colors ── */
+  --ec-success: #1f9d50;
+  --ec-success-bg: #eafaf0;
+  --ec-warning: #d97706;
+  --ec-warning-bg: #fff4d6;
+  --ec-danger: #d63862;
+  --ec-danger-bg: #fdecee;
+  --ec-info: #2563eb;
+  --ec-info-bg: #e9efff;
+
+  /* ── Shadows ── */
+  --ec-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --ec-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --ec-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.06);
+  --ec-shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.25);
+
+  /* ── Radii ── */
+  --ec-radius-sm: 6px;
+  --ec-radius: 8px;
+  --ec-radius-md: 10px;
+  --ec-radius-lg: 12px;
+  --ec-radius-xl: 14px;
+  --ec-radius-2xl: 16px;
+  --ec-radius-3xl: 18px;
+
+  /* ── Spacing ── */
+  --ec-space-1: 4px;
+  --ec-space-2: 8px;
+  --ec-space-3: 12px;
+  --ec-space-4: 16px;
+  --ec-space-5: 20px;
+  --ec-space-6: 24px;
+  --ec-space-8: 32px;
+
+  /* ── Transitions ── */
+  --ec-transition-fast: 0.15s ease;
+  --ec-transition: 0.2s ease;
+  --ec-transition-slow: 0.3s ease;
+
+  /* ── Font ── */
+  --ec-font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ec-font-size-xs: 9.5px;
+  --ec-font-size-sm: 11px;
+  --ec-font-size-base: 13px;
+  --ec-font-size-lg: 14px;
+  --ec-font-size-xl: 15px;
+  --ec-font-size-2xl: 18px;
+  --ec-font-size-3xl: 22px;
+  --ec-font-size-4xl: 25px;
+}

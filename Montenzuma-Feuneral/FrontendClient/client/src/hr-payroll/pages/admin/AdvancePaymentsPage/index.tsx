@@ -1,0 +1,714 @@
+import { useState, useMemo, useCallback, memo } from "react";
+import { useNavigate } from "react-router-dom";
+import { ResponsiveTable } from "@hr/components/ui/responsive-table";
+import { Button } from "@hr/components/ui/button";
+import { PageHeader } from "@hr/components/shared/PageHeader";
+import { WalletBalanceCard } from "@hr/components/disbursement/WalletBalanceCard";
+import { TimesheetMonthSelector } from "@hr/components/timesheet/TimesheetMonthSelector";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@hr/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@hr/components/ui/select";
+// UU PRO restyle (W13c): lucide → verified @untitledui/icons; shared icon
+// slots take ComponentType<SVGProps<SVGSVGElement>> (W13a pattern). Flexible-
+// pay quota logic and all flows byte-preserved.
+import {
+  BankNote01,
+  Calendar,
+  ClockRewind,
+  Download01,
+  DotsVertical,
+  FileDownload01,
+  Scan,
+  SwitchHorizontal02,
+  UserCheck01,
+  Users01,
+  Wallet01,
+} from "@untitledui/icons";
+import type { ComponentType, SVGProps } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@hr/components/ui/dropdown-menu";
+import { StatusFilterBar } from "@hr/components/advance-payment/StatusFilterBar";
+import { SearchBar } from "@hr/components/shared/SearchBar";
+import { formatMonthDisplay } from "@hr/utils/advancePaymentHelpers";
+import { useExportAdvancePayments } from "@hr/hooks/api/useAdvancePayments";
+import { useAdvancePaymentsPage } from "@hr/hooks/advance-payment/useAdvancePaymentsPage";
+import { useAdminAttendancePage } from "@hr/hooks/advance-payment/useAdminAttendancePage";
+import { ImportAction } from "@hr/components/advance-payment/actions";
+import { ImportPayrollDialog } from "@hr/components/advance-payment/ImportPayrollDialog";
+import { AdvancePaymentResultUploadDialog } from "@hr/components/advance-payment/AdvancePaymentResultUploadDialog";
+import { FlexibleEmployeeListUploadDialog } from "@hr/components/advance-payment/FlexibleEmployeeListUploadDialog";
+import { FileHistorySheet } from "@hr/components/advance-payment/FileHistorySheet";
+import { EmployeeAdvancePaymentDetailSheet } from "@hr/components/advance-payment/EmployeeAdvancePaymentDetailSheet";
+import {
+  getAdvancePaymentColumns,
+  getFlexPayColumns,
+  requestMobileFields,
+  flexPayMobileFields,
+  requestEmptyState,
+  flexPayEmptyState,
+} from "@hr/components/advance-payment/table-config";
+import {
+  getAdminAttendanceColumns,
+  attendanceMobileFields,
+  attendanceEmptyState,
+} from "@hr/components/attendance/AdminAttendanceTableConfig";
+import { AttendanceMapDialog } from "@hr/components/attendance/AttendanceMapDialog";
+import { AdminCreateCheckInDialog } from "@hr/components/attendance/AdminCreateCheckInDialog";
+import {
+  AttendanceReviewDialogs,
+  type ReviewMode,
+} from "@hr/components/attendance/AttendanceReviewDialogs";
+import {
+  useApproveAttendance,
+  useRejectAttendance,
+  useCreditAttendanceQuota,
+} from "@hr/hooks/api/useAdminAttendance";
+import type { AdminAttendanceResponse } from "@hr/types/api/attendance.types";
+import { AdvPartnerHeroStrip } from "@hr/components/advance-payment/AdvPartnerHeroStrip";
+import { AdvPartnerStatusOverview } from "@hr/components/advance-payment/AdvPartnerStatusOverview";
+import { AdvPartnerMetricsStrip } from "@hr/components/advance-payment/AdvPartnerMetricsStrip";
+import { TreasuryFeePanel } from "@hr/components/advance-payment/TreasuryFeePanel";
+import { TabBarWithBadges } from "@hr/components/shared/TabBarWithBadges";
+import { useAuth } from "@hr/contexts";
+import { useIsMobile } from "@hr/hooks/useBreakpoint";
+import { useMobilePageAnimations } from "@hr/hooks/useMobilePageAnimations";
+import { cn } from "@hr/lib/utils";
+import type {
+  AdvancePaymentListItem,
+  FlexPayEmployeeListItem,
+  AdvancePaymentRequestStatus,
+} from "@hr/types/api/advance-payment.types";
+import type { ActiveTab } from "./types";
+
+const AdvancePaymentsPage = () => {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<ActiveTab>("requests");
+  const [isImportSheetOpen, setIsImportSheetOpen] = useState(false);
+  const [isHistorySheetOpen, setIsHistorySheetOpen] = useState(false);
+  const [isUploadResultDialogOpen, setIsUploadResultDialogOpen] = useState(false);
+  const [isEmployeeListUploadDialogOpen, setIsEmployeeListUploadDialogOpen] =
+    useState(false);
+  const [selectedEmployee, setSelectedEmployee] =
+    useState<FlexPayEmployeeListItem | null>(null);
+  const [selectedAttendance, setSelectedAttendance] =
+    useState<AdminAttendanceResponse | null>(null);
+  const [reviewMode, setReviewMode] = useState<ReviewMode>(null);
+  const [reviewRow, setReviewRow] = useState<AdminAttendanceResponse | null>(null);
+  const [isCreateCheckInOpen, setIsCreateCheckInOpen] = useState(false);
+
+  const approveAttendanceMutation = useApproveAttendance();
+  const rejectAttendanceMutation = useRejectAttendance();
+  const creditQuotaMutation = useCreditAttendanceQuota();
+
+  const { user } = useAuth();
+  const isAdvPartner = user?.role === "adv_partner";
+  const isMobile = useIsMobile();
+  const animRoot = useMobilePageAnimations();
+
+  const page = useAdvancePaymentsPage({ employeesTabActive: activeTab === "employees" });
+  const attendancePage = useAdminAttendancePage({ active: activeTab === "attendances" });
+  const exportBatchMutation = useExportAdvancePayments();
+
+  const summaryData = page.summary?.data;
+
+  const heroProps = useMemo(
+    () => ({
+      totalAmount: summaryData?.totalAmount ?? 0,
+      totalPaid: summaryData?.totalPaid ?? 0,
+    }),
+    [summaryData],
+  );
+
+  const statusProps = useMemo(
+    () => ({
+      totalPaid: summaryData?.totalPaid ?? 0,
+      totalPending: summaryData?.totalPending ?? 0,
+      totalFailed: summaryData?.totalFailed ?? 0,
+      totalCancelled: summaryData?.totalCancelled ?? 0,
+      totalRequests: summaryData?.totalRequests ?? 0,
+      totalPaidAmount: summaryData?.totalPaidAmount ?? 0,
+      totalPendingAmount: summaryData?.totalPendingAmount ?? 0,
+      totalFailedAmount: summaryData?.totalFailedAmount ?? 0,
+      totalCancelledAmount: summaryData?.totalCancelledAmount ?? 0,
+      successRate: summaryData?.successRate ?? 0,
+    }),
+    [summaryData],
+  );
+
+  const metricsProps = useMemo(
+    () => ({
+      completedUnder30s: summaryData?.completedUnder30s ?? 0,
+      completed30sTo2m: summaryData?.completed30sTo2m ?? 0,
+      completed2mTo5m: summaryData?.completed2mTo5m ?? 0,
+      completed5mTo15m: summaryData?.completed5mTo15m ?? 0,
+      completedOver15m: summaryData?.completedOver15m ?? 0,
+    }),
+    [summaryData],
+  );
+
+  const feePanelProps = useMemo(
+    () => ({
+      totalFeeEarned: summaryData?.totalFeeEarned ?? 0,
+      feePercentage: summaryData?.feePercentage ?? 0,
+      avgFeePerRequest: summaryData?.avgFeePerRequest ?? 0,
+      avgFeePerEmployee: summaryData?.avgFeePerEmployee ?? 0,
+    }),
+    [summaryData],
+  );
+
+  const columns = useMemo(
+    () => getAdvancePaymentColumns({
+      onCancel: page.handleCancelRequest,
+      onRetry: (id: number) => page.retryMutation.mutate(id),
+      isRetrying: page.retryMutation.isPending,
+      retryingId: page.retryMutation.variables ?? undefined,
+      pollingIds: page.pollingIds,
+    }),
+    [page.handleCancelRequest, page.retryMutation, page.pollingIds],
+  );
+
+  const flexPayColumns = useMemo(
+    () =>
+      getFlexPayColumns({
+        sortBy: page.flexPayFilters.sortBy,
+        sortOrder: page.flexPayFilters.sortOrder,
+        onSort: page.handleFlexPaySort,
+      }),
+    [page.flexPayFilters.sortBy, page.flexPayFilters.sortOrder, page.handleFlexPaySort],
+  );
+
+  const attendanceActions = useMemo(
+    () => ({
+      onViewMap: (row: AdminAttendanceResponse) => setSelectedAttendance(row),
+      onApprove: (row: AdminAttendanceResponse) => {
+        setReviewRow(row);
+        setReviewMode("approve");
+      },
+      ...(isAdvPartner
+        ? {}
+        : {
+            onCreditQuota: (row: AdminAttendanceResponse) => {
+              setReviewRow(row);
+              setReviewMode("credit");
+            },
+          }),
+      onReject: (row: AdminAttendanceResponse) => {
+        setReviewRow(row);
+        setReviewMode("reject");
+      },
+    }),
+    [isAdvPartner],
+  );
+
+  const attendanceColumns = useMemo(
+    () => getAdminAttendanceColumns(attendanceActions),
+    [attendanceActions],
+  );
+
+  const handleReviewClose = useCallback(() => {
+    setReviewMode(null);
+    setReviewRow(null);
+  }, []);
+
+  const handleApproveAttendance = useCallback(
+    (row: AdminAttendanceResponse, note: string) => {
+      approveAttendanceMutation.mutate(
+        { id: row.id, note },
+        {
+          onSuccess: () => handleReviewClose(),
+        },
+      );
+    },
+    [approveAttendanceMutation, handleReviewClose],
+  );
+
+  const handleRejectAttendance = useCallback(
+    (row: AdminAttendanceResponse, note: string) => {
+      rejectAttendanceMutation.mutate(
+        { id: row.id, note },
+        {
+          onSuccess: () => handleReviewClose(),
+        },
+      );
+    },
+    [rejectAttendanceMutation, handleReviewClose],
+  );
+
+  const handleCreditAttendanceQuota = useCallback(
+    (row: AdminAttendanceResponse) => {
+      creditQuotaMutation.mutate(
+        row.id,
+        {
+          onSuccess: () => handleReviewClose(),
+        },
+      );
+    },
+    [creditQuotaMutation, handleReviewClose],
+  );
+
+  const handleEmployeeClose = useCallback(() => setSelectedEmployee(null), []);
+
+  return (
+    <div ref={animRoot} className="min-h-full bg-[radial-gradient(circle_at_top_left,rgba(8,120,62,0.07),transparent_32rem)]">
+      <div className="mx-auto max-w-[1480px] space-y-4 p-4 lg:space-y-5 lg:p-6">
+
+        {/* ─── MOBILE: Wallet hero — full-bleed, above everything ─── */}
+        {isMobile && !isAdvPartner && (
+          <div
+            data-mobile-wallet
+            className="mobile-wallet-hero relative -mx-4 -mt-4 overflow-hidden"
+          >
+            <WalletBalanceCard
+              className="rounded-none border-0 shadow-none"
+            />
+            {/* Shimmer overlay */}
+            <div className="wallet-shimmer-bg pointer-events-none absolute inset-0" />
+          </div>
+        )}
+
+        {/* ─── 1. Page header ─── */}
+        <div
+          data-mobile-header
+          className="rounded-2xl border border-white/80 bg-white/82 px-4 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.05),0_18px_48px_-32px_rgba(8,120,62,0.22)] backdrop-blur sm:px-5"
+        >
+          <PageHeader
+            title="Advance payments"
+            description="View and manage employee advance payment requests"
+            icon={BankNote01}
+          >
+            <TimesheetMonthSelector
+              value={page.selectedMonth}
+              onChange={page.setSelectedMonth}
+            />
+          </PageHeader>
+        </div>
+
+        {/* ─── 2. Treasury Hero — Wallet | Flow | Fee ─── */}
+        <section
+          aria-label="Advance payment overview"
+          className={cn(
+            "overflow-hidden rounded-xl border border-utility-gray-300 bg-white",
+            "shadow-[0_1px_2px_rgba(16,24,40,0.05),0_22px_60px_-42px_rgba(8,120,62,0.30)]",
+            isMobile && "mobile-section-enter",
+          )}
+        >
+          <div className={cn(
+            "treasury-grid grid",
+            isAdvPartner
+              ? "grid-cols-1 lg:grid-cols-[1fr_300px]"
+              : "grid-cols-1 lg:grid-cols-3",
+          )}>
+
+            {/* Panel A: Wallet — admins only (desktop only; mobile shows it above) */}
+            {!isAdvPartner && (
+              <div className={cn(isMobile && "hidden")}>
+                <WalletBalanceCard
+                  compact={!isAdvPartner}
+                  className="rounded-none border-0 shadow-none"
+                />
+              </div>
+            )}
+
+            {/* Panel B: Disbursement flow */}
+            <AdvPartnerHeroStrip
+              {...heroProps}
+              isLoading={page.summaryLoading}
+              compact={!isAdvPartner}
+              className="border-0 shadow-none"
+            />
+
+            {/* Panel C: Fee earned */}
+            <TreasuryFeePanel
+              {...feePanelProps}
+              isLoading={page.summaryLoading}
+              compact={!isAdvPartner}
+            />
+          </div>
+        </section>
+
+        {/* ─── 3. Pipeline + operating health — single command band ─── */}
+        <section
+          data-mobile-stats
+          aria-label="Advance payment processing status"
+          className={cn(
+            "overflow-hidden rounded-xl border border-utility-gray-300 bg-white",
+            "shadow-[0_1px_2px_rgba(16,24,40,0.04),0_20px_56px_-42px_rgba(8,120,62,0.26)]",
+            isMobile && "mobile-section-enter",
+          )}
+        >
+          <div className="grid grid-cols-1 divide-y divide-border/60 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:divide-y-0 lg:divide-x">
+            <AdvPartnerStatusOverview
+              bare
+              {...statusProps}
+              isLoading={page.summaryLoading}
+            />
+            <AdvPartnerMetricsStrip
+              bare
+              {...metricsProps}
+              isLoading={page.summaryLoading}
+            />
+          </div>
+        </section>
+
+        {/* ─── 5. Operations — tabs + filters + table ─── */}
+        <section
+          data-mobile-content
+          className={cn(
+            "overflow-hidden rounded-xl border border-utility-gray-300 bg-white",
+            "shadow-[0_1px_2px_rgba(16,24,40,0.04),0_20px_56px_-42px_rgba(8,120,62,0.26)]",
+            isMobile && "mobile-section-enter",
+          )}
+        >
+
+          {/* Single header row: tabs left, CTA + ⋯ overflow right */}
+          <div
+            data-mobile-tabs
+            className="flex flex-wrap items-stretch justify-between gap-x-4 border-b border-border bg-white px-3 pt-2 sm:px-5"
+          >
+            <TabBarWithBadges
+              className="border-b-0"
+              tabs={[
+                {
+                  id: "requests",
+                  label: "Requests",
+                  icon: Wallet01,
+                  count: page.statusCounts?.all ?? 0,
+                },
+                {
+                  id: "employees",
+                  label: "Employees",
+                  icon: Users01,
+                  count: page.flexPayPagination?.totalRecords ?? 0,
+                },
+                {
+                  id: "attendances",
+                  label: "Attendance",
+                  icon: Calendar,
+                  count: attendancePage.totalRecords ?? 0,
+                },
+              ]}
+              activeTab={activeTab}
+              onTabChange={(id) => setActiveTab(id as ActiveTab)}
+            />
+
+            {/* Actions: primary CTA + everything else in the ⋯ overflow */}
+            <div className="flex items-center gap-2 py-2">
+              <ImportAction onClick={() => setIsImportSheetOpen(true)} />
+              {(() => {
+                const overflowItems = [
+                  page.handleExportFlexPayEmployees && {
+                    key: "export-list",
+                    label: "Export employee list",
+                    icon: Download01,
+                    onClick: () => page.handleExportFlexPayEmployees?.(),
+                    disabled: page.exportFlexPayMutation.isPending,
+                  },
+                  !isAdvPartner && {
+                    key: "export-batch",
+                    label: "Bulk transfer",
+                    icon: FileDownload01,
+                    onClick: () => exportBatchMutation.mutate(undefined),
+                    disabled: exportBatchMutation.isPending,
+                  },
+                  !isAdvPartner && {
+                    key: "upload-result",
+                    label: "Upload results",
+                    icon: SwitchHorizontal02,
+                    onClick: () => setIsUploadResultDialogOpen(true),
+                  },
+                  {
+                    key: "check-in",
+                    label: "Attendance",
+                    icon: Scan,
+                    onClick: () => navigate("/admin/advance-payments/check-in-settings"),
+                  },
+                  !isAdvPartner && {
+                    key: "history",
+                    label: "File history",
+                    icon: ClockRewind,
+                    onClick: () => setIsHistorySheetOpen(true),
+                  },
+                ].filter(Boolean) as Array<{ key: string; label: string; icon: ComponentType<SVGProps<SVGSVGElement>>; onClick: () => void; disabled?: boolean }>;
+                if (overflowItems.length === 0) return null;
+                return (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        aria-label="More actions"
+                        title="More actions"
+                        className="h-9 w-9 p-0"
+                      >
+                        <DotsVertical className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-52">
+                      {overflowItems.map((item) => (
+                        <DropdownMenuItem
+                          key={item.key}
+                          onClick={item.onClick}
+                          disabled={item.disabled}
+                        >
+                          <item.icon className="mr-2 h-4 w-4" />
+                          {item.label}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* Table */}
+          {activeTab === "requests" && (
+            <ResponsiveTable
+              data={page.requests}
+              columns={columns}
+              mobileFields={requestMobileFields}
+              embedded
+              columnVisibilityKey="adv-payments:requests"
+              toolbar={
+                <>
+                  <SearchBar
+                    searchTerm={page.searchInput}
+                    onSearchChange={page.handleSearch}
+                    placeholder="Name or ID number..."
+                    className="h-9 w-full min-w-[220px] sm:w-64"
+                  />
+                  <StatusFilterBar
+                    value={(page.filters.status as AdvancePaymentRequestStatus) || "all"}
+                    onChange={page.handleStatusChange}
+                    counts={page.statusCounts}
+                  />
+                </>
+              }
+              rowTitle={(row: AdvancePaymentListItem) => (
+                <div className="text-[15px] font-semibold text-fg-primary">{row.employeeName}</div>
+              )}
+              rowSubtitle={(row: AdvancePaymentListItem) => (
+                <div>
+                  <div className="text-[13px] font-medium text-fg-tertiary">{row.employeeCCCD}</div>
+                  <div className="mt-0.5 max-w-[160px] truncate text-[13px] text-fg-tertiary">{row.projectName || "-"}</div>
+                </div>
+              )}
+              getRowId={(row: AdvancePaymentListItem) => row.id.toString()}
+              pagination={page.pagination}
+              onPageChange={page.handlePageChange}
+              onPageSizeChange={page.handlePageSizeChange}
+              emptyState={requestEmptyState}
+            />
+          )}
+
+          {activeTab === "employees" && (
+            <ResponsiveTable
+              data={page.flexPayEmployees}
+              columns={flexPayColumns}
+              mobileFields={flexPayMobileFields}
+              embedded
+              columnVisibilityKey="adv-payments:employees"
+              toolbar={
+                <>
+                  <SearchBar
+                    searchTerm={page.flexPaySearchInput}
+                    onSearchChange={page.handleFlexPaySearch}
+                    placeholder="Name or ID number..."
+                    className="h-9 w-full min-w-[220px] sm:w-64"
+                  />
+                  <Select
+                    value={page.selectedViewMonth ?? ""}
+                    onValueChange={(v) => page.setSelectedViewMonth(v || undefined)}
+                  >
+                    <SelectTrigger className="h-9 w-auto min-w-36 shrink-0 text-sm">
+                      <Calendar className="mr-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <SelectValue placeholder="Month" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {page.availableMonths.length === 0 ? (
+                        <SelectItem value="none" disabled>
+                          No data available
+                        </SelectItem>
+                      ) : (
+                        page.availableMonths.map((m) => (
+                          <SelectItem key={m.forMonth} value={m.forMonth} className="text-sm">
+                            {formatMonthDisplay(m.forMonth)}{!isAdvPartner && ` (${m.employeeCount})`}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </>
+              }
+              rowTitle={(row: FlexPayEmployeeListItem) => (
+                <div className="text-[15px] font-semibold text-fg-primary">{row.fullname}</div>
+              )}
+              rowSubtitle={(row: FlexPayEmployeeListItem) => (
+                <div>
+                  <div className="text-[13px] font-medium text-fg-tertiary">{row.cccd}</div>
+                  <div className="mt-0.5 max-w-[160px] truncate text-[13px] text-fg-tertiary">{row.project?.name || "-"}</div>
+                </div>
+              )}
+              getRowId={(row: FlexPayEmployeeListItem) =>
+                `${row.employeeId}-${row.project.id}`
+              }
+              onRowClick={(row: FlexPayEmployeeListItem) => setSelectedEmployee(row)}
+              pagination={page.flexPayPagination}
+              onPageChange={page.handleFlexPayPageChange}
+              onPageSizeChange={page.handleFlexPayPageSizeChange}
+              emptyState={flexPayEmptyState}
+            />
+          )}
+
+          {activeTab === "attendances" && (
+            <ResponsiveTable
+              data={attendancePage.attendances}
+              columns={attendanceColumns}
+              mobileFields={attendanceMobileFields}
+              embedded
+              columnVisibilityKey="adv-payments:attendances"
+              toolbar={
+                <>
+                  <Select
+                    value={attendancePage.filters.status || "all"}
+                    onValueChange={attendancePage.handleStatusChange}
+                  >
+                    <SelectTrigger className="h-9 w-auto min-w-36 shrink-0 text-sm bg-white">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All statuses</SelectItem>
+                      <SelectItem value="checked_in">Checked in</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="orphaned">Missing check-out</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {!isAdvPartner && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="min-h-9 shrink-0 gap-1.5"
+                      onClick={() => setIsCreateCheckInOpen(true)}
+                    >
+                      <UserCheck01 data-icon="inline-start" />
+                      Record check-in
+                    </Button>
+                  )}
+                </>
+              }
+              rowTitle={(row: AdminAttendanceResponse) => (
+                <div className="text-[15px] font-semibold text-fg-primary">{row.employee_name}</div>
+              )}
+              rowSubtitle={(row: AdminAttendanceResponse) => (
+                <div>
+                  <div className="mt-0.5 max-w-[160px] truncate text-[13px] text-fg-tertiary">{row.project_name || "-"}</div>
+                </div>
+              )}
+              getRowId={(row: AdminAttendanceResponse) => row.id.toString()}
+              pagination={attendancePage.pagination ? {
+                page: attendancePage.pagination.page,
+                pageSize: attendancePage.pagination.limit,
+                totalPages: attendancePage.pagination.totalPages,
+                totalRecords: attendancePage.pagination.totalRecords,
+              } : undefined}
+              onPageChange={attendancePage.handlePageChange}
+              onPageSizeChange={attendancePage.handlePageSizeChange}
+              emptyState={
+                <div className="text-center py-12">
+                  <h3 className="mt-4 text-lg font-semibold">{attendanceEmptyState.title}</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">{attendanceEmptyState.description}</p>
+                </div>
+              }
+            />
+          )}
+        </section>
+
+        {/* ─── Dialogs & Sheets ─── */}
+        <ImportPayrollDialog
+          open={isImportSheetOpen}
+          onOpenChange={setIsImportSheetOpen}
+        />
+        <AdvancePaymentResultUploadDialog
+          open={isUploadResultDialogOpen}
+          onOpenChange={setIsUploadResultDialogOpen}
+        />
+        <FileHistorySheet
+          open={isHistorySheetOpen}
+          onOpenChange={setIsHistorySheetOpen}
+        />
+
+        <EmployeeAdvancePaymentDetailSheet
+          employee={selectedEmployee}
+          onClose={handleEmployeeClose}
+        />
+
+        <AlertDialog
+          open={page.cancelConfirmId !== null}
+          onOpenChange={(open) => {
+            if (!open) page.dismissCancelConfirm();
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cancel this advance payment request?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This advance payment request will be cancelled permanently.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Keep request</AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                onClick={page.confirmCancelRequest}
+              >
+                {page.cancelMutation.isPending ? "Cancelling..." : "Cancel request"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Attendance review (approve/reject) + map dialogs */}
+        <AttendanceReviewDialogs
+          mode={reviewMode}
+          row={reviewRow}
+          onClose={handleReviewClose}
+          onApprove={handleApproveAttendance}
+          onReject={handleRejectAttendance}
+          onCreditQuota={handleCreditAttendanceQuota}
+          approveLoading={approveAttendanceMutation.isPending}
+          rejectLoading={rejectAttendanceMutation.isPending}
+          creditLoading={creditQuotaMutation.isPending}
+        />
+        <AdminCreateCheckInDialog
+          open={isCreateCheckInOpen}
+          onOpenChange={setIsCreateCheckInOpen}
+        />
+        <AttendanceMapDialog
+          row={selectedAttendance}
+          onClose={() => setSelectedAttendance(null)}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default AdvancePaymentsPage;

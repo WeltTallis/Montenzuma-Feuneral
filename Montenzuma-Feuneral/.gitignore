@@ -1,0 +1,70 @@
+# NOTE: the previous line 1 read `/*          # Ignore everything at the root`.
+# In gitignore a `#` only starts a comment at the BEGINNING of a line, so that
+# whole line was parsed as one literal pattern and matched nothing — the
+# "ignore everything at root" never actually took effect, which is how 416
+# .next/ build artefacts (83 MB) ended up tracked and blew up `git push`
+# with "RPC failed; HTTP 408".
+#
+# This file is now an explicit allow-list of build output instead of a
+# deny-everything-then-reinstate trick, which is far less fragile.
+
+# ---- dependencies -------------------------------------------------------
+node_modules/
+.npm-cache/
+
+# ---- build output -------------------------------------------------------
+dist/
+build/
+*.tsbuildinfo
+# Compiled service output. Each service builds inside its own image, so the
+# JS tsc emits is never committed. Insurance-service in particular emits to
+# dist/services/insurance-service/** (rootDir is ../..) and its dist/ holds a
+# full copy of shared/ - a few hundred KB of pure build artefact per commit.
+**/dist/**/*.js
+**/dist/**/*.d.ts
+**/dist/**/*.map
+**/dist/**/*.tsbuildinfo
+
+# ---- Next.js (FrontendClient/client/src/components/insurance/.next) ------
+# This is a Next.js app that is NOT part of the Vite SPA build. Its dev
+# turbopack cache (.sst files up to 9 MB each) must never be committed.
+.next/
+out/
+.turbo/
+
+# ---- logs & scratch -----------------------------------------------------
+*.log
+*.log.*
+npm-debug.log*
+yarn-error.log*
+.chkO.log
+deceased-files.txt
+export-body.json
+
+# ---- local env / secrets ------------------------------------------------
+# NOTE: .env and .env.production were previously COMMITTED and contain real
+# credentials (DB_PASSWORD, DB_ROOT_PASSWORD, VMC, JWT secrets, S3 keys).
+# They are untracked from here on — see the rotate-these note in the handover.
+
+.env.*
+!.env.example
+!.env.sample
+/secrets/
+
+# ---- editor / OS --------------------------------------------------------
+.DS_Store
+Thumbs.db
+*.swp
+
+# ---- package managers ---------------------------------------------------
+yarn.lock
+.yarn/
+.yarnrc
+.yarnrc.yml
+.yarnrc.yaml
+.pnp.*
+
+# ---- security: never commit credential/key files -----------------------
+**/key.txt
+**/*.key
+**/*.pem

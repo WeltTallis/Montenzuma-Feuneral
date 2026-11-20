@@ -1,0 +1,86 @@
+import React, { useMemo, useState } from "react";
+import { useAppState } from "@hr/contexts";
+// UU PRO restyle (W13c): lucide → verified @untitledui/icons; Gauge →
+// Speedometer01. Layout, copy and data flow unchanged.
+import { Activity, AlertTriangle, Eye, Speedometer01 } from "@untitledui/icons";
+import { cn } from "@hr/lib/utils";
+import {
+  AdminPageCanvas,
+  AdminPageHeaderCard,
+} from "@hr/components/shared/AdminPageFrame";
+import { PageHeader } from "@hr/components/shared/PageHeader";
+import {
+  SummaryPills,
+  SectionLabel,
+  LatencyGrid,
+  ErrorByEndpointCards,
+  UserInvestigateTable,
+  FailedLoginBadges,
+  BrowserPlatformStats,
+  TimeRangeToggle,
+  type TimeRange,
+} from "@hr/components/system-health";
+import { useAPISummary, useRecentErrors } from "@hr/hooks/api/useSystemHealth";
+import { computeHealthMeta } from "./utils";
+
+export default function SystemHealthPage() {
+  const { setPageTitle } = useAppState();
+  React.useEffect(() => { setPageTitle("Tình trạng API"); }, [setPageTitle]);
+
+  const [errorDays, setErrorDays] = useState<TimeRange>(1);
+
+  const { data: summaryData } = useAPISummary(errorDays);
+  const { data: recentErrors } = useRecentErrors(errorDays);
+
+  const healthResult = useMemo(
+    () => computeHealthMeta(summaryData, recentErrors),
+    [summaryData, recentErrors],
+  );
+  const healthMeta = healthResult?.meta ?? null;
+
+  return (
+    <AdminPageCanvas>
+      <AdminPageHeaderCard>
+        <PageHeader icon={Activity} title="Tình trạng API" description="Giám sát hiệu suất và lỗi của hệ thống">
+          <div className="flex items-center gap-3">
+            <TimeRangeToggle value={errorDays} onChange={setErrorDays} />
+            {healthMeta && (
+              <div className={cn(
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border",
+                healthMeta.pill,
+              )}>
+                <span className={cn("h-2 w-2 rounded-full animate-pulse", healthMeta.dot)} />
+                {healthMeta.label}
+              </div>
+            )}
+          </div>
+        </PageHeader>
+      </AdminPageHeaderCard>
+
+      <SummaryPills days={errorDays} />
+
+      <section>
+        <SectionLabel icon={Speedometer01}>Độ Trễ — Endpoint (7 ngày)</SectionLabel>
+        <LatencyGrid days={7} limit={12} />
+      </section>
+
+      <section>
+        <SectionLabel icon={AlertTriangle}>Error Theo Endpoint</SectionLabel>
+        <ErrorByEndpointCards days={errorDays} />
+      </section>
+
+      <section>
+        <SectionLabel icon={Eye}>Cần Điều Tra</SectionLabel>
+        <UserInvestigateTable days={errorDays === 1 ? 1 : 7} limit={10} />
+      </section>
+
+      <section>
+        <FailedLoginBadges days={errorDays === 1 ? 1 : 7} />
+      </section>
+
+      <section>
+        <BrowserPlatformStats days={30} />
+      </section>
+    </AdminPageCanvas>
+  );
+}

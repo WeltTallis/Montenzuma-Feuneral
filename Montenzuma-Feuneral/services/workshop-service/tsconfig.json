@@ -1,0 +1,38 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": ".",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "noUncheckedIndexedAccess": false,
+    "skipLibCheck": true,
+    "moduleResolution": "node16",
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "server.ts",
+    "socket.ts",
+    "routes/**/*.ts",
+    "controllers/**/*.ts",
+    "database/**/*.ts",
+    "models/**/*.ts",
+    "services/**/*.ts",
+    "utils/**/*.ts",
+    "config/**/*.ts",
+    "types/**/*.ts",
+    "migrations/**/*.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.spec.ts",
+    "**/*.test.ts"
+  ]
+}

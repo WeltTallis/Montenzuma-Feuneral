@@ -1,0 +1,971 @@
+# PRODUCTION Docker Compose - Single Network Configuration
+
+
+services:
+
+  # INFRASTRUCTURE SERVICES
+ 
+
+  mariadb:
+    image: mariadb:10.11
+    container_name: restpoint_mariadb
+    restart: always
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+   
+      MARIADB_HEALTH_PW: ${DB_ROOT_PASSWORD}
+    ports:
+      - '${MARIADB_EXTERNAL_PORT:-3306}:3306'
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./docker/mariadb/custom-mysqld.cnf:/etc/mysql/conf.d/custom-mysqld.cnf:ro
+      - ./docker/mariadb/exporter-user.sql:/docker-entrypoint-initdb.d/01-exporter-user.sql:ro
+    networks:
+      - restpoint_network
+      - deceased_internal
+    healthcheck:
+      # Talks to the server DIRECTLY as root. See the long note in
+   
+      test:
+        - 'CMD-SHELL'
+        - >-
+          mariadb --defaults-extra-file=/var/lib/mysql/.my-healthcheck.cnf
+          --protocol=socket -N -B
+          -e "SELECT 1 FROM information_schema.ENGINES
+          WHERE engine='innodb' AND support IN ('YES','DEFAULT','ENABLED')"
+          | grep -qx 1
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+
+  redis:
+    image: redis:7-alpine
+    container_name: restpoint_redis
+    restart: always
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis123} --maxmemory 1gb --maxmemory-policy noeviction
+    ports:
+      - '${REDIS_EXTERNAL_PORT:-6379}:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - restpoint_network
+      - deceased_internal
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', '${REDIS_PASSWORD:-redis123}', 'ping']
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: restpoint_rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - '${RABBITMQ_EXTERNAL_PORT:-5672}:5672'
+      - '${RABBITMQ_MANAGEMENT_PORT:-15672}:15672'
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - restpoint_network
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # API GATEWAY
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
+    image: restpoint-api-gateway:latest
+    container_name: restpoint_api_gateway
+    restart: always
+    init: true
+    stop_grace_period: 30s
+    ports:
+      - '${API_GATEWAY_EXTERNAL_PORT:-5000}:5000'
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      GATEWAY_PROXY_TIMEOUT_MS: ${GATEWAY_PROXY_TIMEOUT_MS:-900000}
+      # Service URLs
+      AUTH_SERVICE_URL: http://restpoint_auth_service:5000
+      TENANT_SERVICE_URL: http://restpoint_tenant_service:5000
+      DECEASED_SERVICE_URL: http://restpoint_deceased_service:5000
+      INVOICES_SERVICE_URL: http://restpoint_invoice_service:5000
+      COFFIN_SERVICE_URL: http://restpoint_coffin_service:5000
+  
+      NOTIFICATION_SERVICE_URL: http://restpoint_socketio_service:5000
+      DOCUMENTS_SERVICE_URL: http://restpoint_documents_service:5000
+      ANALYTICS_SERVICE_URL: http://restpoint_analytics_service:5000
+      INSURANCE_SERVICE_URL: http://restpoint_insurance_service:5050
+      MPESA_SERVICE_URL: http://restpoint_mpesa_service:4040
+      BODYCHECKOUT_SERVICE_URL: http://restpoint_bodycheckout_service:5000
+      CALENDAR_SERVICE_URL: http://restpoint_calender_service:5000
+      CHEMICALS_SERVICE_URL: http://restpoint_chemical_service:5000
+      HEARSE_SERVICE_URL: http://restpoint_hearse_service:5000
+      SOCKETIO_SERVICE_URL: http://restpoint_socketio_service:5000
+      EXTRA_SERVICES_URL: http://restpoint_extra_services:5000
+      WORKSHOP_SERVICE_URL: http://restpoint_workshop_service:6969
+    
+      STORE_SERVICE_URL: http://restpoint_store_service:5000
+      SUPPORT_SERVICE_URL: http://restpoint_support_service:5000
+      LEAVE_SERVICE_URL: http://restpoint_hr_service:5000
+      FLORIST_SERVICE_URL: http://restpoint_florist_service:5000
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis123}@restpoint_redis:6379
+    # Gateway can start while dependencies recover; failed upstreams return 503
+    networks:
+      - restpoint_network
+      - deceased_internal
+    healthcheck:
+      test: ['CMD', '/usr/local/bin/gateway-healthcheck']
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+
+  # APPLICATION SERVICES
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+    image: restpoint-auth-service:latest
+    container_name: restpoint_auth_service
+    restart: always
+    ports:
+      - '${AUTH_SERVICE_EXTERNAL_PORT:-5001}:5000'
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      SERVICE_NAME: auth-service
+      DB_HOST: restpoint_mariadb
+      DB_PORT: 3306
+      REDIS_HOST: restpoint_redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+      JWT_SECRET: ${JWT_SECRET}
+      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
+      JWT_EXPIRY: 24h
+      REFRESH_TOKEN_EXPIRY: 7d
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - restpoint_network
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  tenant-service:
+    build:
+      context: .
+      dockerfile: services/tenant-service/Dockerfile
+    image: restpoint-tenant-service:latest
+    container_name: restpoint_tenant_service
+    restart: always
+    ports:
+      - '${TENANT_SERVICE_EXTERNAL_PORT:-5002}:5000'
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      SERVICE_NAME: tenant-service
+      DB_HOST: restpoint_mariadb
+      DB_PORT: 3306
+      REDIS_HOST: restpoint_redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+      RABBITMQ_HOST: restpoint_rabbitmq
+      RABBITMQ_PORT: 5672
+      # Admin credentials used at runtime to AUTO-PROVISION tenant databases
+      # (CREATE DATABASE + GRANT). Falls back to DB_USER when not set.
+      DB_ADMIN_USER: ${DB_ADMIN_USER:-root}
+      DB_ADMIN_PASSWORD: ${DB_ADMIN_PASSWORD:-${DB_ROOT_PASSWORD}}
+      # Onboarding progress events are POSTed to this URL by Tenant.model.ts
+      SOCKET_SERVICE_URL: http://restpoint_socketio_service:5000
+      GLOBAL_UPLOADS_DIR: /opt/storage/uploads
+    volumes:
+      - tenant_service_data:/usr/src/app/data
+      # The ONE shared uploads folder — HOST DIRECTORY /opt/storage 
+  
+      - /opt/storage:/opt/storage
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - restpoint_network
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  sms-service:
+    build:
+      context: services/sms-service
+      dockerfile: Dockerfile
+    image: restpoint-sms-service:latest
+    container_name: restpoint_sms_service
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      PORT: 8080
+    networks:
+      - restpoint_network
+      - deceased_internal
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:8080/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  deceased-service:
+    build:
+      context: .
+      dockerfile: services/deceased-service/Dockerfile
+    image: restpoint-deceased-service:latest
+    container_name: restpoint_deceased_service
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      SERVICE_NAME: deceased-service
+      GLOBAL_UPLOADS_DIR: /opt/storage/uploads
+      SMS_SERVICE_URL: http://restpoint_sms_service:8080
+      SOCKETIO_SERVICE_URL: http://restpoint_socketio_service:5000
+      DB_HOST: restpoint_mariadb
+      DB_PORT: 3306
+      DB_USER: restpoint_user
+      REDIS_HOST: restpoint_redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+    volumes:
+      - deceased_service_data:/usr/src/app/data
+      # Write signatures/reports into the SAME shared host folder
+
+      - /opt/storage:/opt/storage
+      # Legacy mount kept for old code paths that still write to
+ 
+      - /opt/storage/uploads/_legacy/deceased:/usr/src/app/uploads
+    networks:
+      - deceased_internal
+      - deceased_egress
+    healthcheck:
+      test: ['CMD', 'node', 'services/deceased-service/healthcheck.js']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  invoice-service:
+    build:
+      context: .
+      dockerfile: services/invoice-service/Dockerfile
+    image: restpoint-invoice-service:latest
+    container_name: restpoint_invoice_service
+    restart: always
+    ports:
+      - '${INVOICE_SERVICE_EXTERNAL_PORT:-5005}:5000'
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      SERVICE_NAME: invoice-service
+      GLOBAL_UPLOADS_DIR: /opt/storage/uploads
+      DB_HOST: restpoint_mariadb
+      DB_PORT: 3306
+      REDIS_HOST: restpoint_redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+    volumes:
+      - invoice_service_data:/usr/src/app/data
+   
+      - /opt/storage/invoices/invoice-service:/usr/src/app/generated
+    
+      - /opt/storage:/opt/storage
+    networks:
+      - restpoint_network
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  coffin-service:
+    build:
+      context: .
+      dockerfile: services/coffin-service/Dockerfile
+    image: restpoint-coffin-service:latest
+    container_name: restpoint_coffin_service
+    restart: always
+    ports:
+      - '${COFFIN_SERVICE_EXTERNAL_PORT:-5006}:5000'
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      SERVICE_NAME: coffin-service
+      GLOBAL_UPLOADS_DIR: /opt/storage/uploads
+      DB_HOST: restpoint_mariadb
+      DB_PORT: 3306
+      OPERATIONS_DATABASE: restpoint_operations
+      REDIS_HOST: restpoint_redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+      # Coffin inventory lists are large (image URLs per row
+   
+      COFFIN_REDIS_MAX_MEMORY_MB: 20
+      COFFIN_REDIS_SOFT_LIMIT_MB: 16
+    volumes:
+      - coffin_service_data:/usr/src/app/data
+      # Coffin-service 
+      - /opt/storage:/opt/storage
+    networks:
+      - restpoint_network
+    # Redis must be up BEFORE the coffin service accepts traffic
+    depends_on:
+      redis:
+        condition: service_healthy
+      mariadb:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  documents-service:
+    build:
+      context: .
+      dockerfile: services/documents-service/Dockerfile
+    image: restpoint-documents-service:latest
+    container_name: restpoint_documents_service
+    restart: always
+ 
+    expose:
+      - '5000'
+    ports:
+      - '${DOCUMENTS_SERVICE_BIND:-127.0.0.1}:${DOCUMENTS_SERVICE_EXTERNAL_PORT:-5007}:5000'
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      SERVICE_NAME: documents-service
+      GLOBAL_UPLOADS_DIR: /opt/storage/uploads
+      DB_HOST: restpoint_mariadb
+      DB_PORT: 3306
+      REDIS_HOST: restpoint_redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+    volumes:
+      - documents_service_data:/usr/src/app/data
+      # Documents service serves /uploads
+      - /opt/storage:/opt/storage
+  
+      - /opt/storage/uploads/_legacy/documents:/usr/src/app/uploads
+    networks:
+      - restpoint_network
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  analytics-service:
+    build:
+      context: .
+      dockerfile: services/analytics-service/Dockerfile
+    image: restpoint-analytics-service:latest
+    container_name: restpoint_analytics_service
+    restart: always
+    ports:
+      - '${ANALYTICS_SERVICE_EXTERNAL_PORT:-5009}:5000'
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      SERVICE_NAME: analytics-service
+      DB_HOST: restpoint_mariadb
+      DB_PORT: 3306
+      REDIS_HOST: restpoint_redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+    volumes:
+      - analytics_service_data:/usr/src/app/data
+    networks:
+      - restpoint_network
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Amani Cover insurance: policies, group members and claims.
+
+  mpesa-postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: ${MPESA_DB_NAME:-mpesa}
+      POSTGRES_USER: ${MPESA_DB_USER:-mpesa}
+      POSTGRES_PASSWORD: ${MPESA_DB_PASSWORD:-mpesa-local}
+    volumes:
+      - mpesa_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${MPESA_DB_USER:-mpesa} -d ${MPESA_DB_NAME:-mpesa}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - restpoint_network
+
+  mpesa-service:
+    build:
+      context: ./services/mpesa-service
+      dockerfile: Dockerfile
+    image: restpoint-mpesa-service:latest
+    container_name: restpoint_mpesa_service
+    restart: always
+    env_file:
+      - .env.production
+    ports:
+      - '4040:4040'
+    environment:
+      APP_PORT: ':4040'
+      APP_ENV: ${APP_ENV:-production}
+      GIN_MODE: release
+      DB_HOST: mpesa-postgres
+      DB_PORT: 5432
+      DB_USER: ${MPESA_DB_USER:-mpesa}
+      DB_PASSWORD: ${MPESA_DB_PASSWORD:-mpesa-local}
+      DB_NAME: ${MPESA_DB_NAME:-mpesa}
+      DB_SSL_MODE: ${MPESA_DB_SSL_MODE:-disable}
+      MPESA_URL: ${MPESA_URL:-https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest}
+      MPESA_OAUTH_URL: ${MPESA_OAUTH_URL:-https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials}
+      MPESA_TILL_NUMBER: ${MPESA_TILL_NUMBER:-}
+      CALL_BACK_URL: https://restpoint.co.ke/api/v1/restpoint/mpesa/stkcallback
+      INSURANCE_CALLBACK_URL: http://restpoint_insurance_service:5050/insurance/payments/callback
+      INSURANCE_CALLBACK_SECRET: ${INSURANCE_CALLBACK_SECRET:-}
+    depends_on:
+      mpesa-postgres:
+        condition: service_healthy
+    networks:
+      - restpoint_network
+
+  insurance-postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: ${INSURANCE_PG_DATABASE:-insurance}
+      POSTGRES_USER: ${INSURANCE_PG_USER:-insurance}
+      POSTGRES_PASSWORD: ${INSURANCE_PG_PASSWORD:-insurance-local}
+    volumes:
+      - insurance_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${INSURANCE_PG_USER:-insurance} -d ${INSURANCE_PG_DATABASE:-insurance}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - restpoint_network
+
+  insurance-service:
+    build:
+      context: ./services/insurance-service
+      dockerfile: Dockerfile
+    image: restpoint-insurance-service:latest
+    container_name: restpoint_insurance_service
+    restart: always
+    ports:
+      # Host 3030, NOT 5013socketio-service
+   
+      - '5050:5050'
+    env_file:
+      - .env.production
+    environment:
+      PORT: 5050
+      PGHOST: insurance-postgres
+      PGPORT: 5432
+      PGDATABASE: ${INSURANCE_PG_DATABASE:-insurance}
+      PGUSER: ${INSURANCE_PG_USER:-insurance}
+      PGPASSWORD: ${INSURANCE_PG_PASSWORD:-insurance-local}
+      MPESA_SERVICE_URL: http://restpoint_mpesa_service:4040
+      REDIS_ADDR: restpoint_redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+      MPESA_CALLBACK_SECRET: ${INSURANCE_CALLBACK_SECRET:-}
+      GLOBAL_UPLOADS_DIR: /opt/storage/uploads
+    depends_on:
+      insurance-postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - /opt/storage:/opt/storage
+    networks:
+      - restpoint_network
+    healthcheck:
+      # busybox wget has NO --no-verbose / --tries / --spider flags (GNU-only),
+   
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://localhost:5050/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+
+  store-service:
+    build:
+      context: .
+      dockerfile: services/store-service/Dockerfile
+    image: restpoint-store-service:latest
+    container_name: restpoint_store_service
+    restart: always
+    ports:
+      - '${STORE_SERVICE_EXTERNAL_PORT:-7071}:5000'
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      # STORE_SERVICE_PORT 
+      STORE_SERVICE_PORT: 5000
+      PORT: 5000
+      SERVICE_NAME: store-service
+      DB_HOST: restpoint_mariadb
+      DB_PORT: 3306
+      OPERATIONS_DATABASE: restpoint_operations
+      REDIS_HOST: restpoint_redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - restpoint_network
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:5000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  socketio-service:
+    build:
+      context: .
+      dockerfile: services/socketio-service/Dockerfile
+    image: restpoint-socketio-service:latest
+    container_name: restpoint_socketio_service
+    restart: always
+    ports:
+      - '${SOCKETIO_SERVICE_EXTERNAL_PORT:-5013}:5000'
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      SERVICE_NAME: socketio-service
+      REDIS_HOST: restpoint_redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+    volumes:
+      - socketio_service_data:/usr/src/app/data
+    networks:
+      - restpoint_network
+      - deceased_internal
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  bodycheckout-service:
+    build:
+      context: .
+      dockerfile: services/bodycheckout-service/Dockerfile
+    image: restpoint-bodycheckout-service:latest
+    container_name: restpoint_bodycheckout_service
+    restart: always
+    ports:
+      - '${BODYCHECKOUT_SERVICE_EXTERNAL_PORT:-5015}:5000'
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      SERVICE_NAME: bodycheckout-service
+      GLOBAL_UPLOADS_DIR: /opt/storage/uploads
+      SMS_SERVICE_URL: http://restpoint_sms_service:8080
+      # Cache invalidation is queued over Redis; bodycheckout does not call
+      # deceased-service directly.
+      SOCKETIO_SERVICE_URL: http://restpoint_socketio_service:5000
+      DB_HOST: restpoint_mariadb
+      DB_PORT: 3306
+      REDIS_HOST: restpoint_redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+    volumes:
+      - bodycheckout_service_data:/usr/src/app/data
+      # Body-release signatures are stored under /opt/storage/uploads/<tenant>/signatures
+     
+      - /opt/storage:/opt/storage
+    networks:
+      - restpoint_network
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  extra-services:
+    build:
+      context: .
+      dockerfile: services/extra-services/Dockerfile
+    image: restpoint-extra-services:latest
+    container_name: restpoint_extra_services
+    restart: always
+    ports:
+      - '${EXTRA_SERVICES_EXTERNAL_PORT:-5016}:5000'
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      SERVICE_NAME: extra-services
+      DB_HOST: restpoint_mariadb
+      DB_PORT: 3306
+    volumes:
+      - extra_services_data:/usr/src/app/data
+    networks:
+      - restpoint_network
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  support-service:
+    build:
+      context: .
+      dockerfile: services/support-service/Dockerfile
+    image: restpoint-support-service:latest
+    container_name: restpoint_support_service
+    restart: always
+    ports:
+      - '${SUPPORT_SERVICE_EXTERNAL_PORT:-8111}:5000'
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      SERVICE_NAME: support-service
+      DB_HOST: restpoint_mariadb
+      DB_PORT: 3306
+      REDIS_HOST: restpoint_redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+      SOCKETIO_SERVICE_URL: http://restpoint_socketio_service:5000
+    volumes:
+      - support_service_data:/usr/src/app/data
+    networks:
+      - restpoint_network
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  chemical-service:
+    build:
+      context: .
+      dockerfile: services/chemical-service/Dockerfile
+    image: restpoint-chemical-service:latest
+    container_name: restpoint_chemical_service
+    restart: always
+    ports:
+      - '${CHEMICAL_SERVICE_EXTERNAL_PORT:-5105}:5000'
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      SERVICE_NAME: chemical-service
+      DB_HOST: restpoint_mariadb
+      DB_PORT: 3306
+    volumes:
+      - chemical_service_data:/usr/src/app/data
+    networks:
+      - restpoint_network
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Florist Service (runs TypeScript directly via tsx; publishes host port 7070)
+  florist-service:
+    build:
+      context: .
+      dockerfile: services/florist-service/Dockerfile
+    image: restpoint-florist-service:latest
+    container_name: restpoint_florist_service
+    restart: always
+    ports:
+      - '${FLORIST_SERVICE_EXTERNAL_PORT:-7070}:5000'
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      FLORIST_PORT: 5000
+      SERVICE_NAME: florist-service
+      DB_HOST: restpoint_mariadb
+      DB_PORT: 3306
+      DB_USER: restpoint_user
+      OPERATIONS_DATABASE: restpoint_operations
+      GLOBAL_UPLOADS_DIR: /opt/storage/uploads
+    volumes:
+      # Flower-sample images
+      - /opt/storage:/opt/storage
+    networks:
+      - restpoint_network
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+
+  # HEARSE SERVICE
+
+
+  hearse-service:
+    build:
+      context: .
+      dockerfile: services/hearse-service/Dockerfile
+    image: restpoint-hearse-service:latest
+    container_name: restpoint_hearse_service
+    restart: always
+    ports:
+      - '${HEARSE_SERVICE_EXTERNAL_PORT:-5008}:5000'
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      SERVICE_NAME: hearse-service
+      GLOBAL_UPLOADS_DIR: /opt/storage/uploads
+      DB_HOST: restpoint_mariadb
+      DB_PORT: 3306
+      REDIS_HOST: restpoint_redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis123}
+    volumes:
+      - hearse_service_data:/usr/src/app/data
+  
+      - /opt/storage:/opt/storage
+    networks:
+      - restpoint_network
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+
+  # WORKSHOP SERVICE
+
+
+  workshop-service:
+    build:
+      context: .
+      dockerfile: services/workshop-service/Dockerfile
+    image: restpoint-workshop-service:latest
+    container_name: restpoint_workshop_service
+    restart: always
+    ports:
+      - '${WORKSHOP_SERVICE_EXTERNAL_PORT:-6969}:6969'
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 6969
+      SERVICE_NAME: workshop-service
+      DB_HOST: restpoint_mariadb
+      DB_PORT: 3306
+    networks:
+      - restpoint_network
+    healthcheck:
+      test:
+        ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:6969/api/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # HR SERVICE
+ 
+  hr-service:
+    build:
+      context: .
+      dockerfile: services/hr-service/Dockerfile
+    image: restpoint-hr-service:latest
+    container_name: restpoint_hr_service
+    restart: always
+    ports:
+      - '${LEAVE_SERVICE_EXTERNAL_PORT:-5025}:5000'
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      SERVICE_NAME: hr-service
+      DB_HOST: restpoint_mariadb
+      DB_PORT: 3306
+      GLOBAL_UPLOADS_DIR: /opt/storage/uploads
+    volumes:
+      # Leave supporting documents live in the shared HOST uploads folder
+
+      - /opt/storage:/opt/storage
+    networks:
+      - restpoint_network
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:5000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+
+  # FRONTEND
+
+  frontend:
+    build:
+      context: ./FrontendClient
+      dockerfile: Dockerfile
+    image: restpoint-frontend:latest
+    container_name: restpoint_frontend
+    restart: always
+    ports:
+      - '8080:80'
+    networks:
+      - restpoint_network
+    volumes:
+  
+      - /opt/storage/uploads:/opt/storage/uploads:ro
+    healthcheck:
+    
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1/']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+# NETWORK DEFINITION - ONLY ONE NETWORK
+
+networks:
+  restpoint_network:
+    driver: bridge
+    name: restpoint_network
+    attachable: true
+  deceased_internal:
+    driver: bridge
+    name: restpoint_deceased_internal
+    internal: true
+  deceased_egress:
+    driver: bridge
+    name: restpoint_deceased_egress
+    attachable: true
+
+# VOLUMES
+volumes:
+  mpesa_postgres_data:
+    driver: local
+  insurance_postgres_data:
+    driver: local
+  mariadb_data:
+    external: true
+    name: restpoint_mariadb_data
+  redis_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+  auth_service_data:
+    driver: local
+  tenant_service_data:
+    driver: local
+  deceased_service_data:
+    driver: local
+  invoice_service_data:
+    driver: local
+  coffin_service_data:
+    driver: local
+  documents_service_data:
+    driver: local
+  analytics_service_data:
+    driver: local
+  notification_service_data:
+    driver: local
+  socketio_service_data:
+    driver: local
+  bodycheckout_service_data:
+    driver: local
+  extra_services_data:
+    driver: local
+  support_service_data:
+    driver: local
+  chemical_service_data:
+    driver: local
+  hearse_service_data:
+    driver: local
+  workshop_service_data:
+    driver: local

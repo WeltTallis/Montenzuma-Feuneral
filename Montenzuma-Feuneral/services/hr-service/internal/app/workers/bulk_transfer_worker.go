@@ -1,0 +1,388 @@
+package workers
+
+import (
+	"api-server/internal/pkg/clock"
+	"context"
+	"encoding/json"
+	"fmt"
+	"log/slog"
+	"sort"
+
+	"api-server/internal/app/dto"
+	"api-server/internal/app/services/config"
+	"api-server/internal/app/services/infrastructure"
+	"api-server/internal/app/services/notification"
+	"api-server/internal/app/services/payroll/bulktransfer"
+	"api-server/internal/app/services/project"
+	"api-server/internal/domain"
+	cacheport "api-server/internal/domain/ports/infrastructure"
+
+	"gorm.io/gorm"
+)
+
+// BulkTransferPaymentWorker handles per-transfer timesheet payment updates
+// triggered directly from IPN processing (no longer event-driven).
+type BulkTransferPaymentWorker struct {
+	logger              *slog.Logger
+	db                  *gorm.DB
+	timesheetRepo       domain.TimesheetRepository
+	projectAggregates   *project.AggregateRecomputeService
+	projectEmployeeRepo domain.ProjectEmployeeRepository
+	tcRepo              domain.TransactionCodeRepository
+	settingsConfig      *config.SettingsConfigService
+	idempotencyService  *infrastructure.IdempotencyService
+	notificationService *notification.NotificationService
+	employeeNotifier    notification.EmployeeNotifier
+	cache               cacheport.CachePort
+}
+
+// NewBulkTransferPaymentWorker creates a new BulkTransferPaymentWorker
+func NewBulkTransferPaymentWorker(
+	db *gorm.DB,
+	timesheetRepo domain.TimesheetRepository,
+	projectRepo domain.ProjectRepository,
+	projectEmployeeRepo domain.ProjectEmployeeRepository,
+	tcRepo domain.TransactionCodeRepository,
+	settingsConfig *config.SettingsConfigService,
+	idempotencyService *infrastructure.IdempotencyService,
+	notificationService *notification.NotificationService,
+	employeeNotifier notification.EmployeeNotifier,
+	cache cacheport.CachePort,
+) *BulkTransferPaymentWorker {
+	logger := slog.Default().With("component", "BulkTransferPaymentWorker")
+
+	// The worker owns the projection of settled timesheets onto the denormalised
+	// projects.*_vnd totals; projectRepo is only kept to build that projection.
+	var projectAggregates *project.AggregateRecomputeService
+	if projectRepo != nil {
+		projectAggregates = project.NewAggregateRecomputeService(projectRepo, clock.New(), logger)
+	}
+
+	return &BulkTransferPaymentWorker{
+		logger:              logger,
+		db:                  db,
+		timesheetRepo:       timesheetRepo,
+		projectAggregates:   projectAggregates,
+		projectEmployeeRepo: projectEmployeeRepo,
+		tcRepo:              tcRepo,
+		settingsConfig:      settingsConfig,
+		idempotencyService:  idempotencyService,
+		notificationService: notificationService,
+		employeeNotifier:    employeeNotifier,
+		cache:               cache,
+	}
+}
+
+// UpdateForTransfer updates timesheet payment statuses for a single completed or
+// failed transfer, identified by its requestID (the transaction_code).
+func (w *BulkTransferPaymentWorker) UpdateForTransfer(ctx context.Context, requestID string, completed bool, invoiceNo string) error {
+	// Look up transaction code to find timesheet IDs
+	tc, err := w.tcRepo.GetByCode(ctx, requestID)
+	if err != nil {
+		// Not a bulk transfer (e.g. flex pay) — nothing to do
+		return nil
+	}
+
+	var tcData domain.TransactionCodeData
+	if err := json.Unmarshal(tc.Data, &tcData); err != nil {
+		return nil
+	}
+
+	timesheetIDs := tcData.GetTimesheetIDs()
+	if len(timesheetIDs) == 0 {
+		return nil
+	}
+
+	// Include the current target rows in the idempotency key. BCC replacement
+	// can legitimately change the IDs behind a VFIC code; a code-only key would
+	// treat a retry for the new rows as already complete and leave them pending.
+	idempotencyKey := transferTimesheetUpdateIdempotencyKey(requestID, timesheetIDs)
+	acquired, state, err := w.idempotencyService.TryAcquireLock(ctx, idempotencyKey)
+	if err != nil {
+		return fmt.Errorf("acquire idempotency lock: %w", err)
+	}
+	if !acquired {
+		w.logger.Info("timesheet update already processed", "request_id", requestID, "state", state, "idempotency_key", idempotencyKey)
+		return nil
+	}
+
+	timesheets, err := w.timesheetRepo.GetByIDs(ctx, timesheetIDs)
+	if err != nil {
+		_ = w.idempotencyService.ReleaseLock(ctx, idempotencyKey)
+		return fmt.Errorf("get timesheets: %w", err)
+	}
+
+	// Provider outcomes are authoritative payment facts. A prior Admin rejection
+	// remains the workflow status, but completed/failed settlement metadata must
+	// still be recorded for every non-paid row.
+	pendingTimesheets := paymentFinalizationCandidates(timesheets)
+	if len(pendingTimesheets) == 0 {
+		_ = w.idempotencyService.MarkCompleted(ctx, idempotencyKey)
+		return nil
+	}
+
+	processedAt := clock.Now()
+
+	var updates []domain.PaymentStatusUpdate
+	if completed {
+		// New OnePay exports explicitly snapshot the transferred amount.
+		// Legacy Amount is ambiguous (regular bank exports stored gross wages),
+		// so unversioned codes retain the established calculation.
+		var paidAmounts map[uint]int64
+		var calcErr error
+		if snapshot := tcData.GetTransferAmountSnapshot(); snapshot != nil {
+			if len(timesheets) != len(timesheetIDs) {
+				calcErr = fmt.Errorf("transfer references %d timesheets but found %d", len(timesheetIDs), len(timesheets))
+			} else {
+				paidAmounts, calcErr = allocatePaidTransferAmount(timesheets, *snapshot)
+				if calcErr == nil {
+					for _, timesheet := range timesheets {
+						if timesheet.PaymentStatus == domain.PaymentStatusPaid && timesheet.PaidAmount != paidAmounts[timesheet.ID] {
+							calcErr = fmt.Errorf("paid timesheet %d records %d but transfer allocates %d; reconciliation required", timesheet.ID, timesheet.PaidAmount, paidAmounts[timesheet.ID])
+							break
+						}
+					}
+				}
+			}
+		} else {
+			paidAmounts, calcErr = w.calculatePaidAmounts(ctx, pendingTimesheets)
+		}
+		if calcErr != nil {
+			_ = w.idempotencyService.ReleaseLock(ctx, idempotencyKey)
+			return fmt.Errorf("calculate paid amounts: %w", calcErr)
+		}
+
+		paymentRef := invoiceNo
+		for _, ts := range pendingTimesheets {
+			paidAmt := paidAmounts[ts.ID]
+			updates = append(updates, domain.PaymentStatusUpdate{
+				TimesheetID:      ts.ID,
+				PaymentStatus:    domain.PaymentStatusPaid,
+				PaymentReference: &paymentRef,
+				PaymentDate:      &processedAt,
+				PaidAmount:       &paidAmt,
+			})
+		}
+	} else {
+		for _, ts := range pendingTimesheets {
+			updates = append(updates, domain.PaymentStatusUpdate{
+				TimesheetID:   ts.ID,
+				PaymentStatus: domain.PaymentStatusFailed,
+				PaymentDate:   &processedAt,
+			})
+		}
+	}
+
+	if err := w.timesheetRepo.BulkUpdatePaymentStatus(ctx, updates); err != nil {
+		_ = w.idempotencyService.ReleaseLock(ctx, idempotencyKey)
+		return fmt.Errorf("update payment statuses: %w", err)
+	}
+
+	// Recompute the denormalised project financial totals for affected projects
+	if w.projectAggregates != nil {
+		updatedIDs := make(map[uint]bool, len(updates))
+		for _, u := range updates {
+			updatedIDs[u.TimesheetID] = true
+		}
+		affectedProjects := make(map[uint]bool)
+		for _, ts := range pendingTimesheets {
+			if updatedIDs[ts.ID] {
+				affectedProjects[ts.ProjectID] = true
+			}
+		}
+		for projectID := range affectedProjects {
+			if _, err := w.projectAggregates.RecomputeProject(ctx, projectID); err != nil {
+				w.logger.Error("failed to recompute project financials", "project_id", projectID, "error", err)
+			}
+		}
+	}
+
+	// Invalidate timesheet caches so list/summary queries reflect the new payment status,
+	// and dashboard analytics that aggregate paid amounts (bank usage, monthly financials)
+	if w.cache != nil {
+		_ = w.cache.InvalidatePattern(ctx, "timesheets:list:*")
+		_ = w.cache.InvalidatePattern(ctx, "timesheets:summary:*")
+		_ = w.cache.InvalidatePattern(ctx, "dashboard:*")
+	}
+
+	// Update revenue_receivable for paid timesheets
+	if completed {
+		feePercentage := w.settingsConfig.GetWeeklyPaymentFeePercentage(ctx)
+		if err := w.updateRevenueReceivable(ctx, updates, feePercentage); err != nil {
+			w.logger.Error("failed to update revenue_receivable", "error", err)
+		}
+	}
+
+	if err := w.idempotencyService.MarkCompleted(ctx, idempotencyKey); err != nil {
+		w.logger.Error("failed to mark idempotency key as completed", "key", idempotencyKey, "error", err)
+	}
+
+	// Notify employees
+	if w.employeeNotifier != nil && completed {
+		w.employeeNotifier.NotifyTimesheetPaid(ctx, pendingTimesheets)
+	}
+
+	w.logger.Info("per-transfer timesheet update applied",
+		"request_id", requestID,
+		"completed", completed,
+		"timesheet_count", len(updates))
+
+	return nil
+}
+
+func transferTimesheetUpdateIdempotencyKey(requestID string, timesheetIDs []uint) string {
+	ids := append([]uint(nil), timesheetIDs...)
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	return fmt.Sprintf("transfer_ts_update:%s:%v", requestID, ids)
+}
+
+func paymentFinalizationCandidates(timesheets []*domain.Timesheet) []*domain.Timesheet {
+	candidates := make([]*domain.Timesheet, 0, len(timesheets))
+	for _, timesheet := range timesheets {
+		if timesheet.PaymentStatus == domain.PaymentStatusPaid {
+			continue
+		}
+		candidates = append(candidates, timesheet)
+	}
+	return candidates
+}
+
+// Handle processes domain events (implements domain.EventHandler).
+// When a BulkTransferResultParsed event arrives (from result file upload or
+// 9Pay batch completion), it iterates over each completed transfer and calls
+// UpdateForTransfer to mark the associated timesheets as paid.
+func (w *BulkTransferPaymentWorker) Handle(ctx context.Context, event domain.DomainEvent) error {
+	e, ok := event.(domain.BulkTransferResultParsedEvent)
+	if !ok {
+		return nil
+	}
+
+	var updatedData []dto.BulkTransferFileData
+	if err := json.Unmarshal([]byte(e.UpdatedDataJSON), &updatedData); err != nil {
+		return fmt.Errorf("unmarshal updated data: %w", err)
+	}
+
+	var completedCount, failedCount int
+	for _, item := range updatedData {
+		completed := item.TransferStatus == bulktransfer.ResultStatusCompleted
+		if err := w.UpdateForTransfer(ctx, item.TransactionCode, completed, item.BankTxnRef); err != nil {
+			w.logger.Error("failed to update timesheet for transfer",
+				"transaction_code", item.TransactionCode,
+				"error", err)
+			continue
+		}
+		if completed {
+			completedCount++
+		} else if item.TransferStatus == bulktransfer.ResultStatusFailed {
+			failedCount++
+		}
+	}
+
+	w.logger.Info("bulk transfer payment status updates applied",
+		"event_id", e.EventID,
+		"completed", completedCount,
+		"failed", failedCount,
+		"total", len(updatedData))
+
+	return nil
+}
+
+// CanHandle returns true for BulkTransferResultParsed events
+func (w *BulkTransferPaymentWorker) CanHandle(eventType string) bool {
+	return eventType == "BulkTransferResultParsed"
+}
+
+// calculatePaidAmounts calculates the paid amount for each timesheet based on the employee's payment schedule
+func (w *BulkTransferPaymentWorker) calculatePaidAmounts(ctx context.Context, timesheets []*domain.Timesheet) (map[uint]int64, error) {
+	result := make(map[uint]int64)
+
+	assignmentMap, err := w.batchFetchAssignments(ctx, timesheets)
+	if err != nil {
+		w.logger.Error("Failed to batch fetch assignments", "error", err)
+		assignmentMap = make(map[string]*domain.ProjectEmployee)
+	}
+
+	for _, timesheet := range timesheets {
+		assignmentKey := fmt.Sprintf("%d:%d", timesheet.ProjectID, timesheet.EmployeeID)
+		assignment, exists := assignmentMap[assignmentKey]
+
+		var percentage float64
+		if !exists {
+			w.logger.Warn("Failed to get assignment for timesheet, using default weekly schedule",
+				"timesheet_id", timesheet.ID,
+				"employee_id", timesheet.EmployeeID,
+				"project_id", timesheet.ProjectID)
+			percentage = w.settingsConfig.GetWeeklyPaymentPercentage(ctx)
+		} else {
+			if assignment.PaymentSchedule == string(domain.PaymentScheduleMonthly) {
+				percentage = w.settingsConfig.GetMonthlyPaymentPercentage(ctx)
+			} else {
+				percentage = w.settingsConfig.GetWeeklyPaymentPercentage(ctx)
+			}
+		}
+
+		paidAmount := int64(float64(timesheet.Amount) * percentage)
+		result[timesheet.ID] = paidAmount
+	}
+
+	return result, nil
+}
+
+// batchFetchAssignments fetches all project employee assignments for the given timesheets
+func (w *BulkTransferPaymentWorker) batchFetchAssignments(ctx context.Context, timesheets []*domain.Timesheet) (map[string]*domain.ProjectEmployee, error) {
+	if len(timesheets) == 0 {
+		return make(map[string]*domain.ProjectEmployee), nil
+	}
+
+	type pair struct {
+		ProjectID  uint
+		EmployeeID uint
+	}
+	pairMap := make(map[pair]bool)
+	for _, ts := range timesheets {
+		pairMap[pair{ProjectID: ts.ProjectID, EmployeeID: ts.EmployeeID}] = true
+	}
+
+	projectIDs := make([]uint, 0, len(pairMap))
+	employeeIDs := make([]uint, 0, len(pairMap))
+	for p := range pairMap {
+		projectIDs = append(projectIDs, p.ProjectID)
+		employeeIDs = append(employeeIDs, p.EmployeeID)
+	}
+
+	assignments, err := w.projectEmployeeRepo.GetActiveAssignmentsByProjectsAndEmployees(ctx, projectIDs, employeeIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	assignmentMap := make(map[string]*domain.ProjectEmployee)
+	for _, assignment := range assignments {
+		key := fmt.Sprintf("%d:%d", assignment.ProjectID, assignment.EmployeeID)
+		assignmentMap[key] = assignment
+	}
+
+	return assignmentMap, nil
+}
+
+// updateRevenueReceivable updates the revenue_receivable field for paid timesheets
+func (w *BulkTransferPaymentWorker) updateRevenueReceivable(
+	ctx context.Context,
+	paymentUpdates []domain.PaymentStatusUpdate,
+	feePercentage float64,
+) error {
+	revenueUpdates := make(map[uint]int64)
+
+	for _, update := range paymentUpdates {
+		if update.PaidAmount == nil {
+			continue
+		}
+		revenueReceivable := int64(float64(*update.PaidAmount) * (1 + feePercentage))
+		revenueUpdates[update.TimesheetID] = revenueReceivable
+	}
+
+	if err := w.timesheetRepo.BulkUpdateRevenueReceivable(ctx, revenueUpdates); err != nil {
+		return fmt.Errorf("failed to bulk update revenue_receivable: %w", err)
+	}
+
+	return nil
+}

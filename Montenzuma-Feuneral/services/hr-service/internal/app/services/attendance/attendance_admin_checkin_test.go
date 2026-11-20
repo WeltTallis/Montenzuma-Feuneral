@@ -1,0 +1,298 @@
+package attendance
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"api-server/internal/domain"
+	"api-server/internal/pkg/clock"
+)
+
+func newAdminCheckInService(repo *fakeAttendanceRepo, now time.Time) *AttendanceService {
+	return &AttendanceService{
+		attendanceRepo: repo,
+		projectEmployeeRepo: &fakeProjectEmployeeRepo{assignment: &domain.ProjectEmployee{
+			Position:       "Công nhân",
+			CheckInEnabled: true,
+		}},
+		projectRepo: &fakeProjectRepo{p: &domain.Project{ID: 55, IsFlexible: true}},
+		payrateRepo: &fakePayrateRepo{pr: &domain.Payrate{
+			Payrate: domain.PayrateConfiguration(`{"Công nhân":{"ngày thường":{"08:00-17:00":300000}}}`),
+		}},
+		transactionManager: &fakeTransactionManager{},
+		clock:              clock.NewFake(now),
+	}
+}
+
+func TestAdminCreateCheckInCreatesOnlyTheCheckIn(t *testing.T) {
+	loc := clock.DefaultLocation
+	now := time.Date(2026, 8, 5, 10, 15, 0, 0, loc)
+	repo := &fakeAttendanceRepo{}
+	svc := newAdminCheckInService(repo, now)
+
+	attendance, err := svc.AdminCreateCheckIn(context.Background(), 123, 55, now, 0, false)
+	if err != nil {
+		t.Fatalf("AdminCreateCheckIn returned error: %v", err)
+	}
+	if attendance == nil {
+		t.Fatal("expected an attendance record")
+	}
+	wantCheckIn := time.Date(2026, 8, 5, 8, 0, 0, 0, loc)
+	if !attendance.CheckInTime.Equal(wantCheckIn) {
+		t.Fatalf("check_in_time = %v, want configured shift start %v", attendance.CheckInTime, wantCheckIn)
+	}
+	if attendance.CheckInGate != "admin" {
+		t.Fatalf("check_in_gate = %q, want admin", attendance.CheckInGate)
+	}
+	if attendance.CheckOutTime != nil || attendance.CheckOutGate != nil {
+		t.Fatalf("admin check-in must not create checkout, got time=%v gate=%v", attendance.CheckOutTime, attendance.CheckOutGate)
+	}
+	if attendance.EarningAmount != nil || attendance.QuotaCreditedAt != nil {
+		t.Fatalf("admin check-in must not create earning/quota, got earning=%v quota=%v", attendance.EarningAmount, attendance.QuotaCreditedAt)
+	}
+}
+
+func TestAdminCreateCheckInRejectsNonFlexibleProject(t *testing.T) {
+	loc := clock.DefaultLocation
+	now := time.Date(2026, 8, 5, 10, 15, 0, 0, loc)
+	repo := &fakeAttendanceRepo{}
+	svc := newAdminCheckInService(repo, now)
+	svc.projectRepo = &fakeProjectRepo{p: &domain.Project{ID: 55, IsFlexible: false}}
+
+	_, err := svc.AdminCreateCheckIn(context.Background(), 123, 55, now, 0, false)
+	if err == nil || !domain.IsValidationError(err) {
+		t.Fatalf("AdminCreateCheckIn error = %v, want flexible-project validation error", err)
+	}
+}
+
+func TestCheckInClosesLegacyApprovedOpenAttendanceBeforeCreatingNewShift(t *testing.T) {
+	loc := clock.DefaultLocation
+	yesterdayCheckIn := time.Date(2026, 8, 4, 8, 0, 0, 0, loc)
+	approved := string(domain.AttendanceReviewActionApproved)
+	legacy := &domain.Attendance{
+		ID:           77,
+		EmployeeID:   123,
+		ProjectID:    55,
+		Date:         yesterdayCheckIn,
+		CheckInTime:  yesterdayCheckIn,
+		CheckInGate:  "Cổng chính",
+		ReviewAction: &approved,
+	}
+	repo := &fakeAttendanceRepo{approvedOpenBefore: legacy}
+	now := time.Date(2026, 8, 5, 8, 10, 0, 0, loc)
+	svc := newAdminCheckInService(repo, now)
+	svc.projectRepo = &fakeProjectRepo{p: &domain.Project{
+		ID:                   55,
+		IsFlexible:           true,
+		GeofenceRadiusMeters: 100,
+		GeofenceGates:        []domain.GeofenceGate{{Name: "Cổng chính", Lat: 10, Lng: 106}},
+	}}
+
+	created, err := svc.CheckIn(context.Background(), 123, 55, domain.GeoReading{Lat: 10, Lng: 106})
+	if err != nil {
+		t.Fatalf("CheckIn returned error: %v", err)
+	}
+	if created == nil || created.Date.Format("2006-01-02") != "2026-08-05" {
+		t.Fatalf("expected today's check-in, got %#v", created)
+	}
+	wantCheckout := time.Date(2026, 8, 4, 17, 0, 0, 0, loc)
+	if legacy.CheckOutTime == nil || !legacy.CheckOutTime.Equal(wantCheckout) {
+		t.Fatalf("legacy checkout = %v, want configured shift end %v", legacy.CheckOutTime, wantCheckout)
+	}
+	if legacy.CheckOutGate == nil || *legacy.CheckOutGate != "admin" {
+		t.Fatalf("legacy checkout gate = %v, want admin", legacy.CheckOutGate)
+	}
+}
+
+func newAdminCheckInEnqueuerService(repo *fakeAttendanceRepo, now time.Time, enqueuer *fakeTaskEnqueuer) *AttendanceService {
+	svc := newAdminCheckInService(repo, now)
+	svc.taskEnqueuer = enqueuer
+	return svc
+}
+
+func TestAdminCreateCheckInOutCreatesCompletedRecord(t *testing.T) {
+	loc := clock.DefaultLocation
+	// 19:00 — the 08:00-17:00 shift ended 2 hours ago.
+	now := time.Date(2026, 8, 5, 19, 0, 0, 0, loc)
+	repo := &fakeAttendanceRepo{}
+	enqueuer := &fakeTaskEnqueuer{done: make(chan struct{}, 1)}
+	svc := newAdminCheckInEnqueuerService(repo, now, enqueuer)
+
+	attendance, err := svc.AdminCreateCheckIn(context.Background(), 123, 55, now, 0, true)
+	if err != nil {
+		t.Fatalf("AdminCreateCheckIn(with_checkout) returned error: %v", err)
+	}
+	// The after-commit callback fires the enqueue in a goroutine, so wait on
+	// the done signal before asserting on the recorded calls.
+	<-enqueuer.done
+	wantIn := time.Date(2026, 8, 5, 8, 0, 0, 0, loc)
+	wantOut := time.Date(2026, 8, 5, 17, 0, 0, 0, loc)
+	if !attendance.CheckInTime.Equal(wantIn) || attendance.CheckOutTime == nil || !attendance.CheckOutTime.Equal(wantOut) {
+		t.Fatalf("record times = %v -> %v, want %v -> %v", attendance.CheckInTime, attendance.CheckOutTime, wantIn, wantOut)
+	}
+	if attendance.CheckInGate != "admin" || attendance.CheckOutGate == nil || *attendance.CheckOutGate != "admin" {
+		t.Fatalf("gates = %q / %v, want admin/admin", attendance.CheckInGate, attendance.CheckOutGate)
+	}
+	if attendance.EarningAmount == nil || *attendance.EarningAmount != 300000 {
+		t.Fatalf("earning = %v, want the configured 300000", attendance.EarningAmount)
+	}
+	if attendance.QuotaCreditEligibleAt == nil || !attendance.QuotaCreditEligibleAt.Equal(now.Add(domain.QuotaCreditHoldDuration)) {
+		t.Fatalf("quota_credit_eligible_at = %v, want now + default hold", attendance.QuotaCreditEligibleAt)
+	}
+	if attendance.QuotaCreditedAt != nil {
+		t.Fatalf("quota must stay uncredited until the scheduled task, got %v", attendance.QuotaCreditedAt)
+	}
+	creditCalls := enqueuer.creditSnapshot()
+	if len(creditCalls) != 1 {
+		t.Fatalf("credit task calls = %d, want exactly 1", len(creditCalls))
+	}
+	if !creditCalls[0].at.Equal(now.Add(domain.QuotaCreditHoldDuration)) {
+		t.Fatalf("credit task fires at %v, want %v", creditCalls[0].at, now.Add(domain.QuotaCreditHoldDuration))
+	}
+	if calls := enqueuer.snapshot(); len(calls) != 0 {
+		t.Fatalf("completed record must not schedule the auto-reject task, got %+v", calls)
+	}
+}
+
+func TestAdminCreateCheckInOutRejectsRunningShift(t *testing.T) {
+	loc := clock.DefaultLocation
+	// 10:15 — the 08:00-17:00 shift is still running; a checkout would be in the future.
+	now := time.Date(2026, 8, 5, 10, 15, 0, 0, loc)
+	repo := &fakeAttendanceRepo{}
+	svc := newAdminCheckInService(repo, now)
+
+	_, err := svc.AdminCreateCheckIn(context.Background(), 123, 55, now, 0, true)
+	if err == nil || !domain.IsValidationError(err) {
+		t.Fatalf("AdminCreateCheckIn(with_checkout) error = %v, want running-shift validation error", err)
+	}
+	if repo.created != nil {
+		t.Fatalf("no record may be created, got %+v", repo.created)
+	}
+}
+
+func TestAdminCreateCheckInOutAllowedAfterGraceWindow(t *testing.T) {
+	loc := clock.DefaultLocation
+	// 23:30 — far past shift end (17:00) plus the 4h checkout grace; only a
+	// complete record is possible this late, which is exactly the point.
+	now := time.Date(2026, 8, 5, 23, 30, 0, 0, loc)
+	repo := &fakeAttendanceRepo{}
+	svc := newAdminCheckInService(repo, now)
+
+	attendance, err := svc.AdminCreateCheckIn(context.Background(), 123, 55, now, 0, true)
+	if err != nil {
+		t.Fatalf("AdminCreateCheckIn(with_checkout) after grace returned error: %v", err)
+	}
+	if attendance.CheckOutTime == nil {
+		t.Fatal("expected a completed record with a checkout time")
+	}
+}
+
+func TestAdminCreateCheckInOutRejectsUnearnableShift(t *testing.T) {
+	loc := clock.DefaultLocation
+	now := time.Date(2026, 8, 5, 19, 0, 0, 0, loc)
+	repo := &fakeAttendanceRepo{}
+	svc := newAdminCheckInService(repo, now)
+	svc.payrateRepo = &fakePayrateRepo{pr: &domain.Payrate{
+		Payrate: domain.PayrateConfiguration(`{"Công nhân":{"ngày thường":{"08:00-17:00":0}}}`),
+	}}
+
+	_, err := svc.AdminCreateCheckIn(context.Background(), 123, 55, now, 0, true)
+	if err == nil || !domain.IsValidationError(err) {
+		t.Fatalf("AdminCreateCheckIn(with_checkout) error = %v, want zero-earning validation error", err)
+	}
+	if repo.created != nil {
+		t.Fatalf("no record may be created for an unearnable shift, got %+v", repo.created)
+	}
+}
+
+func TestAdminCreateCheckInWithCheckoutForPastDateSucceeds(t *testing.T) {
+	loc := clock.DefaultLocation
+	// Today is 2026-08-05 10:00
+	now := time.Date(2026, 8, 5, 10, 0, 0, 0, loc)
+	// Past day is yesterday: 2026-08-04
+	yesterday := time.Date(2026, 8, 4, 0, 0, 0, 0, loc)
+	repo := &fakeAttendanceRepo{}
+	svc := newAdminCheckInService(repo, now)
+
+	attendance, err := svc.AdminCreateCheckIn(context.Background(), 123, 55, yesterday, 0, true)
+	if err != nil {
+		t.Fatalf("AdminCreateCheckIn(yesterday, with_checkout=true) returned error: %v", err)
+	}
+	if attendance == nil {
+		t.Fatal("expected attendance record")
+	}
+	wantDate := time.Date(2026, 8, 4, 0, 0, 0, 0, loc)
+	if !attendance.Date.Equal(wantDate) {
+		t.Fatalf("attendance.Date = %v, want %v", attendance.Date, wantDate)
+	}
+	wantIn := time.Date(2026, 8, 4, 8, 0, 0, 0, loc)
+	wantOut := time.Date(2026, 8, 4, 17, 0, 0, 0, loc)
+	if !attendance.CheckInTime.Equal(wantIn) || attendance.CheckOutTime == nil || !attendance.CheckOutTime.Equal(wantOut) {
+		t.Fatalf("times = %v -> %v, want %v -> %v", attendance.CheckInTime, attendance.CheckOutTime, wantIn, wantOut)
+	}
+	if attendance.EarningAmount == nil || *attendance.EarningAmount != 300000 {
+		t.Fatalf("earning = %v, want 300000", attendance.EarningAmount)
+	}
+}
+
+func TestAdminCreateCheckInWithoutCheckoutForPastDateRejected(t *testing.T) {
+	loc := clock.DefaultLocation
+	now := time.Date(2026, 8, 5, 10, 0, 0, 0, loc)
+	yesterday := time.Date(2026, 8, 4, 0, 0, 0, 0, loc)
+	repo := &fakeAttendanceRepo{}
+	svc := newAdminCheckInService(repo, now)
+
+	_, err := svc.AdminCreateCheckIn(context.Background(), 123, 55, yesterday, 0, false)
+	if err == nil || !domain.IsValidationError(err) {
+		t.Fatalf("AdminCreateCheckIn(yesterday, with_checkout=false) error = %v, want validation error", err)
+	}
+}
+
+func TestCheckInAutoRejectsExpiredYesterdayOpenAttendance(t *testing.T) {
+	loc := clock.DefaultLocation
+	// Yesterday shift was 08:00 - 17:00, deadline was 17:00 + 4h = 21:00 on 2026-08-04
+	yesterdayCheckIn := time.Date(2026, 8, 4, 8, 0, 0, 0, loc)
+	yesterdayDate := time.Date(2026, 8, 4, 0, 0, 0, 0, loc)
+	todayDate := time.Date(2026, 8, 5, 0, 0, 0, 0, loc)
+	now := time.Date(2026, 8, 5, 8, 15, 0, 0, loc) // The next morning
+
+	yesterdayOpen := &domain.Attendance{
+		ID:          99,
+		EmployeeID:  123,
+		ProjectID:   55,
+		Date:        yesterdayDate,
+		CheckInTime: yesterdayCheckIn,
+		CheckInGate: "Cổng chính",
+	}
+
+	repo := &fakeAttendanceRepo{
+		byDateByDay: map[string]*domain.Attendance{
+			"2026-08-04": yesterdayOpen,
+			"2026-08-05": nil,
+		},
+	}
+	svc := newAdminCheckInService(repo, now)
+	svc.projectRepo = &fakeProjectRepo{p: &domain.Project{
+		ID:                   55,
+		IsFlexible:           true,
+		GeofenceRadiusMeters: 100,
+		GeofenceGates:        []domain.GeofenceGate{{Name: "Cổng chính", Lat: 10, Lng: 106}},
+	}}
+
+	created, err := svc.CheckIn(context.Background(), 123, 55, domain.GeoReading{Lat: 10, Lng: 106})
+	if err != nil {
+		t.Fatalf("CheckIn returned error: %v", err)
+	}
+	if created == nil || !created.Date.Equal(todayDate) {
+		t.Fatalf("expected today's check-in, got %#v", created)
+	}
+
+	// Verify yesterday's open attendance was automatically rejected
+	if yesterdayOpen.SalaryRejectReason == nil {
+		t.Fatal("expected yesterday's expired open attendance to have salary_reject_reason set")
+	}
+	if yesterdayOpen.EarningAmount == nil || *yesterdayOpen.EarningAmount != 0 {
+		t.Fatalf("expected yesterday's earning to be 0, got %v", yesterdayOpen.EarningAmount)
+	}
+}

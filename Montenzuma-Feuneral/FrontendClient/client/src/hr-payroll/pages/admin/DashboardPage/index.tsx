@@ -1,0 +1,426 @@
+import { useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { format, startOfMonth } from 'date-fns';
+// UU PRO restyle (W13a): lucide → verified @untitledui/icons. The shared
+// admin-dashboard icon slots are widened to ComponentType<SVGProps> (W13a
+// follow-up), so UU's plain-FC icons fit everywhere on this page.
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  BarChart03,
+  Building02,
+  FolderCheck,
+  ShieldTick,
+  SwitchHorizontal01,
+  Trophy01,
+  Users01,
+} from '@untitledui/icons';
+
+import { DashboardLoadingSkeleton } from '@hr/components/ui/loading-states';
+import { DashboardHeader } from '@hr/components/admin-dashboard/DashboardHeader';
+import { DashboardSectionHeader } from '@hr/components/admin-dashboard/DashboardSectionHeader';
+import { RecentEmployeesCard } from '@hr/components/admin-dashboard/RecentEmployeesCard';
+import { ActivityUsersSheet } from '@hr/components/admin-dashboard/ActivityUsersSheet';
+import { ProjectProfitabilityCard } from '@hr/components/admin-dashboard/ProjectProfitabilityCard';
+import { SalaryDistributionChart } from '@hr/components/admin-dashboard/SalaryDistributionChart';
+import { MonthlyFinancialTable } from '@hr/components/admin-dashboard/MonthlyFinancialTable';
+import { TopPaidEmployeesCard } from '@hr/components/admin-dashboard/TopPaidEmployeesCard';
+import { BankTransferBreakdownCard, ProjectSelector } from '@hr/components/admin-dashboard/BankTransferBreakdownCard';
+import { CheckInHealthStrip } from '@hr/components/admin-dashboard/CheckInHealthStrip';
+import {
+  DashboardActivityPanel,
+  DashboardAreaHeader,
+  DashboardMetricStrip,
+  DashboardPriorityList,
+  type DashboardMetricItem,
+  type DashboardPriorityItem,
+} from '@hr/components/admin-dashboard/DashboardOverview';
+import { useApprovalsList } from '@hr/hooks/api/useApprovals';
+import { useDashboardData } from '@hr/hooks/admin-dashboard/useDashboardData';
+import { useDashboardActions } from '@hr/hooks/admin-dashboard/useDashboardActions';
+import { useDashboardStats } from '@hr/hooks/admin-dashboard/useDashboardStats';
+import { useTimesheets } from '@hr/hooks/api/useTimesheets';
+import { useBankUsageAllProjects, useEmployeeActivityStats } from '@hr/hooks/api/useDashboard';
+import { useDashboardNavigation } from '@hr/hooks/useDashboardNavigation';
+import { CheckInRosterReminderBanner } from '@hr/components/admin-dashboard/CheckInRosterReminderBanner';
+import { formatFullCurrency as formatVND } from '@hr/utils/formatters';
+
+const AdminDashboard = () => {
+  const [selectedMonth, setSelectedMonth] = useState<string>(format(startOfMonth(new Date()), 'yyyy-MM'));
+  const [activitySchedule, setActivitySchedule] = useState<'weekly' | 'monthly' | 'flexible' | null>(null);
+  const [bankProjectId, setBankProjectId] = useState<number | null>(null);
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+
+  const { data: bankData } = useBankUsageAllProjects();
+
+  const handleMonthChange = useCallback((value: string) => {
+    setSelectedMonth(value);
+  }, []);
+
+  const monthParam = selectedMonth === 'all' ? undefined : selectedMonth;
+  const monthLabel =
+    selectedMonth === 'all'
+      ? 'All periods'
+      : (() => {
+          const [year, month] = selectedMonth.split('-');
+          return `${month}/${year}`;
+        })();
+
+  const { data, loading, employees, refetch, isRefreshing } = useDashboardData(monthParam);
+  const actions = useDashboardActions();
+  const {
+    data: pendingData,
+    isError: hasPendingError,
+    isFetching: isPendingFetching,
+    refetch: refetchPending,
+  } = useTimesheets({ status: 'pending_approval', page: 1, pageSize: 20 });
+  const {
+    data: activityData,
+    isLoading: isActivityLoading,
+    isError: hasActivityError,
+    isFetching: isActivityFetching,
+    refetch: refetchActivity,
+  } = useEmployeeActivityStats(monthParam);
+  const navigate = useNavigate();
+  const dashboardNav = useDashboardNavigation();
+  // Approval-engine queue counts (pending + rescheduled + escalated). The
+  // priority row renders only when non-zero (row law: no zero-value rows).
+  const approvalsQueue = useApprovalsList({ statuses: ['pending', 'rescheduled'], pageSize: 1 });
+  const approvalsEscalated = useApprovalsList({ statuses: ['escalated'], pageSize: 1 });
+
+  const pendingApprovals = pendingData?.pagination?.totalRecords ?? null;
+
+  const handleRefresh = useCallback(async () => {
+    setIsManualRefreshing(true);
+    try {
+      await Promise.all([
+        refetch(),
+        refetchPending(),
+        refetchActivity(),
+        Promise.resolve(actions.handleRefresh?.()),
+      ]);
+    } finally {
+      setIsManualRefreshing(false);
+    }
+  }, [actions, refetch, refetchActivity, refetchPending]);
+
+  const isDashboardRefreshing =
+    isManualRefreshing || isRefreshing || isPendingFetching || isActivityFetching;
+
+  const { activityStats } = useDashboardStats({
+    dashboardSummary: data.dashboardSummary,
+    totalPendingApprovals: pendingApprovals ?? 0,
+    dashboardNav,
+    activityStats: activityData ?? null,
+    onActivityClick: setActivitySchedule,
+  });
+
+  const activityItems = useMemo(
+    () =>
+      activityStats.map((item) => ({
+        label: typeof item.label === 'string' ? item.label : 'Activity',
+        value: item.value,
+        onClick: item.onClick,
+      })),
+    [activityStats],
+  );
+
+  const activityProjectItems = useMemo(
+    () =>
+      (activityData?.active_by_project ?? []).map((project) => ({
+        label: project.project_name,
+        value: project.count,
+      })),
+    [activityData],
+  );
+
+  const metricItems = useMemo<DashboardMetricItem[]>(() => {
+    if (!data.dashboardSummary) {
+      return [];
+    }
+
+    // Zone ownership: the strip owns period OUTCOMES only. Pending payouts and
+    // approval-queue counts belong to DashboardPriorityList below — never
+    // repeat a metric between the two adjacent zones.
+    return [
+      {
+        label: 'Paid this period',
+        value: formatVND(data.dashboardSummary.paid_salary_this_month),
+        context: `Total paid ${formatVND(data.dashboardSummary.total_paid_salary)}`,
+        tone: 'primary',
+        onClick: dashboardNav.navigateToSalaryLedger,
+      },
+      {
+        label: 'Profit this period',
+        value: formatVND(data.dashboardSummary.total_profit_this_month),
+        context: `Total to date ${formatVND(data.dashboardSummary.total_profit)}`,
+        tone: 'success',
+      },
+      {
+        label: 'Active staff',
+        value: data.dashboardSummary.total_working_employees.toLocaleString('en-KE'),
+        context: `${data.dashboardSummary.total_employees.toLocaleString('en-KE')} staff · ${data.dashboardSummary.employees_hired_this_month.toLocaleString('en-KE')} new`,
+        tone: 'neutral',
+        onClick: dashboardNav.navigateToActiveEmployees,
+      },
+    ];
+  }, [dashboardNav, data.dashboardSummary]);
+
+  const priorityItems = useMemo<DashboardPriorityItem[]>(() => {
+    if (!data.dashboardSummary) {
+      return [];
+    }
+
+    return [
+      {
+        title: 'Timesheets awaiting approval',
+        detail:
+          hasPendingError
+            ? 'Could not load the organisation-wide queue. Refresh to try again.'
+            : pendingApprovals === null
+              ? 'Loading the organisation-wide timesheet queue.'
+              : pendingApprovals > 0
+                ? 'Review these timesheets before closing the payroll period.'
+                : 'There are no timesheets awaiting approval across the organisation.',
+        value: pendingApprovals === null ? '--' : pendingApprovals.toLocaleString('en-KE'),
+        statusLabel: hasPendingError
+          ? 'Unavailable'
+          : pendingApprovals === null
+            ? 'Loading'
+            : pendingApprovals > 0
+              ? 'Needs review'
+              : 'Up to date',
+        icon: AlertTriangle,
+        tone:
+          hasPendingError || pendingApprovals === null
+            ? 'neutral'
+            : pendingApprovals > 0
+              ? 'warning'
+              : 'success',
+        onClick:
+          pendingApprovals !== null && pendingApprovals > 0
+            ? dashboardNav.navigateToPendingApprovals
+            : undefined,
+      },
+      {
+        title: 'Payroll awaiting payment',
+        // No paid-salary figure here — that metric belongs to the strip above.
+        detail: `This amount will be paid after timesheets are approved for ${monthLabel}.`,
+        value: formatVND(data.dashboardSummary.pending_salary_this_month),
+        statusLabel:
+          data.dashboardSummary.pending_salary_this_month > 0 ? 'Needs attention' : 'Paid',
+        icon: SwitchHorizontal01,
+        tone: data.dashboardSummary.pending_salary_this_month > 0 ? 'primary' : 'success',
+        onClick: dashboardNav.navigateToSalaryLedger,
+      },
+      ...(approvalsQueue.data && (approvalsQueue.data.pagination?.totalRecords ?? 0) + (approvalsEscalated.data?.pagination?.totalRecords ?? 0) > 0
+        ? [
+            {
+              title: 'Approval requests',
+              detail: 'Requests awaiting approval or escalated for review.',
+              value: (
+                (approvalsQueue.data.pagination?.totalRecords ?? 0) +
+                (approvalsEscalated.data?.pagination?.totalRecords ?? 0)
+              ).toLocaleString('en-KE'),
+              statusLabel:
+                (approvalsEscalated.data?.pagination?.totalRecords ?? 0) > 0 ? 'Escalated' : 'Needs review',
+              icon: FolderCheck,
+              tone: (approvalsEscalated.data?.pagination?.totalRecords ?? 0) > 0 ? 'warning' : 'primary',
+              onClick: () => navigate('/admin/approvals'),
+            } satisfies DashboardPriorityItem,
+          ]
+        : []),
+    ];
+  }, [
+    dashboardNav,
+    data.dashboardSummary,
+    hasPendingError,
+    monthLabel,
+    pendingApprovals,
+    approvalsQueue.data,
+    approvalsEscalated.data,
+    navigate,
+  ]);
+
+  if (loading) {
+    return (
+      <div className="admin-dashboard-page p-3 sm:p-4">
+        <DashboardLoadingSkeleton />
+      </div>
+    );
+  }
+
+  return (
+    <div className="admin-dashboard-page min-h-full bg-transparent">
+      <div className="mx-auto flex max-w-[1440px] flex-col gap-4 overflow-x-hidden p-3 sm:p-4">
+        <div className="motion-reduce:animate-none motion-reduce:opacity-100">
+          <DashboardHeader value={selectedMonth} onChange={handleMonthChange} />
+        </div>
+
+        <CheckInRosterReminderBanner />
+
+        <DashboardMetricStrip items={metricItems} />
+
+        <div
+          data-slot="admin-dashboard-bento"
+          className="admin-dashboard-bento grid grid-cols-1 gap-4 xl:grid-cols-12 xl:items-start"
+        >
+          <div className="min-w-0 space-y-4 xl:col-span-7">
+            <DashboardPriorityList
+              items={priorityItems}
+              isRefreshing={isDashboardRefreshing}
+              onRefresh={handleRefresh}
+            />
+          </div>
+
+          <div className="min-w-0 xl:col-span-5">
+            <DashboardActivityPanel
+              monthLabel={monthLabel}
+              totalActive={activityData?.active_total}
+              projectItems={activityProjectItems}
+              items={activityItems}
+              isLoading={isActivityLoading && !activityData}
+              hasError={hasActivityError}
+            />
+          </div>
+
+          <DashboardAreaHeader
+            eyebrow="Finance"
+            title="Cash flow and performance"
+            description="Review financial history, payroll bank distribution and profit by project."
+            className="mt-2 xl:col-span-12"
+          />
+
+          <div
+            data-slot="dashboard-finance-bento"
+            className="grid min-w-0 gap-4 xl:col-span-12 xl:grid-cols-12 xl:items-start"
+          >
+            <div className="min-w-0 space-y-4 xl:col-span-7">
+              <section data-slot="dashboard-financial-history" className="admin-dashboard-finance-group min-w-0 space-y-3">
+                <DashboardSectionHeader
+                  eyebrow="Cash flow"
+                  title="Financial history"
+                  subtitle="Costs, revenue and accumulated profit over the past 12 months."
+                  icon={ArrowUpRight}
+                />
+                <MonthlyFinancialTable />
+              </section>
+
+              <section data-slot="dashboard-bank-distribution" className="admin-dashboard-finance-group min-w-0 space-y-3">
+                <DashboardSectionHeader
+                  eyebrow="Payments"
+                  title="Payroll banks"
+                  subtitle="Staff distribution by bank for reviewing payment details."
+                  icon={Building02}
+                  actions={
+                    bankData && bankData.projects.length > 0 ? (
+                      <ProjectSelector
+                        projects={bankData.projects}
+                        selectedId={bankProjectId}
+                        onSelect={setBankProjectId}
+                      />
+                    ) : undefined
+                  }
+                />
+                <BankTransferBreakdownCard selectedProjectId={bankProjectId} />
+              </section>
+            </div>
+
+            <section
+              data-slot="dashboard-project-profitability"
+              className="admin-dashboard-finance-group min-w-0 space-y-3 xl:col-span-5"
+            >
+              <DashboardSectionHeader
+                eyebrow="Projects"
+                title="Project profit"
+                subtitle="Track profit trends and projects affecting payroll-period results."
+                icon={FolderCheck}
+              />
+              <ProjectProfitabilityCard />
+            </section>
+          </div>
+
+          <DashboardAreaHeader
+            eyebrow="Staff"
+            title="Payroll and staff changes"
+            description="Spot unusual salary distributions, review top earners and check recently added staff."
+            className="mt-2 xl:col-span-12"
+          />
+
+          <div
+            data-slot="dashboard-workforce-bento"
+            className="grid min-w-0 gap-4 xl:col-span-12 xl:grid-cols-12 xl:items-start"
+          >
+            <section
+              data-slot="dashboard-salary-distribution"
+              className="admin-dashboard-workforce-group min-w-0 space-y-3 xl:col-span-7 xl:col-start-1 xl:row-start-1"
+            >
+              <DashboardSectionHeader
+                eyebrow="Payroll analysis"
+                title="Salary distribution"
+                subtitle="Typical salary ranges to review before payments are made."
+                icon={BarChart03}
+              />
+              <SalaryDistributionChart />
+            </section>
+
+            <section
+              data-slot="dashboard-top-paid"
+              className="admin-dashboard-workforce-group min-w-0 space-y-3 xl:col-span-5 xl:col-start-8 xl:row-span-2 xl:row-start-1"
+            >
+              <DashboardSectionHeader
+                eyebrow="Staff"
+                title={`Payments by staff member — ${monthLabel}`}
+                subtitle="Staff members paid the most in the selected period."
+                icon={Trophy01}
+              />
+              <TopPaidEmployeesCard month={monthParam} />
+            </section>
+
+            <section
+              data-slot="dashboard-recent-employees"
+              className="admin-dashboard-workforce-group min-w-0 space-y-3 xl:col-span-7 xl:col-start-1 xl:row-start-2"
+            >
+              <DashboardSectionHeader
+                eyebrow="Staff"
+                title="Recently added staff"
+                subtitle="Recently added records for reviewing project staffing."
+                icon={Users01}
+              />
+              <RecentEmployeesCard
+                employees={employees.employees}
+                isLoading={employees.isLoading}
+                isLoadingMore={employees.isLoadingMore}
+                totalEmployees={employees.totalEmployees}
+                weeks={employees.weeks}
+                onEmployeeClick={(employee) => actions.handleEmployeeClick?.(employee)}
+                onLoadMore={employees.loadMore}
+              />
+            </section>
+          </div>
+
+          <section
+            data-slot="dashboard-operational-health"
+            className="admin-dashboard-health-group min-w-0 space-y-3 xl:col-span-12"
+          >
+            <DashboardSectionHeader
+              eyebrow="Operational health"
+              title="Self check-in and pay advance limits"
+              subtitle="Review attendance issues and pay advance limits before closing the period."
+              icon={ShieldTick}
+            />
+            <CheckInHealthStrip month={monthParam} />
+          </section>
+        </div>
+      </div>
+
+      <ActivityUsersSheet
+        schedule={activitySchedule}
+        month={monthParam}
+        onClose={() => setActivitySchedule(null)}
+      />
+    </div>
+  );
+};
+
+export default AdminDashboard;

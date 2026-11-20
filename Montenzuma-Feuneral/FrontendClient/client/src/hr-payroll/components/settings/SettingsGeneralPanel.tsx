@@ -1,0 +1,382 @@
+import { type LucideIcon, Building2, Landmark, Percent, Wallet } from 'lucide-react';
+import { useId, type ReactNode } from 'react';
+
+import { SettingCard } from '@hr/components/settings/SettingCard';
+import { Button } from '@hr/components/ui/button';
+import { Label } from '@hr/components/ui/label';
+import { Switch } from '@hr/components/ui/switch';
+import type { SettingsFormState } from '@hr/hooks/settings/useSettingsForm';
+
+interface SettingsSectionProps {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  children: ReactNode;
+}
+
+interface SettingToggleCardProps {
+  title: string;
+  description: string;
+  checked: boolean;
+  originalChecked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  onSave: () => void;
+  onReset: () => void;
+  isSaving: boolean;
+}
+
+const SettingToggleCard = ({
+  title,
+  description,
+  checked,
+  originalChecked,
+  onCheckedChange,
+  onSave,
+  onReset,
+  isSaving,
+}: SettingToggleCardProps) => {
+  const generatedId = useId().replace(/:/g, '');
+  const switchId = `setting-toggle-${generatedId}`;
+  const descriptionId = `${switchId}-description`;
+  const isDirty = checked !== originalChecked;
+
+  return (
+    <div
+      data-slot="setting-row"
+      className={`group min-w-0 px-4 py-4 transition-colors sm:px-5 ${isDirty ? 'bg-warning/5' : ''}`}
+    >
+      <div className="grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(15rem,20rem)] md:items-start md:gap-6">
+        <div className="min-w-0 space-y-1 md:py-2">
+          <Label
+            htmlFor={switchId}
+            className="block break-words text-sm font-semibold leading-5 text-foreground"
+          >
+            {title}
+          </Label>
+          <p id={descriptionId} className="break-words text-sm leading-relaxed text-balance text-muted-foreground">
+            {description}
+          </p>
+        </div>
+        <div className="flex min-w-0 items-center gap-2 md:justify-end md:pt-2">
+          <Switch
+            id={switchId}
+            checked={checked}
+            onCheckedChange={onCheckedChange}
+            aria-describedby={descriptionId}
+            disabled={isSaving}
+          />
+          {isDirty && (
+            <>
+              <Button size="sm" onClick={onSave} disabled={isSaving}>
+                Save
+              </Button>
+              <Button size="sm" variant="outline" onClick={onReset} disabled={isSaving}>
+                Undo
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SettingsSection = ({ icon: Icon, title, description, children }: SettingsSectionProps) => {
+  const generatedId = useId().replace(/:/g, '');
+  const headingId = `settings-section-${generatedId}`;
+
+  return (
+    <section
+      aria-labelledby={headingId}
+      className="grid gap-5 border-b bg-card px-4 py-7 first:rounded-t-2xl last:rounded-b-2xl last:border-b-0 last:pb-7 lg:grid-cols-[minmax(12rem,0.65fr)_minmax(0,1.35fr)] lg:gap-8 lg:px-6"
+    >
+      <div className="flex min-w-0 items-start gap-3 lg:pt-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/10 bg-primary/5 text-primary shadow-sm">
+          <Icon aria-hidden="true" className="h-[18px] w-[18px]" />
+        </div>
+        <div className="min-w-0 pt-0.5">
+          <h2 id={headingId} className="text-sm font-bold leading-6 text-foreground">
+            {title}
+          </h2>
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground text-balance">
+            {description}
+          </p>
+        </div>
+      </div>
+
+      <div
+        data-slot="settings-group"
+        className="min-w-0 divide-y overflow-hidden rounded-2xl border bg-card shadow-sm"
+      >
+        {children}
+      </div>
+    </section>
+  );
+};
+
+interface SettingsGeneralPanelProps {
+  form: SettingsFormState;
+}
+
+export const SettingsGeneralPanel = ({ form }: SettingsGeneralPanelProps) => (
+  <div className="space-y-0">
+    <SettingsSection
+      icon={Percent}
+      title="Payment limits"
+      description="Control the amounts and budget percentages available for disbursement."
+    >
+      <SettingCard
+        title="Maximum total per bulk transfer file"
+        description="The system automatically splits files so each file stays below this limit."
+        value={form.bulkTransferWorkbookLimitVnd}
+        originalValue={form.originalBulkTransferWorkbookLimitVnd}
+        onChange={form.setBulkTransferWorkbookLimitVnd}
+        onSave={form.handleSaveBulkTransferWorkbookLimitVnd}
+        onReset={() =>
+          form.setBulkTransferWorkbookLimitVnd(form.originalBulkTransferWorkbookLimitVnd)
+        }
+        isDirty={
+          form.bulkTransferWorkbookLimitVnd !== form.originalBulkTransferWorkbookLimitVnd
+        }
+        isSaving={form.isSaving}
+        displayMode="currency-slider"
+        min="100000000"
+        max="500000000"
+        sliderPresets={[
+          '100000000',
+          '200000000',
+          '300000000',
+          '400000000',
+          '500000000',
+        ]}
+        errorMessage={form.bulkTransferWorkbookLimitSaveError}
+        unavailableMessage={form.bulkTransferWorkbookLimitUnavailableMessage}
+        onRetry={form.retryLoading}
+      />
+      <SettingCard
+        title="Weekly payroll percentage"
+        description="Percentage of the budget available for weekly payroll."
+        value={form.weeklyPaymentPercentage}
+        originalValue={form.originalWeeklyPayment}
+        onChange={form.setWeeklyPaymentPercentage}
+        onSave={form.handleSaveWeeklyPayment}
+        onReset={() => form.setWeeklyPaymentPercentage(form.originalWeeklyPayment)}
+        isDirty={form.weeklyPaymentPercentage !== form.originalWeeklyPayment}
+        isSaving={form.isSaving}
+        type="number"
+        suffix="%"
+      />
+      <SettingCard
+        title="Monthly payroll percentage"
+        description="Percentage of the budget available for monthly payroll."
+        value={form.monthlyPaymentPercentage}
+        originalValue={form.originalMonthlyPayment}
+        onChange={form.setMonthlyPaymentPercentage}
+        onSave={form.handleSaveMonthlyPayment}
+        onReset={() => form.setMonthlyPaymentPercentage(form.originalMonthlyPayment)}
+        isDirty={form.monthlyPaymentPercentage !== form.originalMonthlyPayment}
+        isSaving={form.isSaving}
+        type="number"
+        suffix="%"
+      />
+      <SettingCard
+        title="Self-check-in advance percentage"
+        description="Percentage of recorded earnings added to the advance payment limit."
+        value={form.selfCheckInAdvancePercentage}
+        originalValue={form.originalSelfCheckInAdvancePercentage}
+        onChange={form.setSelfCheckInAdvancePercentage}
+        onSave={form.handleSaveSelfCheckInAdvancePercentage}
+        onReset={() =>
+          form.setSelfCheckInAdvancePercentage(form.originalSelfCheckInAdvancePercentage)
+        }
+        isDirty={
+          form.selfCheckInAdvancePercentage !== form.originalSelfCheckInAdvancePercentage
+        }
+        isSaving={form.isSaving}
+        type="number"
+        min={1}
+        max={100}
+        step={1}
+        suffix="%"
+      />
+      <SettingCard
+        title="Self-check-in advance hold after a shift"
+        description="Hours to wait before completed shift earnings are added to the advance payment limit."
+        value={form.selfCheckInAdvanceHoldHours}
+        originalValue={form.originalSelfCheckInAdvanceHoldHours}
+        onChange={form.setSelfCheckInAdvanceHoldHours}
+        onSave={form.handleSaveSelfCheckInAdvanceHoldHours}
+        onReset={() =>
+          form.setSelfCheckInAdvanceHoldHours(form.originalSelfCheckInAdvanceHoldHours)
+        }
+        isDirty={
+          form.selfCheckInAdvanceHoldHours !== form.originalSelfCheckInAdvanceHoldHours
+        }
+        isSaving={form.isSaving}
+        type="number"
+        min={0}
+        max={720}
+        step={1}
+        wholeNumber
+        suffix="hours"
+      />
+    </SettingsSection>
+
+    <SettingsSection
+      icon={Wallet}
+      title="Wallet balance alerts"
+      description="Notify all administrators when the wallet balance reaches the threshold."
+    >
+      <SettingCard
+        title="Wallet balance alert threshold"
+        description="When the wallet balance falls below this amount, all administrators receive one notification."
+        value={form.walletBalanceAlertThresholdVnd}
+        originalValue={form.originalWalletBalanceAlertThresholdVnd}
+        onChange={form.setWalletBalanceAlertThresholdVnd}
+        onSave={form.handleSaveWalletBalanceAlertThresholdVnd}
+        onReset={() =>
+          form.setWalletBalanceAlertThresholdVnd(form.originalWalletBalanceAlertThresholdVnd)
+        }
+        isDirty={form.walletBalanceAlertThresholdVnd !== form.originalWalletBalanceAlertThresholdVnd}
+        isSaving={form.isSaving}
+        displayMode="currency-slider"
+        min="1000000"
+        max="1000000000"
+        sliderPresets={[
+          '10000000',
+          '50000000',
+          '100000000',
+          '200000000',
+          '500000000',
+        ]}
+        errorMessage={form.walletBalanceAlertThresholdSaveError}
+        unavailableMessage={form.walletBalanceAlertThresholdUnavailableMessage}
+        onRetry={form.retryLoading}
+      />
+    </SettingsSection>
+
+    <SettingsSection
+      icon={Building2}
+      title="Partner details"
+      description="Business name shown in advance payment operations."
+    >
+      <SettingCard
+        title="Client name"
+        description="Name of the partner company using the advance payment service."
+        value={form.partnerCompany}
+        originalValue={form.originalPartnerCompany}
+        onChange={form.setPartnerCompany}
+        onSave={form.handleSavePartnerCompany}
+        onReset={() => form.setPartnerCompany(form.originalPartnerCompany)}
+        isDirty={form.partnerCompany !== form.originalPartnerCompany}
+        isSaving={form.isSaving}
+      />
+    </SettingsSection>
+
+    <SettingsSection
+      icon={Landmark}
+      title="Weekly payroll bank account"
+      description="Beneficiary details shown in weekly payroll emails and attached Excel files."
+    >
+      <SettingToggleCard
+        title="Show weekly payroll bank details"
+        description="When disabled, weekly payroll statements only provide reconciliation details and omit bank transfer information."
+        checked={form.transferBankVisible}
+        originalChecked={form.originalTransferBankVisible}
+        onCheckedChange={form.setTransferBankVisible}
+        onSave={form.handleSaveTransferBankVisible}
+        onReset={() => form.setTransferBankVisible(form.originalTransferBankVisible)}
+        isSaving={form.isSaving}
+      />
+      <SettingCard
+        title="Weekly payroll account name"
+        description="Beneficiary name shown on weekly payroll statements."
+        value={form.transferBankHolder}
+        originalValue={form.originalTransferBankHolder}
+        onChange={form.setTransferBankHolder}
+        onSave={form.handleSaveTransferBank}
+        onReset={() => form.setTransferBankHolder(form.originalTransferBankHolder)}
+        isDirty={form.transferBankHolder !== form.originalTransferBankHolder}
+        isSaving={form.isSaving}
+      />
+      <SettingCard
+        title="Weekly payroll account number"
+        description="Bank account number shown on weekly payroll statements."
+        value={form.transferBankNumber}
+        originalValue={form.originalTransferBankNumber}
+        onChange={form.setTransferBankNumber}
+        onSave={form.handleSaveTransferBank}
+        onReset={() => form.setTransferBankNumber(form.originalTransferBankNumber)}
+        isDirty={form.transferBankNumber !== form.originalTransferBankNumber}
+        isSaving={form.isSaving}
+        displayMode="account-number"
+      />
+      <SettingCard
+        title="Weekly payroll bank"
+        description="Bank name shown on weekly payroll statements."
+        value={form.transferBankName}
+        originalValue={form.originalTransferBankName}
+        onChange={form.setTransferBankName}
+        onSave={form.handleSaveTransferBank}
+        onReset={() => form.setTransferBankName(form.originalTransferBankName)}
+        isDirty={form.transferBankName !== form.originalTransferBankName}
+        isSaving={form.isSaving}
+      />
+    </SettingsSection>
+
+    <SettingsSection
+      icon={Landmark}
+      title="FlexPay (OnePay) bank account"
+      description="Beneficiary details shown in FlexPay emails and attached reconciliation files. Leave blank to use the weekly payroll account."
+    >
+      <SettingToggleCard
+        title="Show FlexPay bank details"
+        description="When disabled, FlexPay statements only provide reconciliation details and omit bank transfer information."
+        checked={form.flexPayTransferBankVisible}
+        originalChecked={form.originalFlexPayTransferBankVisible}
+        onCheckedChange={form.setFlexPayTransferBankVisible}
+        onSave={form.handleSaveFlexPayTransferBankVisible}
+        onReset={() => form.setFlexPayTransferBankVisible(form.originalFlexPayTransferBankVisible)}
+        isSaving={form.isSaving}
+      />
+      <SettingCard
+        title="FlexPay account name"
+        description="Beneficiary name shown on FlexPay statements."
+        value={form.flexPayTransferBankHolder}
+        originalValue={form.originalFlexPayTransferBankHolder}
+        onChange={form.setFlexPayTransferBankHolder}
+        onSave={form.handleSaveFlexPayTransferBank}
+        onReset={() =>
+          form.setFlexPayTransferBankHolder(form.originalFlexPayTransferBankHolder)
+        }
+        isDirty={form.flexPayTransferBankHolder !== form.originalFlexPayTransferBankHolder}
+        isSaving={form.isSaving}
+      />
+      <SettingCard
+        title="FlexPay account number"
+        description="Bank account number shown on FlexPay statements."
+        value={form.flexPayTransferBankNumber}
+        originalValue={form.originalFlexPayTransferBankNumber}
+        onChange={form.setFlexPayTransferBankNumber}
+        onSave={form.handleSaveFlexPayTransferBank}
+        onReset={() =>
+          form.setFlexPayTransferBankNumber(form.originalFlexPayTransferBankNumber)
+        }
+        isDirty={form.flexPayTransferBankNumber !== form.originalFlexPayTransferBankNumber}
+        isSaving={form.isSaving}
+        displayMode="account-number"
+      />
+      <SettingCard
+        title="FlexPay bank"
+        description="Bank name shown on FlexPay statements."
+        value={form.flexPayTransferBankName}
+        originalValue={form.originalFlexPayTransferBankName}
+        onChange={form.setFlexPayTransferBankName}
+        onSave={form.handleSaveFlexPayTransferBank}
+        onReset={() => form.setFlexPayTransferBankName(form.originalFlexPayTransferBankName)}
+        isDirty={form.flexPayTransferBankName !== form.originalFlexPayTransferBankName}
+        isSaving={form.isSaving}
+      />
+    </SettingsSection>
+  </div>
+);

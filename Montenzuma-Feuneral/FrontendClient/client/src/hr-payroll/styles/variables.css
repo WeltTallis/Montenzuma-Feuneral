@@ -1,0 +1,413 @@
+/* ============================================================================
+   CSS CUSTOM PROPERTIES — Design Tokens
+   Colors, shadows, typography, spacing, gradients
+   ============================================================================ */
+
+@layer base {
+  html.hr-payroll-active {
+    /* ========================================================================
+       TINGTING EMERALD PRODUCT PALETTE
+       Shared by login, employee, partner, and admin experiences.
+       ======================================================================== */
+
+    /* Primary - TingTing Emerald
+       22% lightness keeps text-primary ≥4.5:1 on the tinted page canvas and
+       on 5-10% primary tints, while white button labels clear 7:1. */
+    --primary: 151 87% 22%;
+    --primary-foreground: 0 0% 100%;  /* Pure white for contrast */
+
+    /* Success - Professional Green (Positive, Achievement, Growth)
+       WCAG AA: ≥4.5:1 as text on white and on success tints. */
+    --success: 142 68% 26%;            /* Deep emerald green */
+    --success-foreground: 142 100% 10%; /* Dark green for readability */
+
+    /* Warning - Amber Warmth (Attention, Energy, Alert)
+       WCAG AA: 7+:1 on white; white/warm-white labels on solid pass too. */
+    --warning: 35 77% 25%;            /* Dark amber */
+
+    /* Info - Teal Professional (Clarity, Communication, Trust)
+       WCAG AA: ≥4.5:1 on white and on 5-10% info tints. */
+    --info: 174 75% 22%;              /* Deep teal */
+
+    /* Destructive - Confident Red (Critical Actions, Errors)
+       WCAG AA: ≥4.5:1 as text on white/tints; white on solid clears 5:1. */
+    --destructive: 0 66% 41%;         /* Clear, urgent red */
+    --destructive-foreground: 0 0% 100%;
+
+    /* Background System — nepocorp-style surface ladder: the canvas is a
+       clearly tinted green-gray (#e2e8e4, ~1.24 luminance ratio vs white) so
+       white cards separate instantly; card outlines are visible gray-green. */
+    --background: 140 10% 89%;         /* #e2e8e4 - page canvas */
+    --foreground: 220 43% 11%;        /* #101828 - neutral ink */
+
+    /* Surface Colors - Subtle Depth */
+    --card: 0 0% 100%;                /* Pure white */
+    --card-foreground: 220 43% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 43% 11%;
+
+    /* Muted States - Sophisticated Grays
+       muted-foreground is the workhorse for 11-12px uppercase kickers and
+       metadata; keep it clearly readable (7:1), not just AA-compliant. */
+    --muted: 216 24% 96%;             /* #f2f4f7 */
+    --muted-foreground: 220 18% 34%;  /* #475467 — 7.0:1 on white */
+
+    /* Accents - Refined Neutrals */
+    --accent: 145 54% 95%;             /* soft emerald */
+    --accent-foreground: 151 87% 25%;
+
+    /* Borders & Inputs - Crisp Definition (nepocorp border-1 ≈ #d1d9d4) */
+    --border: 143 11% 68%;             /* #a4b6ab - soft visible card outline */
+    --input: 216 18% 84%;              /* #d0d5dd */
+    --ring: 151 87% 25%;               /* emerald focus rings */
+
+    /* Secondary Actions - Neutral */
+    --secondary: 216 24% 96%;
+    --secondary-foreground: 220 43% 11%;
+
+    /* Border Radius - Confident Curves (full scale) */
+    --radius-sm: 0.5rem;              /* 8px  - rounded-lg */
+    --radius: 0.75rem;                /* 12px - rounded-xl (alias of --radius-md) */
+    --radius-md: 0.75rem;             /* 12px - rounded-xl */
+    --radius-lg: 1rem;                /* 16px - rounded-2xl */
+    --radius-xl: 1.25rem;             /* 20px - rounded-3xl */
+    --radius-2xl: 1.5rem;             /* 24px - rounded-4xl */
+
+    /* ========================================================================
+       SURFACE TOKENS - Mobile page chrome (single source of truth)
+       ======================================================================== */
+    --surface-page: 140 10% 89%;      /* #e2e8e4 — tinted canvas */
+    --surface-border: 143 11% 68%;    /* #a4b6ab — soft visible card outline */
+
+    /* Employee payroll-fintech surfaces. These aliases keep the employee
+       portal cohesive without changing the admin and partner themes. */
+    --employee-page: #f5f7f9;
+    --employee-surface: #ffffff;
+    --employee-surface-muted: #f7f9f8;
+    --employee-text: #101828;
+    --employee-text-secondary: #475467;  /* 7.0:1 on white */
+    --employee-text-muted: #667085;      /* 4.8:1 on white — WCAG AA floor for muted metadata */
+    --employee-border: #d0d5dd;
+    --employee-border-strong: #d0d5dd;
+    --employee-accent: #08783e;
+    --employee-accent-strong: #075c33;
+    --employee-accent-soft: #eaf8f0;
+    --employee-accent-border: #b7e4ca;
+    --employee-accent-ring: #c8f0d8;
+    --employee-warning: #b54708;
+    --employee-warning-strong: #93370d;
+    --employee-warning-soft: #fff7e8;
+    --employee-warning-border: #fedf89;
+    --employee-error: #b42318;
+    --employee-error-soft: #fef3f2;
+    --employee-info: #175cd3;
+    --employee-info-soft: #eff8ff;
+    --employee-info-border: #b2ddff;
+    --employee-shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
+    --employee-shadow-raised: 0 2px 4px rgba(16, 24, 40, 0.06), 0 4px 8px rgba(16, 24, 40, 0.08);
+    --employee-cta-shadow: 0 2px 4px rgba(8, 120, 62, 0.16), 0 4px 12px rgba(8, 120, 62, 0.14);
+    --employee-radius-control: 0.75rem;
+    --employee-radius-card: 1rem;
+    --employee-radius-feature: 1.25rem;
+    --employee-focus-ring: #08783e;
+    --employee-action-toolbar-block-size: 0px;
+
+    /* ========================================================================
+       GRADIENT SYSTEM
+       ======================================================================== */
+    --gradient-navy: linear-gradient(135deg, #08783e 0%, #066534 100%);
+    --gradient-subtle: linear-gradient(180deg, #f8fafb 0%, #f5f7f9 100%);
+
+    /* ========================================================================
+       SHADOW SYSTEM
+       ======================================================================== */
+    --shadow-xs: 0 1px 2px 0 hsl(220 90% 25% / 0.05);
+    --shadow-sm: 0 1px 3px 0 hsl(220 90% 25% / 0.1), 0 1px 2px -1px hsl(220 90% 25% / 0.1);
+    --shadow-soft: 0 1px 3px 0 hsl(220 90% 25% / 0.08), 0 1px 2px -1px hsl(220 90% 25% / 0.08);
+    --shadow-card: 0 4px 6px -1px hsl(220 90% 25% / 0.12), 0 2px 4px -2px hsl(220 90% 25% / 0.12);
+    --shadow-elevated: 0 10px 15px -3px hsl(220 90% 25% / 0.15), 0 4px 6px -4px hsl(220 90% 25% / 0.15);
+    --shadow-focus: 0 0 0 3px hsl(220 90% 25% / 0.15);
+
+    /* Mobile surface shadows — aliases used by shared primitives */
+    --shadow-navy-soft: 0 1px 2px rgba(15, 23, 42, 0.05), 0 16px 36px -30px rgba(15, 49, 103, 0.55);
+
+    /* Aliases referenced by financial utilities (.card-elevated, .input-financial).
+       Previously dangling — defined here so those utilities render correctly. */
+    --shadow-card-elevated: 0 10px 15px -3px hsl(220 90% 25% / 0.12), 0 4px 6px -4px hsl(220 90% 25% / 0.12);
+    --shadow-focus-success: 0 0 0 3px hsl(var(--success) / 0.2);
+
+    /* ========================================================================
+       TYPOGRAPHY SYSTEM - Distinctive Fonts, Breaking Anti-Patterns
+       ======================================================================== */
+    --font-family-display: "Manrope", "ui-sans-serif", "system-ui", "sans-serif";
+    --font-family-sans: "Inter", "ui-sans-serif", "system-ui", "sans-serif";
+    --font-family-financial: "JetBrains Mono", "ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace";
+
+    /* Typography Scale - Data-Dense, Professional
+       Raw size steps stay compact because payroll screens are information-dense.
+       Use the semantic role tokens below for UI hierarchy decisions. */
+    --text-xs: 0.6875rem;     /* 11px - labels, badges */
+    --text-sm: 0.75rem;       /* 12px - table data, secondary */
+    --text-base: 0.75rem;     /* 12px - body text */
+    --text-lg: 0.875rem;      /* 14px - section headers */
+    --text-xl: 1rem;          /* 16px - card headers */
+    --text-2xl: 1.125rem;     /* 18px - page headers */
+    --text-3xl: 1.25rem;      /* 20px - key metrics */
+    --text-4xl: 1.5rem;       /* 24px - dashboard metrics */
+    --text-5xl: 1.75rem;      /* 28px - hero metrics */
+
+    /* Semantic Type Roles - shared hierarchy for product UI */
+    --type-caption: var(--text-xs);        /* 11px */
+    --type-count-badge: 0.5625rem;         /* 9px - tiny numeric badges */
+    --type-label: var(--text-sm);          /* 12px */
+    --type-body-sm: var(--text-xs);        /* 11px */
+    --type-body: var(--text-sm);           /* 12px */
+    --type-card-title: var(--text-xl);     /* 16px */
+    --type-section-title: var(--text-2xl); /* 18px */
+    --type-page-title: var(--text-4xl);    /* 24px */
+    --type-metric-sm: var(--text-xl);      /* 16px */
+    --type-metric-md: var(--text-3xl);     /* 20px */
+    --type-metric-lg: var(--text-4xl);     /* 24px */
+    --type-metric-xl: var(--text-5xl);     /* 28px */
+
+    /* Employee self-service scale: compact, but readable at arm's length on
+       mobile. Keep these roles separate from admin/partner typography. */
+    --employee-type-caption: 0.75rem;      /* 12px: metadata, counters */
+    --employee-type-label: 0.8125rem;      /* 13px: financial labels */
+    --employee-type-body-sm: 0.8125rem;    /* 13px: supporting copy */
+    --employee-type-body: 0.875rem;        /* 14px: primary body */
+    --employee-type-strong: 1rem;          /* 16px: card and empty-state title */
+    --employee-type-title: 1.125rem;       /* 18px: section title */
+    --employee-type-money: 2rem;           /* 32px: primary money only */
+
+    /* Line Heights - Optimized for Data Density */
+    --leading-none: 1;
+    --leading-tight: 1.15;
+    --leading-snug: 1.3;
+    --leading-normal: 1.4;
+    --leading-relaxed: 1.5;
+    --leading-data: 1.3;      /* Tabular numbers */
+
+    /* Letter Spacing - Professional Polish */
+    --tracking-tighter: 0em;
+    --tracking-tight: 0em;
+    --tracking-normal: 0em;
+    --tracking-wide: 0.025em;
+    --tracking-wider: 0.05em;
+    --tracking-widest: 0.1em;
+    --tracking-data: 0.005em; /* Subtle spacing for numbers */
+
+    /* Font Weights */
+    --font-normal: 400;
+    --font-medium: 500;
+    --font-semibold: 600;
+    --font-bold: 700;
+    --font-extrabold: 800;
+
+    /* ========================================================================
+       SIDEBAR COLORS - Deep Navy Authority
+       ======================================================================== */
+    --sidebar-background: 153 76% 13%;
+    --sidebar-foreground: 145 33% 96%;
+    --sidebar-primary: 151 87% 22%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 153 55% 20%;
+    --sidebar-accent-foreground: 145 33% 96%;
+    --sidebar-border: 153 48% 18%;
+    --sidebar-ring: 148 60% 58%;
+
+    /* ========================================================================
+       ROLE-BASED ACCENTS - Maintaining Functionality
+       ======================================================================== */
+    --admin-accent: 148 60% 58%;
+    --partner-accent: 148 60% 58%;
+    --manager-accent: 151 87% 22%;
+
+    /* ========================================================================
+       ADMIN LEDGER THEME - Scoped to [data-admin-ui]
+       ======================================================================== */
+    --admin-background: 140 10% 89%;  /* #e2e8e4 — tinted canvas */
+    --admin-foreground: 148 23% 16%;
+    --admin-card: 0 0% 100%;
+    --admin-card-foreground: 148 23% 16%;
+    --admin-popover: 0 0% 100%;
+    --admin-popover-foreground: 148 23% 16%;
+    --admin-primary: 151 87% 22%;
+    --admin-primary-foreground: 0 0% 100%;
+    --admin-secondary: 35 76% 29%;
+    --admin-secondary-foreground: 46 100% 97%;
+    --admin-muted: 210 20% 95%;
+    --admin-muted-foreground: 145 13% 27%;  /* deep green-gray, 8.4:1 on white */
+    --admin-accent-soft: 148 38% 90%;
+    --admin-accent-foreground: 151 46% 22%;
+    --admin-border: 143 11% 68%;      /* #a4b6ab — soft visible card outline */
+    --admin-input: 214 18% 84%;
+    --admin-ring: 151 49% 38%;
+    --admin-success: 146 66% 24%;   /* ≥4.5:1 as text on white and on success tints */
+    --admin-success-foreground: 0 0% 100%;
+    --admin-warning: 35 77% 25%;    /* WCAG AA: 7+:1 white, ≥5:1 on tints */
+    --admin-warning-foreground: 46 100% 97%;
+    --admin-info: 174 75% 22%;
+    --admin-info-foreground: 0 0% 100%;
+    --admin-destructive: 0 66% 41%;
+    --admin-destructive-foreground: 0 0% 100%;
+    --admin-sidebar-background: 149 38% 18%;
+    --admin-sidebar-foreground: 42 36% 92%;
+    --admin-sidebar-primary: 151 87% 22%;
+    --admin-sidebar-primary-foreground: 0 0% 100%;
+    --admin-sidebar-accent: 148 31% 25%;
+    --admin-sidebar-accent-foreground: 42 36% 92%;
+    --admin-sidebar-border: 149 27% 25%;
+    --admin-sidebar-ring: 43 81% 63%;
+    --admin-shell-shadow: 0 20px 60px -42px rgba(11, 43, 29, 0.5);
+    --admin-card-shadow: 0 12px 30px -26px rgba(15, 23, 42, 0.28);
+    --admin-grid-line: rgba(109, 92, 55, 0.12);
+    --admin-grid-strong: rgba(8, 120, 62, 0.18);
+    --admin-shell-glow: rgba(8, 120, 62, 0.16);
+    --admin-amber-glow: rgba(183, 121, 31, 0.18);
+    --admin-font-display: var(--font-family-display);
+    --admin-font-body: var(--font-family-display);
+    --admin-font-mono: var(--font-family-financial);
+
+    /* ========================================================================
+       PARTNER LEDGER THEME - Scoped to [data-partner-ui]
+       Mirrors the --admin-* block above. Partner reuses the same green palette
+       as admin (--partner-accent already defined at line 212); this block gives
+       partner its own surface tokens so it can evolve independently.
+       ======================================================================== */
+    --partner-background: 140 10% 89%; /* #e2e8e4 — tinted canvas */
+    --partner-foreground: 148 23% 16%;
+    --partner-card: 0 0% 100%;
+    --partner-card-foreground: 148 23% 16%;
+    --partner-popover: 0 0% 100%;
+    --partner-popover-foreground: 148 23% 16%;
+    --partner-primary: 151 87% 22%;
+    --partner-primary-foreground: 0 0% 100%;
+    --partner-secondary: 35 76% 29%;
+    --partner-secondary-foreground: 46 100% 97%;
+    --partner-muted: 210 20% 95%;
+    --partner-muted-foreground: 145 13% 27%;  /* deep green-gray, 8.4:1 on white */
+    --partner-accent-soft: 148 38% 90%;
+    --partner-accent-foreground: 151 46% 22%;
+    --partner-border: 143 11% 68%;    /* #a4b6ab — soft visible card outline */
+    --partner-input: 214 18% 84%;
+    --partner-ring: 151 49% 38%;
+    --partner-success: 146 66% 24%;   /* ≥4.5:1 as text on white and on success tints */
+    --partner-success-foreground: 0 0% 100%;
+    --partner-warning: 35 77% 25%;    /* WCAG AA: 7+:1 white, ≥5:1 on tints */
+    --partner-warning-foreground: 46 100% 97%;
+    --partner-info: 174 75% 22%;
+    --partner-info-foreground: 0 0% 100%;
+    --partner-destructive: 0 66% 41%;
+    --partner-destructive-foreground: 0 0% 100%;
+    --partner-sidebar-background: 149 38% 18%;
+    --partner-sidebar-foreground: 42 36% 92%;
+    --partner-sidebar-primary: 151 87% 22%;
+    --partner-sidebar-primary-foreground: 0 0% 100%;
+    --partner-sidebar-accent: 148 31% 25%;
+    --partner-sidebar-accent-foreground: 42 36% 92%;
+    --partner-sidebar-border: 149 27% 25%;
+    --partner-sidebar-ring: 43 81% 63%;
+    --partner-shell-shadow: 0 20px 60px -42px rgba(11, 43, 29, 0.5);
+    --partner-card-shadow: 0 12px 30px -26px rgba(15, 23, 42, 0.28);
+    --partner-grid-line: rgba(109, 92, 55, 0.12);
+    --partner-grid-strong: rgba(8, 120, 62, 0.18);
+    --partner-shell-glow: rgba(8, 120, 62, 0.16);
+    --partner-amber-glow: rgba(183, 121, 31, 0.18);
+    --partner-font-display: var(--font-family-display);
+    --partner-font-body: var(--font-family-display);
+    --partner-font-mono: var(--font-family-financial);
+  }
+
+  [data-admin-ui],
+  html.admin-route-active {
+    --background: var(--admin-background);
+    --foreground: var(--admin-foreground);
+    --card: var(--admin-card);
+    --card-foreground: var(--admin-card-foreground);
+    --popover: var(--admin-popover);
+    --popover-foreground: var(--admin-popover-foreground);
+    --primary: var(--admin-primary);
+    --primary-foreground: var(--admin-primary-foreground);
+    --secondary: var(--admin-secondary);
+    --secondary-foreground: var(--admin-secondary-foreground);
+    --muted: var(--admin-muted);
+    --muted-foreground: var(--admin-muted-foreground);
+    --accent: var(--admin-accent-soft);
+    --accent-foreground: var(--admin-accent-foreground);
+    --border: var(--admin-border);
+    --input: var(--admin-input);
+    --ring: var(--admin-ring);
+    --success: var(--admin-success);
+    --success-foreground: var(--admin-success-foreground);
+    --warning: var(--admin-warning);
+    --info: var(--admin-info);
+    --destructive: var(--admin-destructive);
+    --destructive-foreground: var(--admin-destructive-foreground);
+    --sidebar-background: var(--admin-sidebar-background);
+    --sidebar-foreground: var(--admin-sidebar-foreground);
+    --sidebar-primary: var(--admin-sidebar-primary);
+    --sidebar-primary-foreground: var(--admin-sidebar-primary-foreground);
+    --sidebar-accent: var(--admin-sidebar-accent);
+    --sidebar-accent-foreground: var(--admin-sidebar-accent-foreground);
+    --sidebar-border: var(--admin-sidebar-border);
+    --sidebar-ring: var(--admin-sidebar-ring);
+    --admin-accent: 43 81% 63%;
+  }
+
+  [data-partner-ui],
+  html.partner-route-active {
+    --background: var(--partner-background);
+    --foreground: var(--partner-foreground);
+    --card: var(--partner-card);
+    --card-foreground: var(--partner-card-foreground);
+    --popover: var(--partner-popover);
+    --popover-foreground: var(--partner-popover-foreground);
+    --primary: var(--partner-primary);
+    --primary-foreground: var(--partner-primary-foreground);
+    --secondary: var(--partner-secondary);
+    --secondary-foreground: var(--partner-secondary-foreground);
+    --muted: var(--partner-muted);
+    --muted-foreground: var(--partner-muted-foreground);
+    --accent: var(--partner-accent-soft);
+    --accent-foreground: var(--partner-accent-foreground);
+    --border: var(--partner-border);
+    --input: var(--partner-input);
+    --ring: var(--partner-ring);
+    --success: var(--partner-success);
+    --success-foreground: var(--partner-success-foreground);
+    --warning: var(--partner-warning);
+    --info: var(--partner-info);
+    --destructive: var(--partner-destructive);
+    --destructive-foreground: var(--partner-destructive-foreground);
+    --sidebar-background: var(--partner-sidebar-background);
+    --sidebar-foreground: var(--partner-sidebar-foreground);
+    --sidebar-primary: var(--partner-sidebar-primary);
+    --sidebar-primary-foreground: var(--partner-sidebar-primary-foreground);
+    --sidebar-accent: var(--partner-sidebar-accent);
+    --sidebar-accent-foreground: var(--partner-sidebar-accent-foreground);
+    --sidebar-border: var(--partner-sidebar-border);
+    --sidebar-ring: var(--partner-sidebar-ring);
+    --partner-accent: 43 81% 63%;
+  }
+}
+
+/* ========================================================================
+   TABLET TOUCH FLOOR (768–1199px): the data-dense admin shell renders at
+   desktop scale on tablets (useBreakpoint switch at 768px), which leaves
+   standard inputs/selects at 32/36px — under-thumb controls on an 11"
+   tablet. A min-height floor lifts them to 40px without touching phones
+   (<768px, card layouts) or full desktops (>=1200px). Buttons are exempt:
+   the Button component owns one height (h-9) at every device size.
+   Checkboxes, radios, and switches are excluded (they size themselves).
+   Declared OUTSIDE any cascade layer so it wins over Tailwind utilities
+   (min-h-*) regardless of layer order.
+   ======================================================================== */
+@media (min-width: 768px) and (max-width: 1199.9px) {
+  [data-admin-ui] input:not([type="checkbox"]):not([type="radio"]),
+  [data-admin-ui] select,
+  [data-partner-ui] input:not([type="checkbox"]):not([type="radio"]),
+  [data-partner-ui] select {
+    min-height: 40px;
+  }
+}

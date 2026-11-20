@@ -1,0 +1,230 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Rest Point OS — Infrastructure Monitor
+
+   Port of the standalone monitoring/index.html design. Live metrics come from
+   the Go API gateway; unsupported metrics are marked unavailable rather than
+   represented as zero.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.rpm {
+  --black: #000000;
+  --dark-1: #08090A;
+  --dark-2: #0F1112;
+  --line: #1F2326;
+  --gray: #5a5e63;
+  --gray-light: #8a8e93;
+  --bone: #FAF8F4;
+  --brass: #8B7355;
+  --cyan: #00d9ff;
+  --pink: #ff006e;
+  --green: #00ff88;
+  --red: #ff3b3b;
+  --yellow: #ffcc00;
+
+  min-height: 100vh;
+  background: var(--black);
+  background-image: radial-gradient(circle at 50% 0%, rgba(0, 217, 255, 0.03) 0%, transparent 50%);
+  color: var(--bone);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.rpm *, .rpm *::before, .rpm *::after { box-sizing: border-box; }
+.rpm h1, .rpm h2, .rpm h3 { font-family: 'Fraunces', Georgia, serif; font-weight: 500; color: var(--bone); margin: 0; }
+.rpm .mono { font-family: 'JetBrains Mono', monospace; }
+
+@keyframes rpmPulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+/* ── header ── */
+.rpm-header {
+  background: rgba(8, 9, 10, 0.9);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+  padding: 1.2rem 2rem;
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+  position: sticky; top: 0; z-index: 100;
+  flex-wrap: wrap;
+}
+.rpm-header-left { display: flex; align-items: center; gap: 1rem; }
+.rpm-header-left h1 { font-size: 1.4rem; letter-spacing: -0.02em; }
+.rpm-header-left .tag {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--brass);
+  text-transform: uppercase; letter-spacing: 0.15em; margin-top: 2px;
+}
+.rpm-header-right { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
+.rpm-pill {
+  display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem;
+  font-family: 'JetBrains Mono', monospace; color: var(--gray-light);
+  background: var(--dark-2); border: 1px solid var(--line);
+  padding: 0.4rem 0.8rem; border-radius: 4px;
+}
+.rpm-pill button {
+  background: transparent; border: 1px solid var(--line); color: var(--gray-light);
+  font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+  padding: 0.2rem 0.5rem; border-radius: 3px; cursor: pointer; margin-left: 0.3rem;
+}
+.rpm-pill button:hover { color: var(--cyan); border-color: var(--cyan); }
+.rpm-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: rpmPulse 2s infinite; }
+.rpm-dot.bad { background: var(--red); box-shadow: 0 0 8px var(--red); }
+.rpm-dot.wait { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); }
+.rpm-active-users-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0.75rem; }
+.rpm-active-user { background: var(--dark-2); border: 1px solid var(--line); border-radius: 6px; display: flex; flex-direction: column; gap: 0.25rem; padding: 0.8rem; min-width: 0; }
+.rpm-active-user .name { color: var(--bone); font-size: 0.85rem; }
+.rpm-active-user .email, .rpm-active-user .role { color: var(--gray-light); font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; overflow-wrap: anywhere; }
+.rpm-active-user .role { color: var(--brass); }
+
+/* ── layout ── */
+.rpm-grid {
+  padding: 1.5rem; display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem; max-width: 1800px; margin: 0 auto;
+}
+.rpm-card {
+  background: var(--dark-1); border: 1px solid var(--line); border-radius: 8px;
+  padding: 1.5rem; display: flex; flex-direction: column;
+  position: relative; overflow: hidden; min-width: 0;
+}
+.rpm-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent); opacity: 0.3;
+}
+.rpm-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; gap: 1rem; flex-wrap: wrap; }
+.rpm-card-head h2 { font-size: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+.rpm-card-head .label { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; text-transform: uppercase; color: var(--gray); letter-spacing: 0.1em; }
+.rpm-span-2 { grid-column: span 2; }
+.rpm-span-3 { grid-column: span 3; }
+.rpm-span-4 { grid-column: span 4; }
+
+/* ── KPI ── */
+.rpm-kpi { display: flex; flex-direction: column; gap: 0.5rem; }
+.rpm-kpi-value { font-family: 'Fraunces', Georgia, serif; font-size: 2.2rem; line-height: 1; }
+.rpm-kpi-sub { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--gray-light); }
+
+/* ── time selector ── */
+.rpm-times { display: flex; gap: 0.2rem; background: var(--dark-2); border: 1px solid var(--line); padding: 0.2rem; border-radius: 4px; }
+.rpm-time-btn { background: transparent; border: none; color: var(--gray); padding: 0.3rem 0.6rem; font-size: 0.7rem; cursor: pointer; border-radius: 3px; font-family: 'JetBrains Mono', monospace; transition: all 0.2s; }
+.rpm-time-btn:hover { color: var(--bone); }
+.rpm-time-btn.active { background: var(--cyan); color: var(--black); font-weight: 600; }
+
+/* ── charts ── */
+.rpm-chart { position: relative; height: 220px; width: 100%; }
+.rpm-chart-sm { position: relative; height: 180px; width: 100%; }
+/* Taller canvas for the per-service line chart (6 series + bottom legend) and
+   the slow-query bars, which carry one row per request. */
+.rpm-chart-tall { height: 320px; }
+
+/* ── stat boxes ── */
+.rpm-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; }
+.rpm-stat { background: var(--dark-2); padding: 0.8rem; border-radius: 4px; border-left: 2px solid var(--brass); min-width: 0; }
+.rpm-stat .t { font-size: 0.7rem; color: var(--gray); text-transform: uppercase; font-family: 'JetBrains Mono', monospace; margin-bottom: 0.3rem; }
+.rpm-stat .n { font-size: 1.5rem; font-family: 'Fraunces', Georgia, serif; color: var(--bone); }
+.rpm-stat.success { border-left-color: var(--green); }
+.rpm-stat.warning { border-left-color: var(--yellow); }
+.rpm-stat.danger { border-left-color: var(--red); }
+.rpm-stat.info { border-left-color: var(--cyan); }
+
+/* ── alerts ── */
+.rpm-alerts { display: flex; flex-direction: column; gap: 1rem; height: 220px; overflow-y: auto; padding-right: 0.5rem; }
+.rpm-alerts::-webkit-scrollbar { width: 4px; }
+.rpm-alerts::-webkit-scrollbar-thumb { background: var(--line); }
+.rpm-alert { background: rgba(255, 0, 110, 0.05); border: 1px solid rgba(255, 0, 110, 0.2); border-left: 3px solid var(--red); padding: 1rem; border-radius: 4px; }
+.rpm-alert.warn { background: rgba(255, 204, 0, 0.05); border-color: rgba(255, 204, 0, 0.25); border-left-color: var(--yellow); }
+.rpm-alert.info { background: rgba(0, 217, 255, 0.05); border-color: rgba(0, 217, 255, 0.2); border-left-color: var(--cyan); }
+.rpm-alert .when { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--gray); margin-bottom: 0.3rem; }
+.rpm-alert .what { font-size: 0.85rem; color: var(--bone); margin-bottom: 0.3rem; }
+.rpm-alert .who { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--pink); }
+.rpm-alert.warn .who { color: var(--yellow); }
+.rpm-alert.info .who { color: var(--cyan); }
+.rpm-empty { color: var(--gray); font-size: 0.8rem; font-family: 'JetBrains Mono', monospace; text-align: center; padding: 24px 0; }
+
+/* ── logs ── */
+.rpm-logs { background: var(--black); border: 1px solid var(--line); border-radius: 4px; padding: 1rem; height: 250px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; line-height: 1.6; }
+
+/* Log search bar. Wraps to a second row on narrow screens instead of letting
+   five controls overflow the card. */
+.rpm-log-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  align-items: center;
+}
+.rpm-log-input {
+  flex: 1 1 150px;
+  min-width: 0;
+  background: var(--black);
+  border: 1px solid var(--line);
+  color: var(--bone);
+  border-radius: 4px;
+  padding: 0.5rem 0.6rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+}
+.rpm-log-input:focus { outline: none; border-color: var(--cyan); }
+.rpm-log-input::placeholder { color: var(--gray); }
+.rpm-btn {
+  flex: 0 0 auto;
+  background: var(--cyan);
+  color: var(--black);
+  border: 0;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  min-height: 34px;
+}
+.rpm-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+/* Keep long request paths from stretching the log card sideways. */
+.rpm-log .msg { min-width: 0; overflow-wrap: anywhere; }
+.rpm-logs::-webkit-scrollbar { width: 4px; }
+.rpm-logs::-webkit-scrollbar-thumb { background: var(--dark-2); }
+.rpm-log { color: #5a5e63; margin-bottom: 0.3rem; display: flex; gap: 0.8rem; }
+.rpm-log .ts { color: var(--gray); flex-shrink: 0; }
+.rpm-log .lvl { width: 58px; flex-shrink: 0; font-weight: 600; }
+.rpm-log .lvl.info { color: var(--cyan); }
+.rpm-log .lvl.warn { color: var(--yellow); }
+.rpm-log .lvl.error { color: var(--pink); }
+.rpm-log .svc { color: var(--brass); width: 140px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; }
+.rpm-log .msg { color: var(--gray-light); }
+.rpm-log.err { background: rgba(255, 0, 110, 0.05); padding: 2px 5px; border-radius: 2px; }
+.rpm-log.warn { background: rgba(255, 204, 0, 0.04); padding: 2px 5px; border-radius: 2px; }
+
+/* ── service status ── */
+.rpm-status-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+.rpm-status-item {
+  background: var(--dark-2); border: 1px solid var(--line); padding: 1rem; border-radius: 6px;
+  display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; transition: border-color 0.3s;
+}
+.rpm-status-item.down { border-color: rgba(255, 0, 110, 0.3); background: rgba(255, 0, 110, 0.05); }
+.rpm-status-item .info { display: flex; align-items: center; gap: 0.8rem; min-width: 0; }
+.rpm-status-item .name { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; color: var(--bone); overflow: hidden; text-overflow: ellipsis; }
+.rpm-status-item .lat { font-size: 0.7rem; color: var(--gray-light); margin-top: 2px; }
+.rpm-status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.rpm-status-dot.up { background: var(--green); box-shadow: 0 0 8px var(--green); animation: rpmPulse 2s infinite; }
+.rpm-status-dot.down { background: var(--red); box-shadow: 0 0 8px var(--red); animation: rpmPulse 1s infinite; }
+.rpm-status-text { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; flex-shrink: 0; }
+.rpm-status-text.up { color: var(--green); }
+.rpm-status-text.down { color: var(--red); }
+
+.rpm-banner { background: rgba(255, 59, 59, 0.08); border: 1px solid rgba(255, 59, 59, 0.3); color: var(--red); padding: 0.8rem 1.2rem; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; margin: 0 0 1.5rem; }
+.rpm-na { color: var(--gray); }
+
+@media (max-width: 1200px) {
+  .rpm-grid { grid-template-columns: repeat(2, 1fr); }
+  .rpm-span-2, .rpm-span-3, .rpm-span-4 { grid-column: span 2; }
+  .rpm-status-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 768px) {
+  .rpm-grid { grid-template-columns: 1fr; padding: 1rem; gap: 1rem; }
+  .rpm-span-2, .rpm-span-3, .rpm-span-4 { grid-column: span 1; }
+  .rpm-status-grid { grid-template-columns: 1fr; }
+  .rpm-stats { grid-template-columns: 1fr; }
+  .rpm-header { padding: 1rem; }
+  .rpm-card { padding: 1.1rem; }
+  .rpm-kpi-value { font-size: 1.8rem; }
+  .rpm-log .svc { width: 90px; }
+}
+

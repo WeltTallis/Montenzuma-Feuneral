@@ -1,0 +1,678 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0f3040">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Restpoint - Live Status</title>
+    <style>
+        :root {
+            --ink: #17191b;
+            --text: #444;
+            --muted: #777;
+            --line: #e5e8e9;
+            --paper: #fff;
+            --wash: #f7f8f7;
+            --teal: #0f3040;
+            --coral: #dd2d4a;
+            --amber: #9a5b00;
+            --amber-bg: #fffbeb;
+            --green: #047857;
+            --green-bg: #ecfdf5;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            color: var(--text);
+            background: var(--paper);
+            font: 15px/1.55 "Segoe UI", sans-serif;
+        }
+
+        .top-strip {
+            height: 4px;
+            background: var(--coral);
+        }
+
+        .site-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 18px max(24px, calc((100% - 980px) / 2));
+            border-bottom: 1px solid var(--line);
+        }
+
+        .brand {
+            color: var(--ink);
+            font-size: 20px;
+            font-weight: 800;
+            text-decoration: none;
+        }
+
+        .brand span {
+            color: var(--coral);
+        }
+
+        .sample-tag {
+            padding: 5px 9px;
+            border: 1px solid #fcd34d;
+            border-radius: 3px;
+            background: var(--amber-bg);
+            color: var(--amber);
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        main {
+            width: min(100%, 980px);
+            margin: 0 auto;
+            padding: 28px 24px 36px;
+        }
+
+        .overall {
+            display: grid;
+            grid-template-columns: 48px minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 26px;
+            padding: 20px 22px;
+            border: 1px solid #fcd34d;
+            border-radius: 8px;
+            background: var(--amber-bg);
+        }
+
+        .overall-icon {
+            display: grid;
+            width: 46px;
+            aspect-ratio: 1;
+            place-items: center;
+            border-radius: 50%;
+            background: var(--amber);
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .overall h1 {
+            margin: 0 0 4px;
+            color: var(--ink);
+            font-size: 21px;
+            line-height: 1.25;
+        }
+
+        .overall p {
+            margin: 0;
+            font-size: 12px;
+        }
+
+        .overall-stat {
+            color: var(--ink);
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .overall-stat strong {
+            display: block;
+            font-size: 17px;
+        }
+
+        .overall-stat span {
+            color: var(--muted);
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+
+        .section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+            margin: 0 0 12px;
+        }
+
+        .section-head h2 {
+            margin: 0;
+            color: var(--ink);
+            font-size: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .section-head span {
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .components {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 26px;
+        }
+
+        .component {
+            display: flex;
+            min-width: 0;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 13px 15px;
+            border: 1px solid var(--line);
+            border-radius: 5px;
+            background: white;
+        }
+
+        .component-main {
+            display: flex;
+            min-width: 0;
+            align-items: center;
+            gap: 11px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            flex: 0 0 10px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 0 3px var(--green-bg);
+        }
+
+        .dot.warn {
+            background: var(--amber);
+            box-shadow: 0 0 0 3px var(--amber-bg);
+        }
+
+        .dot.down {
+            background: var(--coral);
+            box-shadow: 0 0 0 3px rgb(221 45 74 / 10%);
+        }
+
+        .component-name {
+            overflow: hidden;
+            margin: 0;
+            color: var(--ink);
+            font-size: 13px;
+            font-weight: 650;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .component-note {
+            margin: 2px 0 0;
+            color: var(--muted);
+            font-size: 10px;
+        }
+
+        .component-state {
+            flex: 0 0 auto;
+            color: var(--green);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .component-state.warn {
+            color: var(--amber);
+        }
+
+        .panel {
+            margin-bottom: 26px;
+            padding: 18px 20px;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            background: white;
+        }
+
+        .panel-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+            color: var(--ink);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .panel-head small {
+            color: var(--muted);
+            font-size: 10px;
+            font-weight: 400;
+        }
+
+        .bars {
+            display: grid;
+            grid-template-columns: repeat(90, minmax(1px, 1fr));
+            align-items: end;
+            gap: 2px;
+            height: 30px;
+        }
+
+        .bar {
+            min-height: 10px;
+            border-radius: 1px;
+            background: var(--green);
+        }
+
+        .bar.warn {
+            background: #d89618;
+        }
+
+        .bar.down {
+            background: var(--coral);
+        }
+
+        .uptime-foot {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 6px;
+            color: #999;
+            font-size: 10px;
+        }
+
+        .incident {
+            border-color: #fcd34d;
+            background: var(--amber-bg);
+        }
+
+        .incident-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .incident h2 {
+            margin: 0 0 4px;
+            color: var(--ink);
+            font-size: 15px;
+        }
+
+        .incident p {
+            margin: 0;
+            font-size: 12px;
+        }
+
+        .incident-badge {
+            flex: 0 0 auto;
+            padding: 4px 9px;
+            border-radius: 3px;
+            background: var(--amber);
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .incident-eta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 14px;
+            padding: 12px 14px;
+            border: 1px dashed #e2d5b1;
+            border-radius: 4px;
+            background: white;
+        }
+
+        .incident-eta span {
+            color: var(--muted);
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .incident-eta strong {
+            color: var(--ink);
+            font: 700 20px/1.2 Consolas, monospace;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .incident-note {
+            padding-left: 18px;
+            border-left: 2px solid #e8dfc9;
+        }
+
+        .incident-note p {
+            position: relative;
+            margin: 0;
+            padding: 0 0 10px;
+        }
+
+        .incident-note p:last-child {
+            padding-bottom: 0;
+        }
+
+        .incident-note p::before {
+            position: absolute;
+            top: 4px;
+            left: -24px;
+            width: 10px;
+            height: 10px;
+            border: 2px solid var(--amber);
+            border-radius: 50%;
+            background: white;
+            content: "";
+        }
+
+        .updates {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            background: var(--wash);
+        }
+
+        .updates h2 {
+            margin: 0 0 3px;
+            color: var(--ink);
+            font-size: 14px;
+        }
+
+        .updates p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .button {
+            display: inline-flex;
+            min-height: 40px;
+            align-items: center;
+            justify-content: center;
+            padding: 0 15px;
+            border-radius: 4px;
+            background: var(--coral);
+            color: white;
+            font-size: 12px;
+            font-weight: 700;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .footer {
+            padding: 18px 24px;
+            background: var(--teal);
+            color: rgb(255 255 255 / 75%);
+            font-size: 11px;
+        }
+
+        .footer-inner {
+            display: flex;
+            max-width: 980px;
+            justify-content: space-between;
+            gap: 12px;
+            margin: 0 auto;
+        }
+
+        .footer a {
+            color: white;
+        }
+
+        @media (max-width: 640px) {
+            .site-header {
+                align-items: flex-start;
+                flex-direction: column;
+                padding: 16px 20px;
+            }
+
+            main {
+                padding: 20px 16px 28px;
+            }
+
+            .overall {
+                grid-template-columns: 40px minmax(0, 1fr);
+                gap: 12px;
+                padding: 16px;
+            }
+
+            .overall-icon {
+                width: 38px;
+            }
+
+            .overall-stat {
+                grid-column: 2;
+                text-align: left;
+            }
+
+            .overall-stat strong {
+                display: inline;
+                margin-right: 5px;
+            }
+
+            .components {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .panel {
+                padding: 15px;
+            }
+
+            .bars {
+                gap: 1px;
+            }
+
+            .updates {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .footer-inner {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="top-strip" aria-hidden="true"></div>
+    <header class="site-header">
+        <a class="brand" href="https://restpoint.co.ke">Restpoint<span>.</span> Status</a>
+        <div class="header-meta"><span class="sample-tag">Illustrative status data</span><span>Page loaded <strong
+                    id="lastCheck">just now</strong></span></div>
+    </header>
+    <main>
+        <section class="overall" aria-labelledby="overall-title">
+            <div class="overall-icon" aria-hidden="true">!</div>
+            <div>
+                <h1 id="overall-title">Scheduled maintenance in progress</h1>
+                <p>Sample status information from the supplied design. These figures are not connected to live
+                    monitoring.</p>
+            </div>
+            <div class="overall-stat"><strong>2 of 12</strong><span>sample components in maintenance</span></div>
+        </section>
+        <div class="section-head">
+            <h2>System components</h2><span>Illustrative sample states</span>
+        </div>
+        <section class="components" aria-label="System components">
+            <article class="component">
+                <div class="component-main"><span class="dot warn"></span>
+                    <div>
+                        <p class="component-name">API Gateway</p>
+                        <p class="component-note">Sample status</p>
+                    </div>
+                </div><span class="component-state warn">Maintenance</span>
+            </article>
+            <article class="component">
+                <div class="component-main"><span class="dot warn"></span>
+                    <div>
+                        <p class="component-name">Database (Primary)</p>
+                        <p class="component-note">Sample status</p>
+                    </div>
+                </div><span class="component-state warn">Maintenance</span>
+            </article>
+            <article class="component">
+                <div class="component-main"><span class="dot"></span>
+                    <div>
+                        <p class="component-name">Authentication Service</p>
+                        <p class="component-note">Sample status</p>
+                    </div>
+                </div><span class="component-state">Operational</span>
+            </article>
+            <article class="component">
+                <div class="component-main"><span class="dot"></span>
+                    <div>
+                        <p class="component-name">OTP &amp; Email Delivery</p>
+                        <p class="component-note">Sample status</p>
+                    </div>
+                </div><span class="component-state">Operational</span>
+            </article>
+            <article class="component">
+                <div class="component-main"><span class="dot"></span>
+                    <div>
+                        <p class="component-name">Realtime (Socket.IO)</p>
+                        <p class="component-note">Sample status</p>
+                    </div>
+                </div><span class="component-state">Operational</span>
+            </article>
+            <article class="component">
+                <div class="component-main"><span class="dot"></span>
+                    <div>
+                        <p class="component-name">File Storage</p>
+                        <p class="component-note">Sample status</p>
+                    </div>
+                </div><span class="component-state">Operational</span>
+            </article>
+            <article class="component">
+                <div class="component-main"><span class="dot"></span>
+                    <div>
+                        <p class="component-name">Background Workers</p>
+                        <p class="component-note">Sample status</p>
+                    </div>
+                </div><span class="component-state">Operational</span>
+            </article>
+            <article class="component">
+                <div class="component-main"><span class="dot"></span>
+                    <div>
+                        <p class="component-name">Reports &amp; Exports</p>
+                        <p class="component-note">Sample status</p>
+                    </div>
+                </div><span class="component-state">Operational</span>
+            </article>
+            <article class="component">
+                <div class="component-main"><span class="dot"></span>
+                    <div>
+                        <p class="component-name">Web Dashboard</p>
+                        <p class="component-note">Sample status</p>
+                    </div>
+                </div><span class="component-state">Operational</span>
+            </article>
+            <article class="component">
+                <div class="component-main"><span class="dot"></span>
+                    <div>
+                        <p class="component-name">Mobile API</p>
+                        <p class="component-note">Sample status</p>
+                    </div>
+                </div><span class="component-state">Operational</span>
+            </article>
+            <article class="component">
+                <div class="component-main"><span class="dot"></span>
+                    <div>
+                        <p class="component-name">Webhooks</p>
+                        <p class="component-note">Sample status</p>
+                    </div>
+                </div><span class="component-state">Operational</span>
+            </article>
+            <article class="component">
+                <div class="component-main"><span class="dot"></span>
+                    <div>
+                        <p class="component-name">Status Page</p>
+                        <p class="component-note">Sample status</p>
+                    </div>
+                </div><span class="component-state">Operational</span>
+            </article>
+        </section>
+        <div class="section-head">
+            <h2>90-day uptime history</h2><span>Illustrative sample only</span>
+        </div>
+        <section class="panel" aria-label="Illustrative 90-day uptime chart">
+            <div class="panel-head"><span>All systems</span><small>Not historical production data</small></div>
+            <div class="bars" id="uptimeBars" aria-hidden="true"></div>
+            <div class="uptime-foot"><span>90 days ago</span><span>Today</span></div>
+        </section>
+        <div class="section-head">
+            <h2>Active incident</h2><span>Illustrative details</span>
+        </div>
+        <section class="panel incident">
+            <div class="incident-head">
+                <div>
+                    <h2>Scheduled Maintenance - Database &amp; API Gateway</h2>
+                    <p>Sample incident details; not a live operational feed.</p>
+                </div><span class="incident-badge">In progress</span>
+            </div>
+            <div class="incident-eta"><span>Illustrative return estimate</span><strong
+                    id="incidentEta">Calculating...</strong></div>
+            <div class="incident-note">
+                <p><strong>Maintenance notice displayed.</strong> The website availability is checked automatically by
+                    the maintenance page.</p>
+                <p><strong>For verified updates,</strong> contact Restpoint support or return to the main site.</p>
+            </div>
+        </section>
+        <section class="panel updates">
+            <div>
+                <h2>Get service updates</h2>
+                <p>Contact support for verified maintenance updates. This page does not submit subscriptions.</p>
+            </div>
+            <a class="button" href="mailto:support@restpoint.co.ke">Contact support</a>
+        </section>
+    </main>
+    <footer class="footer">
+        <div class="footer-inner"><span>Restpoint. Reliable systems for the people who keep things moving.</span><a
+                href="https://restpoint.co.ke">Back to Restpoint</a></div>
+    </footer>
+    <script>
+        (function () {
+            var lastCheck = document.getElementById('lastCheck');
+            var loadedAt = Date.now();
+            function updateLastCheck() {
+                var elapsed = Math.floor((Date.now() - loadedAt) / 1000);
+                lastCheck.textContent = elapsed < 10 ? 'just now' : elapsed + ' seconds ago';
+            }
+            updateLastCheck();
+            window.setInterval(updateLastCheck, 10000);
+
+            var bars = document.getElementById('uptimeBars');
+            for (var i = 0; i < 90; i += 1) {
+                var bar = document.createElement('span');
+                bar.className = 'bar' + ([61, 84].includes(i) ? ' warn' : i === 72 ? ' down' : '');
+                bar.style.height = (55 + (i % 5) * 8) + '%';
+                bars.appendChild(bar);
+            }
+
+            var minimumEta = 40 * 60 * 1000;
+            var maximumEta = 3 * 60 * 60 * 1000;
+            var etaKey = 'restpoint-maintenance-demo-eta-v1';
+            var now = Date.now();
+            var target;
+            try {
+                var storedTarget = Number(window.sessionStorage.getItem(etaKey));
+                if (Number.isFinite(storedTarget) && storedTarget > 0 && storedTarget <= now + maximumEta) target = storedTarget;
+            } catch { }
+            if (!target) {
+                target = now + minimumEta + Math.floor(Math.random() * (maximumEta - minimumEta + 1));
+                try { window.sessionStorage.setItem(etaKey, String(target)); } catch { }
+            }
+            var eta = document.getElementById('incidentEta');
+            function updateEta() {
+                var left = Math.max(0, target - Date.now());
+                var total = Math.floor(left / 1000);
+                eta.textContent = left ? Math.floor(total / 3600) + 'h ' + Math.floor((total % 3600) / 60) + 'm ' + (total % 60) + 's' : 'Estimate passed';
+            }
+            updateEta();
+            window.setInterval(updateEta, 1000);
+        })();
+    </script>
+</body>
+
+</html>

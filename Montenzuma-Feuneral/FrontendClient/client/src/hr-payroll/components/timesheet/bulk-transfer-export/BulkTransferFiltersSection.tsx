@@ -1,0 +1,86 @@
+import { memo, useMemo } from 'react';
+import { Label } from '@hr/components/ui/label';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@hr/components/ui/collapsible';
+import { ProjectMultiSelector } from '@hr/components/ui/project-multi-selector';
+import { EmployeeMultiSelector } from '@hr/components/ui/employee-multi-selector';
+import { ChevronDown, SlidersHorizontal } from 'lucide-react';
+import { cn } from '@hr/lib/utils';
+
+interface BulkTransferFiltersSectionProps {
+  selectedProjects: number[];
+  selectedEmployees: number[];
+  projects: Array<{ id: number; code: string; name: string }>;
+  onProjectChange: (ids: number[]) => void;
+  onEmployeeChange: (ids: number[]) => void;
+}
+
+export const BulkTransferFiltersSection = memo(function BulkTransferFiltersSection({
+  selectedProjects,
+  selectedEmployees,
+  projects,
+  onProjectChange,
+  onEmployeeChange,
+}: BulkTransferFiltersSectionProps) {
+  const hasActiveFilters = useMemo(() => {
+    const hasProjectFilter = selectedProjects.length > 0 && selectedProjects.length < projects.length;
+    const hasEmployeeFilter = selectedEmployees.length > 0;
+    return hasProjectFilter || hasEmployeeFilter;
+  }, [selectedProjects.length, selectedEmployees.length, projects.length]);
+
+  const filterSummary = useMemo(() => {
+    if (!hasActiveFilters) return null;
+    const parts: string[] = [];
+    if (selectedProjects.length > 0 && selectedProjects.length < projects.length) {
+      parts.push(`${selectedProjects.length} dự án`);
+    }
+    if (selectedEmployees.length > 0) {
+      parts.push(`${selectedEmployees.length} nhân viên`);
+    }
+    return parts.join(' · ');
+  }, [hasActiveFilters, selectedProjects.length, selectedEmployees.length, projects.length]);
+
+  return (
+    <Collapsible>
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "group flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-dashed px-3 py-2.5 text-sm transition-colors",
+            hasActiveFilters
+              ? "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"
+              : "border-muted-foreground/25 text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
+          )}
+        >
+          <span className="flex min-w-0 items-center gap-2">
+            <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
+            {hasActiveFilters ? (
+              <span className="min-w-0 break-words text-left">Đã lọc: {filterSummary}</span>
+            ) : (
+              <span>Bộ lọc nâng cao</span>
+            )}
+          </span>
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Projects</Label>
+            <ProjectMultiSelector
+              value={selectedProjects}
+              onChange={onProjectChange}
+              projects={projects}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Employees</Label>
+            <EmployeeMultiSelector
+              value={selectedEmployees}
+              onChange={onEmployeeChange}
+            />
+          </div>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+});

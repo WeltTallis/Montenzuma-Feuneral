@@ -1,0 +1,521 @@
+import { coffinQuery, coffinTransaction } from '../db.js';
+import crypto from 'crypto';
+
+
+class CoffinModel {
+
+  static toMySqlDate(value: any): string | null {
+    if (value === null || value === undefined || value === '') return null;
+
+    const pad = (n: number) => String(n).padStart(2, '0');
+
+    // JS Date object (e.g. a DATE column read back by the mysql2 driver).
+    if (value instanceof Date && !isNaN(value.getTime())) {
+      return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
+    }
+
+    const s = String(value).trim();
+    if (!s) return null;
+
+    // Already a clean 'YYYY-MM-DD' (or ISO datetime) — keep the date part only.
+    const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+
+    // Anything else (e.g. a locale string 'Fri Oct 23 2026') — parse & reformat.
+    const parsed = new Date(s);
+    if (!isNaN(parsed.getTime())) {
+      return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}`;
+    }
+
+    // Unparseable — return null rather than feed a bad literal to the DATE column.
+    return null;
+  }
+
+  /**
+   * Map a raw `coffins` row into the frontend shape.
+   */
+  static mapRow(r: any): any {
+    const images = r.image_urls
+      ? r.image_urls.split(',').map((s: string) => s.trim()).filter(Boolean).slice(0, 10)
+      : [];
+    const name = r.type || r.name || r.coffin_id || 'Unnamed Coffin';
+    return {
+      coffin_id: r.coffin_id,
+      custom_id: r.custom_id || null,
+      name,
+      type: r.type || r.name || '',
+      exact_price: parseFloat(r.exact_price ?? r.price) || 0,
+      price: parseFloat(r.exact_price ?? r.price) || 0, // UI uses `price`
+      price_kes: parseFloat(r.exact_price ?? r.price) || 0, // UI fallback
+      quantity: parseInt(r.quantity ?? r.stock) || 0,
+      stock: parseInt(r.quantity ?? r.stock) || 0, // UI uses `stock`
+      quantity_available: parseInt(r.quantity ?? r.stock) || 0,
+      quantity_reserved: parseInt(r.quantity_reserved) || 0,
+      quantity_on_hand: Number.isFinite(Number(r.quantity_on_hand))
+        ? parseInt(r.quantity_on_hand)
+        : (parseInt(r.quantity ?? r.stock) || 0) + (parseInt(r.quantity_reserved) || 0),
+      color: r.color || '',
+      size: r.size || '',
+      material: r.material || '',
+      sku: r.coffin_id || r.sku || '',
+      // Preserve the raw tenant id (may be a UUID like 'dc007c...' or a legacy INT
+      // like '1'). Never parseInt() it - parseInt() on a UUID returns NaN.
+      tenant_id: (r.tenant_id !== null && r.tenant_id !== undefined && String(r.tenant_id).trim() !== '')
+        ? String(r.tenant_id)
+        : null,
+      // Preserve the raw branch id (may be a UUID like 'b7a2-...' or a legacy INT
+      // like '1'). Never parseInt() it - parseInt() on a UUID returns NaN, which is
+      // falsy, causing the frontend to treat the coffin as belonging to every branch.
+      branch_id: (r.branch_id !== null && r.branch_id !== undefined && String(r.branch_id).trim() !== '')
+        ? String(r.branch_id)
+        : null,
+      created_at: r.created_at || null,
+      images,
+      primary_image: images[0] || null,
+      image_urls: images
+    };
+  }
+
+  /**
+   * Create a new coffin
+   */
+  static async create(tenantSlug: string, data: any): Promise<any> {
+    const type = (data.type || data.name || '').toString().trim();
+    const color = (data.color || '').toString().trim() || null;
+    const size = (data.size || '').toString().trim() || null;
+    const quantity = parseInt(data.quantity) || 0;
+    const exactPrice = parseFloat(data.exact_price ?? data.price) || 0;
+
+    // Persist tenant/branch ids EXACTLY as received (UUID strings). The coffins
+    // table stores these columns as VARCHAR - coercing them to numbers would corrupt
+    // UUIDs (parseInt('55e1190b-...') -> NaN) or truncate them, leaking the coffin
+    // into every branch.
+    const tenantId = (data.tenant_id != null && String(data.tenant_id).trim() !== '')
+      ? String(data.tenant_id).trim()
+      : null;
+    const branchId = (data.branch_id != null && String(data.branch_id).trim() !== '')
+      ? String(data.branch_id).trim()
+      : null;
+
+    const coffinId = `COF-${Date.now().toString().slice(-6)}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+    const sql = `
+      INSERT INTO coffins
+        (coffin_id, tenant_slug, tenant_id, branch_id, type, exact_price, quantity, quantity_on_hand, quantity_reserved, color, size, description,
+         is_active, is_deleted, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, TRUE, FALSE, NOW())
+    `;
+
+    await coffinQuery(sql, [
+      coffinId, tenantSlug, tenantId, branchId,
+      type, exactPrice, quantity, quantity, color, size, data.description || null
+    ]);
+
+    return {
+      insertId: 0,
+      coffin_id: coffinId,
+      type,
+      name: type,
+      exact_price: exactPrice,
+      price: exactPrice,
+      quantity,
+      stock: quantity,
+      quantity_available: quantity,
+      quantity_on_hand: quantity,
+      quantity_reserved: 0,
+      color,
+      size,
+      description: data.description || null,
+      tenant_id: tenantId,
+      branch_id: branchId
+    };
+  }
+
+  /**
+   * Get all coffins for a tenant
+   */
+  static async getAll(tenantSlug: string, tenantId: string | null = null): Promise<any[]> {
+    // Multi-branch tenants share ONE tenant_id across every branch. Coffins written
+    // by a branch user carry tenant_slug = <branch slug> while head-office coffins
+    // carry tenant_slug = <parent slug>. Matching tenant_id as well guarantees a
+    // tenant-wide inventory regardless of which slug wrote the row.
+    const params: any[] = [tenantSlug];
+    let tenantClause = 'c.tenant_slug = ?';
+    if (tenantId != null && String(tenantId).trim() !== '') {
+      tenantClause = '(c.tenant_slug = ? OR c.tenant_id = ?)';
+      params.push(String(tenantId).trim());
+    }
+
+    const sql = `
+      SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.quantity_on_hand, c.quantity_reserved, c.color, c.size, c.description, c.created_at,
+        GROUP_CONCAT(ci.image_url) as image_urls
+      FROM coffins c
+      LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
+      WHERE ${tenantClause} AND c.is_deleted = FALSE
+      GROUP BY c.coffin_id
+      ORDER BY c.created_at DESC
+    `;
+
+    const rows: any[] = await coffinQuery(sql, params);
+    return rows.map(row => this.mapRow(row));
+
+  }
+
+  /**
+   * Get coffins from the central coffin database for a tenant (optionally a branch).
+   * All branches share one central DB - the tenant (and optional branch) filter
+   * is applied with columns, never by switching databases.
+   */
+  static async getByBranch(tenantSlug: string, _branchDbName?: string | null, _branchSlug?: string | null, branchId: number | null = null): Promise<any[]> {
+    const sql = `
+      SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.quantity_on_hand, c.quantity_reserved, c.color, c.size, c.description, c.created_at,
+        GROUP_CONCAT(ci.image_url) as image_urls
+      FROM coffins c
+      LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
+      WHERE c.tenant_slug = ? AND c.is_deleted = FALSE
+      GROUP BY c.coffin_id
+      ORDER BY c.created_at DESC
+    `;
+
+    const rows: any[] = await coffinQuery(sql, [tenantSlug]);
+    return rows.map(row => ({
+      ...this.mapRow(row),
+      branch_id: branchId
+        ? String(branchId)
+        : (row.branch_id !== null && row.branch_id !== undefined && String(row.branch_id).trim() !== ''
+          ? String(row.branch_id)
+          : null)
+    }));
+  }
+
+  /**
+   * Get coffin by ID
+   */
+  static async getById(tenantSlug: string, id: string, tenantId: string | null = null): Promise<any | null> {
+    const params: any[] = [id, tenantSlug];
+    let tenantClause = 'c.tenant_slug = ?';
+    if (tenantId != null && String(tenantId).trim() !== '') {
+      tenantClause = '(c.tenant_slug = ? OR c.tenant_id = ?)';
+      params.push(String(tenantId).trim());
+    }
+
+    const sql = `
+      SELECT c.coffin_id, c.tenant_id, c.branch_id, c.type, c.exact_price, c.quantity, c.quantity_on_hand, c.quantity_reserved, c.color, c.size, c.description, c.created_at,
+        GROUP_CONCAT(ci.image_url) as image_urls
+      FROM coffins c
+      LEFT JOIN coffin_images ci ON c.coffin_id = ci.coffin_id
+      WHERE c.coffin_id = ? AND ${tenantClause} AND c.is_deleted = FALSE
+      GROUP BY c.coffin_id
+    `;
+
+    const rows: any[] = await coffinQuery(sql, params);
+    return rows.length > 0 ? this.mapRow(rows[0]) : null;
+  }
+
+  /**
+   * Update coffin
+   * Can update: name/type, color, size, quantity, price
+   *
+   * Returns the number of rows actually changed (0 when the id matched nothing).
+   * Callers MUST check it: a silent `return true` made a failed stock write look
+   * like a success in the UI — the toast said "Added N units" while the quantity
+   * in the database never moved.
+   *
+   * `tenantId` widens the row match to `tenant_slug = ? OR tenant_id = ?`, the
+   * SAME scope the read path uses (see getAllCoffinsAllBranches). Matching on
+   * tenant_slug alone meant a coffin row stored under a branch slug but sharing
+   * the tenant UUID was listed in the inventory yet could never be written to.
+   */
+  static async update(tenantSlug: string, id: string, data: any, tenantId?: string | null): Promise<number> {
+    const updateFields: string[] = [];
+    const updateValues: any[] = [];
+
+    if (data.type !== undefined || data.name !== undefined) {
+      updateFields.push('type = ?');
+      updateValues.push(((data.type ?? data.name) || '').toString().trim() || 'Unnamed Coffin');
+    }
+    if (data.color !== undefined) {
+      updateFields.push('color = ?');
+      updateValues.push((data.color || '').toString().trim() || null);
+    }
+    if (data.size !== undefined) {
+      updateFields.push('size = ?');
+      updateValues.push((data.size || '').toString().trim() || null);
+    }
+    if (data.quantity !== undefined) {
+      const quantity = Math.max(0, parseInt(data.quantity) || 0);
+      updateFields.push('quantity = ?');
+      updateValues.push(quantity);
+      updateFields.push('quantity_on_hand = ? + quantity_reserved');
+      updateValues.push(quantity);
+    }
+    if (data.exact_price !== undefined || data.price !== undefined) {
+      updateFields.push('exact_price = ?');
+      updateValues.push(parseFloat(data.exact_price ?? data.price) || 0);
+    }
+    if (data.image_url) {
+      await this.updateImages(tenantSlug, id, [data.image_url]);
+    }
+
+    updateFields.push('updated_at = NOW()');
+
+    if (updateFields.length > 1) {
+      // Match the row on tenant_slug OR tenant_id, mirroring the read path, so a
+      // coffin registered under a branch slug is still writable by the org.
+      const sql = tenantId
+        ? `UPDATE coffins SET ${updateFields.join(', ')} WHERE coffin_id = ? AND (tenant_slug = ? OR tenant_id = ?) AND is_deleted = FALSE`
+        : `UPDATE coffins SET ${updateFields.join(', ')} WHERE coffin_id = ? AND tenant_slug = ? AND is_deleted = FALSE`;
+      updateValues.push(id, tenantSlug);
+      if (tenantId) updateValues.push(String(tenantId));
+      const result: any = await coffinQuery(sql, updateValues);
+      // mysql2 returns an OkPacket for UPDATE; affectedRows is the truth.
+      return Number(result?.affectedRows ?? 0);
+    }
+
+    // Only `updated_at` was set (no real field supplied). The id may still be
+    // bogus, so check it exists and report that honestly instead of faking a write.
+    const existing: any[] = await coffinQuery(
+      'SELECT coffin_id FROM coffins WHERE coffin_id = ? AND (tenant_slug = ?' + (tenantId ? ' OR tenant_id = ?' : '') + ') AND is_deleted = FALSE',
+      tenantId ? [id, tenantSlug, String(tenantId)] : [id, tenantSlug]
+    );
+    return existing.length > 0 ? 1 : 0;
+  }
+
+  /**
+   * Soft delete coffin
+   */
+  static async delete(tenantSlug: string, id: string): Promise<boolean> {
+    const orders: any[] = await coffinQuery(
+      'SELECT order_id FROM coffin_bookings WHERE coffin_id = ? AND tenant_slug = ? AND status != "completed"',
+      [id, tenantSlug]
+    );
+
+    if (orders.length > 0) {
+      throw new Error('Cannot delete coffin with active orders');
+    }
+
+    await coffinQuery(
+      'UPDATE coffins SET is_deleted = TRUE WHERE coffin_id = ? AND tenant_slug = ?',
+      [id, tenantSlug]
+    );
+
+    return true;
+  }
+
+  /**
+   * Create a coffin order
+   */
+  static async createOrder(tenantSlug: string, data: any): Promise<any> {
+    const orderId = `ORD-${Date.now().toString().slice(-6)}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+    const quantity = parseInt(data.quantity, 10);
+    const stockReserved = data.stock_reserved === true;
+    const isMadeToOrder = data.is_made_to_order === true;
+    if (stockReserved && !data.coffin_id) {
+      throw new Error('A stock-backed reservation must identify an inventory variant');
+    }
+
+    const serviceDate = CoffinModel.toMySqlDate(data.service_date);
+    const amount = parseFloat(data.amount) || 0;
+    const deposit = parseFloat(data.deposit) || 0;
+    const tenantId = data.tenant_id != null && String(data.tenant_id).trim()
+      ? String(data.tenant_id).trim()
+      : null;
+    const tenantClause = tenantId ? '(tenant_slug = ? OR tenant_id = ?)' : 'tenant_slug = ?';
+    const tenantParams = tenantId ? [tenantSlug, tenantId] : [tenantSlug];
+
+    const result = await coffinTransaction(async (query: any) => {
+      if (stockReserved) {
+        const stockUpdate: any = await query(
+          `UPDATE coffins
+           SET quantity = quantity - ?, quantity_reserved = quantity_reserved + ?
+           WHERE coffin_id = ? AND ${tenantClause} AND is_deleted = FALSE AND quantity >= ?`,
+          [quantity, quantity, data.coffin_id, ...tenantParams, quantity]
+        );
+        if (Number(stockUpdate?.affectedRows || 0) !== 1) {
+          throw new Error('Insufficient stock for the selected coffin variant');
+        }
+      }
+
+      const sql = `
+        INSERT INTO coffin_bookings
+          (order_id, tenant_slug, tenant_id, branch_id, coffin_id, coffin_name, color, size,
+           quantity, booked_by, booked_for, client_phone, service_date, service_time, paid,
+           amount, deposit, notes, stock_reserved, is_made_to_order, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW())
+      `;
+
+      return query(sql, [
+        orderId, tenantSlug,
+        tenantId,
+        (data.branch_id != null && String(data.branch_id).trim() !== '') ? String(data.branch_id).trim() : null,
+        data.coffin_id || null, data.coffin_name?.trim() || null,
+        data.color ?? null, data.size ?? null, quantity,
+        data.booked_by?.trim() || null, data.booked_for?.trim() || null,
+        data.client_phone?.trim() || null, serviceDate,
+        data.service_time ? String(data.service_time).slice(0, 5) : null,
+        data.paid ? 1 : 0, amount, deposit,
+        (data.notes != null && String(data.notes).trim() !== '') ? String(data.notes).trim() : null,
+        stockReserved ? 1 : 0, isMadeToOrder ? 1 : 0
+      ]);
+    });
+
+    return {
+      order_id: orderId,
+      insertId: (result as any).insertId,
+      coffin_id: data.coffin_id || null,
+      coffin_name: data.coffin_name,
+      color: data.color,
+      size: data.size,
+      quantity,
+      stock_reserved: stockReserved,
+      is_made_to_order: isMadeToOrder,
+      booked_by: data.booked_by,
+      booked_for: data.booked_for,
+      service_date: serviceDate,
+      service_time: data.service_time ? String(data.service_time).slice(0, 5) : null,
+      paid: data.paid ? 1 : 0,
+      amount,
+      deposit
+    };
+  }
+
+  /**
+   * Request stock from another branch
+   */
+  static async requestStock(tenantSlug: string, data: any): Promise<any> {
+    const requestId = `REQ-${Date.now().toString().slice(-6)}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+    // Normalise the expected (service) date down to YYYY-MM-DD so the DATE
+    // column accepts it (the UI may send a full ISO datetime string).
+    const serviceDate = CoffinModel.toMySqlDate(data.service_date);
+
+    const sql = `
+      INSERT INTO stock_requests
+        (request_id, tenant_slug, tenant_id, coffin_id, coffin_name, color, size,
+         requested_by, booked_for, requesting_branch, from_branch_id, to_branch_id,
+         from_branch_name, to_branch_name, quantity, client_name, client_phone,
+         deceased_name, service_date, notes, req_type, image_url, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())
+    `;
+
+    const result: any = await coffinQuery(sql, [
+      requestId, tenantSlug,
+      (data.tenant_id != null && String(data.tenant_id).trim() !== '') ? String(data.tenant_id).trim() : null,
+      data.coffin_id?.trim() || null,
+      (data.coffin_name || '').trim() || null, (data.color || '').trim() || null,
+      (data.size || '').trim() || null, (data.requested_by || '').trim() || null,
+      (data.booked_for || '').trim() || null, (data.requesting_branch || '').trim() || null,
+      (data.from_branch_id != null && String(data.from_branch_id).trim() !== '') ? String(data.from_branch_id).trim() : null,
+      (data.to_branch_id != null && String(data.to_branch_id).trim() !== '') ? String(data.to_branch_id).trim() : null,
+      data.from_branch_name || null, data.to_branch_name || null,
+      parseInt(data.quantity) || 1,
+      (data.client_name || '').trim() || null,
+      (data.client_phone || '').trim() || null,
+      (data.deceased_name || '').trim() || null,
+      serviceDate,
+      (data.notes || '').trim() || null,
+      // UI stock requests default to CLIENT transfers (a coffin requested for a
+      // client elsewhere) — only an explicit replenishment marker overrides.
+      data.req_type || 'client',
+      data.image_url || null
+    ]);
+
+    return {
+      request_id: requestId,
+      insertId: result.insertId,
+      coffin_id: data.coffin_id || null,
+      coffin_name: data.coffin_name,
+      color: data.color,
+      size: data.size,
+      requested_by: data.requested_by,
+      booked_for: data.booked_for,
+      requesting_branch: data.requesting_branch,
+      from_branch_id: data.from_branch_id || null,
+      to_branch_id: data.to_branch_id || null,
+      from_branch_name: data.from_branch_name || null,
+      to_branch_name: data.to_branch_name || null,
+      quantity: parseInt(data.quantity) || 1,
+      client_name: (data.client_name || '').trim() || null,
+      client_phone: (data.client_phone || '').trim() || null,
+      deceased_name: (data.deceased_name || '').trim() || null,
+      service_date: serviceDate,
+      notes: (data.notes || '').trim() || null,
+      image: data.image_url || null
+    };
+  }
+
+  /**
+   * Register a delivered cross-branch client transfer as a REAL reservation
+   * (coffin_bookings row) belonging to the requesting branch, linked back to
+   * the stock request via `source_request_id`. Idempotent: a transfer can only
+   * ever produce ONE reservation — repeated "Delivered" calls return the
+   * already-created order without inserting a duplicate.
+   */
+  static async createTransferOrder(tenantSlug: string, data: any): Promise<any> {
+    if (data.source_request_id) {
+      const existing: any[] = await coffinQuery(
+        'SELECT order_id FROM coffin_bookings WHERE source_request_id = ? LIMIT 1',
+        [data.source_request_id]
+      );
+      if (existing.length > 0) {
+        return { order_id: existing[0].order_id, created: false };
+      }
+    }
+
+    const orderId = `ORD-${Date.now().toString().slice(-6)}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+    // `data.service_date` may be a JS Date (read back from stock_requests) or a
+    // 'YYYY-MM-DD' string (HTTP body). Normalise both so the DATE insert succeeds.
+    const serviceDate = CoffinModel.toMySqlDate(data.service_date);
+
+    await coffinQuery(
+      `INSERT INTO coffin_bookings
+         (order_id, tenant_slug, tenant_id, branch_id, coffin_id, coffin_name, color, size,
+          quantity, booked_by, booked_for, client_phone, service_date, paid, source_request_id,
+          stock_reserved, is_made_to_order, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, 0, 'active', NOW())`,
+      [
+        orderId, tenantSlug,
+        (data.tenant_id != null && String(data.tenant_id).trim() !== '') ? String(data.tenant_id).trim() : null,
+        (data.branch_id != null && String(data.branch_id).trim() !== '') ? String(data.branch_id).trim() : null,
+        data.coffin_id || null, data.coffin_name || null,
+        data.color ?? null, data.size ?? null,
+        parseInt(data.quantity) || 1,
+        data.client_name || null, data.booked_for || null,
+        data.client_phone || null,
+        serviceDate,
+        data.source_request_id || null
+      ]
+    );
+
+    return { order_id: orderId, created: true };
+  }
+
+  /**
+   * Add images to a coffin
+   */
+  static async addImages(tenantSlug: string, coffinId: string, imageUrls: string[]): Promise<boolean> {
+    if (imageUrls.length > 0) {
+      const sql = `INSERT INTO coffin_images (coffin_id, tenant_slug, image_url, created_at) VALUES ?`;
+      const values = imageUrls.map(url => [coffinId, tenantSlug, url, new Date().toISOString().slice(0, 19).replace('T', ' ')]);
+      await coffinQuery(sql, [values]);
+    }
+    return true;
+  }
+
+  /**
+   * Update images for a coffin (replace existing)
+   */
+  static async updateImages(tenantSlug: string, coffinId: string, imageUrls: string[]): Promise<boolean> {
+    await coffinQuery(
+      'DELETE FROM coffin_images WHERE coffin_id = ? AND tenant_slug = ?',
+      [coffinId, tenantSlug]
+    );
+
+    if (imageUrls.length > 0 && imageUrls[0]) {
+      return this.addImages(tenantSlug, coffinId, imageUrls);
+    }
+    return true;
+  }
+}
+
+export default CoffinModel;

@@ -1,0 +1,49 @@
+.tt-container {
+  position: fixed;
+  right: 12px;
+  top: 8px;
+  z-index: 10000;
+  display: inline-block;
+}
+
+.tt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 40px;
+  height: 40px;
+  padding: 6px;
+  border-radius: 999px;
+  border: 0;
+  cursor: pointer;
+  color: var(--color-foreground, #0f172a);
+  background: var(--color-card, #ffffff);
+  box-shadow: 0 6px 18px rgba(2,6,23,0.12);
+  transition: transform 150ms ease, background 150ms ease, color 150ms ease;
+}
+
+.tt-btn:hover { transform: translateY(-2px); }
+
+.tt-btn:active { transform: translateY(0); }
+
+.tt-dark {
+  background: var(--color-card, #111827);
+  color: var(--color-card-foreground, #f8fafc);
+}
+
+.tt-light {
+  background: var(--color-card, #ffffff);
+  color: var(--color-card-foreground, #0f172a);
+}
+
+/* Make sure it doesn't overlap the notification bell on left */
+@media (max-width: 600px) {
+  .tt-container { right: 8px; top: 52px; }
+}
+
+/* Accessibility */
+.tt-btn:focus {
+  outline: 2px solid var(--color-ring, rgba(79,70,229,0.5));
+  outline-offset: 3px;
+}

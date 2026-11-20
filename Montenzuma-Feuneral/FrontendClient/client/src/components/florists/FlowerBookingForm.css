@@ -1,0 +1,65 @@
+@keyframes floristBookingPanelIn {
+  from { transform: translateX(48px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.flower-booking-form-panel { position: fixed; top: 1vh; right: 1vw; bottom: 1vh; display: flex; width: min(1040px, 98vw); flex-direction: column; overflow: hidden; padding: 0; border-radius: 0; border: 1px solid #EAE7E2; background: #fff; z-index: 1001; box-shadow: -24px 0 60px rgba(28,26,23,.14); animation: floristBookingPanelIn .32s cubic-bezier(.16,1,.3,1); }
+.flower-booking-form-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 28px; border-bottom: 1px solid #EAE7E2; background: #fff; }
+.flower-booking-form-header h2 { margin: 0; color: #1C1A17; font: 500 24px/1.2 'Fraunces', Georgia, serif; letter-spacing: -.01em; }
+.flower-booking-form-header p { margin: 4px 0 0; color: #9C9389; font-size: 12px; }
+.flower-booking-form-close { display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 34px; border: 1px solid #9D1F50; border-radius: 0; background: #9D1F50; color: #fff; font-size: 22px; cursor: pointer; }
+.flower-booking-form-close:hover { background: #8A1B46; }
+.flower-booking-form { display: flex; min-height: 0; flex: 1; flex-direction: column; overflow-y: auto; padding: 0; }
+.flower-booking-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 0; }
+.flower-booking-form-section { min-width: 0; padding: 24px 28px; border: 0; border-right: 1px solid #EAE7E2; border-bottom: 1px solid #EAE7E2; border-radius: 0; background: #fff; box-shadow: none; }
+.flower-booking-form-section:nth-child(2n) { border-right: 0; }
+.flower-booking-form-section:nth-last-child(-n+2) { border-bottom: 0; }
+.flower-booking-form-section h3 { display: flex; align-items: center; gap: 10px; margin: 0 0 18px; padding: 0; border: 0; color: #00296B; font: 700 10px/1.4 'DM Sans', system-ui, sans-serif; letter-spacing: .18em; text-transform: uppercase; }
+.flower-booking-form-section h3::before { width: 6px; height: 6px; flex: 0 0 6px; background: #0F3040; content: ''; }
+.flower-booking-form-section > label { margin-bottom: 6px !important; }
+.flower-booking-form-section > input,
+.flower-booking-form-section > textarea,
+.flower-booking-form-section > select { margin-bottom: 12px !important; padding: 11px 13px !important; border-radius: 0 !important; }
+.flower-booking-form-section > textarea { margin-bottom: 12px !important; padding: 11px 13px !important; border-radius: 0 !important; }
+.flower-booking-form-section > input { margin-bottom: 12px !important; padding: 11px 13px !important; border-radius: 0 !important; }
+.flower-booking-form-section > div[style] { margin-bottom: 12px !important; }
+.flower-booking-form-section > :last-child { margin-bottom: 0 !important; }
+.flower-booking-form-section > button#flower-service-time { border-radius: 0 !important; }
+.flower-booking-date-picker { position: relative; margin-bottom: 16px; }
+.flower-booking-date-trigger { display: flex; width: 100%; align-items: center; gap: 10px; padding: 11px 13px; border: 1px solid #EAE7E2; border-radius: 0; background: #FAF9F7; color: #1C1A17; font: 600 13px 'DM Sans', system-ui, sans-serif; text-align: left; cursor: pointer; }
+.flower-booking-date-trigger span { min-width: 0; flex: 1; }
+.flower-booking-date-trigger:hover { border-color: #E8A9C3; background: #fff; }
+.flower-booking-date-popover { position: absolute; top: calc(100% + 8px); left: 0; z-index: 40; width: min(340px, calc(100vw - 48px)); padding: 14px; border: 1px solid #EAE7E2; border-radius: 0; background: #fff; box-shadow: 0 18px 48px rgba(48, 30, 37, .18); }
+.flower-booking-calendar-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; color: #342B2D; font-size: 13px; }
+.flower-booking-calendar-heading > div { display: flex; gap: 6px; }
+.flower-booking-calendar-heading button { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid #EAE7E2; border-radius: 0; background: #fff; color: #6E675E; font-size: 20px; cursor: pointer; }
+.flower-booking-calendar-weekdays,
+.flower-booking-calendar-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; text-align: center; }
+.flower-booking-calendar-weekdays { margin-bottom: 5px; color: #A39A8E; font-size: 10px; font-weight: 700; }
+.flower-booking-calendar-days button { position: relative; display: grid; min-width: 0; aspect-ratio: 1; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 0; background: transparent; color: #342B2D; font: 500 12px 'DM Sans', system-ui, sans-serif; cursor: pointer; }
+.flower-booking-calendar-days button:hover { border-color: #F0B7CE; background: #FDF1F6; }
+.flower-booking-calendar-days button.outside-month { color: #C8C0B9; }
+.flower-booking-calendar-days button.today { border-color: #D6336C; color: #D6336C; font-weight: 700; }
+.flower-booking-calendar-days button.selected { border-color: #D6336C; background: #D6336C; color: #fff; }
+.flower-booking-calendar-days button span { position: absolute; bottom: 3px; width: 4px; height: 4px; border-radius: 50%; background: #D6336C; }
+.flower-booking-calendar-days button.selected span { background: #fff; }
+.flower-booking-calendar-shortcuts { display: flex; justify-content: space-between; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #F5E9EE; }
+.flower-booking-calendar-shortcuts button { padding: 5px 7px; border: 0; border-radius: 6px; background: transparent; color: #9D1F50; font-size: 11px; font-weight: 700; cursor: pointer; }
+.flower-booking-calendar-shortcuts button:hover { background: #FDF1F6; }
+.flower-booking-form-footer { position: sticky; bottom: 0; display: flex; justify-content: flex-end; gap: 12px; margin: 0; padding: 14px 28px max(14px, env(safe-area-inset-bottom)); border-top: 1px solid #EAE7E2; background: rgba(255,255,255,.96); backdrop-filter: blur(12px); }
+.flower-booking-form-footer button { border-radius: 0 !important; }
+@media (max-width: 720px) {
+  .flower-booking-form-panel { top: 0 !important; right: 0 !important; bottom: 0 !important; width: 100vw !important; border-radius: 0; }
+  .flower-booking-form-header { padding: 14px 16px; }
+  .flower-booking-form-header h2 { font-size: 21px; }
+  .flower-booking-form { padding: 0; }
+  .flower-booking-form-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .flower-booking-form-section { padding: 18px 16px; border-right: 0; border-bottom: 1px solid #EAE7E2; }
+  .flower-booking-form-section:nth-last-child(-n+2) { border-bottom: 1px solid #EAE7E2; }
+  .flower-booking-form-section:last-child { border-bottom: 0; }
+  .flower-booking-form-footer { padding: 12px 16px max(12px, env(safe-area-inset-bottom)); }
+}
+.flower-booking-upload-previews { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 9px; margin: -12px 0 20px; }
+.flower-booking-upload-previews figure { min-width: 0; margin: 0; overflow: hidden; border: 1px solid #F0E4EA; border-radius: 9px; background: #fff; }
+.flower-booking-upload-previews img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.flower-booking-upload-previews figcaption { padding: 5px 7px; overflow: hidden; color: #6E675E; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }

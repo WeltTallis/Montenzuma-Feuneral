@@ -1,0 +1,108 @@
+import type { BulkTransferHistoryDetailResponse } from '@hr/services/api/bulk-transfer.service';
+import { loadPdfMake } from '@hr/utils/pdf/pdfmake';
+import { sanitizeFilename } from '@hr/utils/file-naming';
+import { formatCurrencyFromString } from '@hr/utils/formatters';
+
+export async function generateBulkTransferHistoryPdf(
+  data: BulkTransferHistoryDetailResponse,
+  options?: { fileName?: string }
+): Promise<void> {
+  if (!data || !data.items || data.items.length === 0) {
+    throw new Error('Không có dữ liệu để xuất PDF');
+  }
+
+  const pdfMake = await loadPdfMake();
+
+  if (!pdfMake) {
+    throw new Error('Failed to load thư viện PDF');
+  }
+
+  const formatDate = (dateString?: string): string => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString('en-KE', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return String(dateString);
+    }
+  };
+
+  const fileName = sanitizeFilename(options?.fileName || 'ket_qua_chuyen_tien.pdf');
+
+
+  const body = [
+    [
+      { text: 'STT', style: 'th' },
+      { text: 'Employees', style: 'th' },
+      { text: 'Ngân hàng', style: 'th' },
+      { text: 'Số tài khoản', style: 'th' },
+      { text: 'CCCD', style: 'th' },
+      { text: 'Amount', style: 'th' },
+      { text: 'Status', style: 'th' },
+      { text: 'Payment date', style: 'th' },
+    ],
+    ...data.items.map((d, i) => [
+      { text: String(i + 1) },
+      { text: d.employee_name || '' },
+      { text: d.employee_bank || '' },
+      { text: d.employee_account_number || '' },
+      { text: d.employee_cccd || '' },
+      { text: formatCurrencyFromString(d.amount), alignment: 'right' },
+      { text: d.payment_status === 'paid' ? 'Successful' : 'Failed' },
+      { text: formatDate(data.uploaded_at || d.paid_at) },
+    ]),
+  ];
+
+  const docDefinition = {
+    pageSize: 'A4',
+    pageOrientation: 'landscape' as const,
+    pageMargins: [20, 20, 20, 20],
+    defaultStyle: { fontSize: 10 },
+    content: [
+      { text: 'Kết quả chuyển tiền', style: 'title' },
+      { text: `Thời điểm tạo: ${new Date().toLocaleString('en-KE')}`, style: 'muted', margin: [0, 2, 0, 8] },
+      {
+        columns: [
+          { width: 'auto', text: `Tổng số bản ghi: ${data.total_txn}`, style: 'summary' },
+          { width: 'auto', text: `Success: ${data.completed_txn}`, style: 'summarySuccess' },
+          { width: 'auto', text: `Failed: ${data.failed_txn}`, style: 'summaryFail' },
+        ],
+        columnGap: 24,
+        margin: [0, 0, 0, 10],
+      },
+      {
+        table: {
+          headerRows: 1,
+          widths: [30, '*', 90, 100, 90, 80, 70, 110],
+          body,
+        },
+        layout: {
+          fillColor: (rowIndex: number) => (rowIndex === 0 ? '#f1f5f9' : undefined),
+        },
+      },
+    ],
+    styles: {
+      title: { fontSize: 14, bold: true },
+      muted: { color: '#475569', fontSize: 9 },
+      summary: { fontSize: 10 },
+      summarySuccess: { fontSize: 10, color: '#16a34a' },
+      summaryFail: { fontSize: 10, color: '#dc2626' },
+      th: { bold: true },
+    },
+  };
+
+  // Use pdfMake's built-in download for better browser compatibility
+  try {
+    const pdfDocGenerator = pdfMake.createPdf(docDefinition);
+    pdfDocGenerator.download(fileName);
+  } catch (error) {
+    console.error('[PDF] Failed to create or download PDF:', error);
+    throw error;
+  }
+}

@@ -1,0 +1,81 @@
+import { useEmployeeProfile } from "@hr/hooks/api/useEmployeePortal";
+import { Skeleton } from "@hr/components/ui/skeleton";
+import { Button } from "@hr/components/ui/button";
+import { SectionErrorBoundary } from "@hr/components/ErrorBoundary";
+import EmployeePage from "@hr/pages/employee/EmployeePage";
+import FlexiblePayEmployeePage from "@hr/pages/employee/FlexiblePayEmployeePage";
+import { AlertCircle, RefreshCw05 } from "@untitledui/icons";
+import { EmployeeMobileShell } from "@hr/components/employees/EmployeeMobileShell";
+import { cn } from "@hr/lib/utils";
+import EmployeeTaxProfileForm from "@hr/pages/employee/EmployeeTaxProfileForm";
+
+/**
+ * Router component that selects the appropriate employee page
+ * based on the employee's payment schedule:
+ * - "flexible" -> FlexiblePayEmployeePage (salary advance feature)
+ * - "weekly" | "monthly" -> EmployeePage (timesheet view)
+ */
+const EmployeeRouter = () => {
+  const { data: profile, isLoading, isError, isFetching, refetch } = useEmployeeProfile();
+  const handleRetry = () => {
+    if (isFetching) return;
+    void refetch();
+  };
+
+  if (isLoading) {
+    return (
+      <EmployeeMobileShell chrome="skeleton" contentClassName="max-w-lg space-y-5">
+        <Skeleton className="h-14 w-full rounded-xl" />
+        <Skeleton className="h-48 w-full rounded-2xl" />
+        <div className="space-y-2.5">
+          <Skeleton className="h-6 w-40" />
+          <Skeleton className="h-32 w-full rounded-xl" />
+        </div>
+      </EmployeeMobileShell>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <SectionErrorBoundary sectionName="employee page">
+        <EmployeeMobileShell chrome="error" contentClassName="max-w-md">
+          <div className="flex min-h-[calc(100dvh-9rem)] flex-col items-center justify-center text-center" role="alert">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--employee-warning-soft)] text-fg-warning-primary ring-1 ring-[var(--employee-warning-border)]/70">
+              <AlertCircle className="h-8 w-8" aria-hidden="true" />
+            </div>
+            <h1 className="employee-type-section-title text-[var(--employee-text)]">
+              Chưa tải được hồ sơ
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-fg-tertiary">
+              Check your connection and try again.
+            </p>
+            <Button
+              type="button"
+              className="mt-5 h-11 gap-2 rounded-xl"
+              onClick={handleRetry}
+              disabled={isFetching}
+            >
+              <RefreshCw05 className={cn("h-4 w-4", isFetching && "animate-spin motion-reduce:animate-none")} aria-hidden="true" />
+              {isFetching ? "Refreshing…" : "Refresh"}
+            </Button>
+          </div>
+        </EmployeeMobileShell>
+      </SectionErrorBoundary>
+    );
+  }
+
+  const employeePage = profile.payment_schedule === "flexible"
+    ? <FlexiblePayEmployeePage />
+    : <EmployeePage />;
+
+  return (
+    <SectionErrorBoundary sectionName="employee page">
+    <div className="mobile-page space-y-6">
+      <EmployeeTaxProfileForm />
+      {employeePage}
+    </div>
+    </SectionErrorBoundary>
+  );
+};
+
+export default EmployeeRouter;

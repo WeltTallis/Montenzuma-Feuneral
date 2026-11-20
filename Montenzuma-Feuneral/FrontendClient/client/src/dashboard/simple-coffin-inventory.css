@@ -1,0 +1,1148 @@
+/* ============================================================
+   COFFINBOOK — VARIANT-LEVEL INVENTORY & BOOKINGS CSS
+   ============================================================ */
+
+.coffin-inventory-app {
+  --ink: #111827;
+  --ink2: #374151;
+  --ink3: #6b7280;
+  --ink4: #9ca3af;
+  --bg: #f9fafb;
+  --card: #ffffff;
+  --brd: #e5e7eb;
+  --brdl: #f3f4f6;
+  --acc: #0f766e;
+  --accl: #14b8a6;
+  --acclt: #f0fdfa;
+  --suc: #16a34a;
+  --sucl: #f0fdf4;
+  --dng: #dc2626;
+  --dngl: #fef2f2;
+  --warn: #d97706;
+  --warnl: #fffbeb;
+  --shs: 0 1px 2px rgba(0,0,0,.04);
+  --shl: 0 10px 15px rgba(0,0,0,.08);
+  --shxl: 0 20px 25px rgba(0,0,0,.1);
+
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: calc(100vh - 80px);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Dark mode adjustments */
+.rpd.dark .coffin-inventory-app {
+  --ink: #f9fafb;
+  --ink2: #e5e7eb;
+  --ink3: #9ca3af;
+  --ink4: #6b7280;
+  --bg: #0f1217;
+  --card: #181d26;
+  --brd: #252b37;
+  --brdl: #1f2530;
+  --acclt: rgba(20, 184, 166, 0.15);
+  --sucl: rgba(22, 163, 74, 0.15);
+  --dngl: rgba(220, 38, 38, 0.15);
+  --warnl: rgba(217, 119, 6, 0.15);
+}
+
+.coffin-inventory-app *,
+.coffin-inventory-app *::before,
+.coffin-inventory-app *::after {
+  box-sizing: border-box;
+}
+
+.coffin-inventory-app ::-webkit-scrollbar {
+  width: 5px;
+  height: 4px;
+}
+.coffin-inventory-app ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.coffin-inventory-app ::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 4px;
+}
+.rpd.dark .coffin-inventory-app ::-webkit-scrollbar-thumb {
+  background: #374151;
+}
+
+/* Animations */
+@keyframes cbPulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .3; transform: scale(.7); } }
+@keyframes cbTIn { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes cbTOut { to { opacity: 0; transform: translateY(8px); } }
+@keyframes cbOvIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cbPanelIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes cellIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ===== TOP BAR ===== */
+.coffin-inventory-app .topbar {
+  background: var(--card);
+  border-bottom: 1px solid var(--brd);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-shrink: 0;
+  min-height: 58px;
+}
+
+.coffin-inventory-app .topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.coffin-inventory-app .topbar-mark {
+  width: 34px;
+  height: 34px;
+  background: var(--acc);
+  color: #fff;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.coffin-inventory-app .topbar-title {
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  line-height: 1.2;
+}
+
+.coffin-inventory-app .topbar-title .sub {
+  display: block;
+  font-size: 10.5px;
+  color: var(--ink4);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 1px;
+}
+
+.coffin-inventory-app .topbar-link {
+  color: var(--ink3);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 7px;
+  transition: all .12s;
+  border: 1px solid var(--brd);
+  background: var(--card);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.coffin-inventory-app .topbar-link:hover,
+.coffin-inventory-app .topbar-link.active {
+  border-color: var(--acc);
+  color: var(--acc);
+  background: var(--acclt);
+}
+
+.coffin-inventory-app .btn-primary {
+  background: var(--acc);
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  padding: 8px 14px;
+  font-weight: 700;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background .15s, transform .12s;
+  box-shadow: 0 2px 8px rgba(15,118,110,.25);
+}
+
+.coffin-inventory-app .btn-primary:hover {
+  background: var(--accl);
+  transform: translateY(-1px);
+}
+
+.coffin-inventory-app .btn-book {
+  background: #3a55d6;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  padding: 8px 14px;
+  font-weight: 700;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background .15s, transform .12s;
+  box-shadow: 0 2px 8px rgba(58,85,214,.25);
+}
+
+.coffin-inventory-app .btn-book:hover {
+  background: #2a44bd;
+  transform: translateY(-1px);
+}
+
+/* ===== APP FRAME ===== */
+.coffin-inventory-app .app {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ===== TOOLBAR ===== */
+.coffin-inventory-app .cb-tb {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--brd);
+  background: var(--card);
+  flex-shrink: 0;
+  gap: 12px;
+  min-height: 52px;
+}
+
+.coffin-inventory-app .cb-tb-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.coffin-inventory-app .cb-tb-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.coffin-inventory-app .cb-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--brd);
+  margin: 0 4px;
+}
+
+.coffin-inventory-app .cb-search {
+  flex: 1;
+  max-width: 360px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg);
+  border: 1px solid var(--brd);
+  border-radius: 7px;
+  padding: 0 14px;
+  height: 32px;
+}
+
+.coffin-inventory-app .cb-search svg {
+  width: 14px;
+  height: 14px;
+  color: var(--ink4);
+  flex-shrink: 0;
+}
+
+.coffin-inventory-app .cb-search input {
+  border: none;
+  background: transparent;
+  outline: none;
+  flex: 1;
+  font-size: 12px;
+  color: var(--ink);
+  font-family: inherit;
+}
+
+.coffin-inventory-app .cb-search input::placeholder {
+  color: var(--ink4);
+}
+
+.coffin-inventory-app .cb-filter-select {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--brd);
+  border-radius: 7px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+  min-width: 140px;
+}
+
+.coffin-inventory-app .cb-filter-select:hover {
+  border-color: var(--acc);
+}
+
+/* ===== STAT STRIP ===== */
+.coffin-inventory-app .cb-sr {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--brd);
+}
+
+.coffin-inventory-app .cb-sr::-webkit-scrollbar {
+  display: none;
+}
+
+.coffin-inventory-app .cb-sr-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.coffin-inventory-app .cb-sr-ico {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.2);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.coffin-inventory-app .cb-sr-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.coffin-inventory-app .cb-sr-num {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+  letter-spacing: -0.5px;
+}
+
+.coffin-inventory-app .cb-sr-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255,255,255,.75);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-top: 2px;
+}
+
+/* ===== MAIN SPLIT ===== */
+.coffin-inventory-app .cb-split {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.coffin-inventory-app .cb-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--card);
+  position: relative;
+  overflow: hidden;
+}
+
+.coffin-inventory-app .cb-side {
+  width: 320px;
+  background: var(--card);
+  border-left: 1px solid var(--brd);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  z-index: 20;
+  min-height: 0;
+  overflow-y: hidden;
+}
+
+.coffin-inventory-app .cb-side-scroll {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== TYPE FILTER CHIPS ===== */
+.coffin-inventory-app .cb-filters {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--brdl);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.coffin-inventory-app .cb-fc {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .12s;
+  border: 1.5px solid var(--brd);
+  background: var(--card);
+  color: var(--ink3);
+  user-select: none;
+}
+
+.coffin-inventory-app .cb-fc:hover {
+  border-color: var(--ink4);
+  color: var(--ink2);
+}
+
+.coffin-inventory-app .cb-fc.on {
+  border-color: var(--acc);
+  background: var(--card);
+  color: var(--acc);
+  font-weight: 700;
+}
+
+.coffin-inventory-app .cb-fc-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.coffin-inventory-app .cb-fc-ct {
+  font-weight: 700;
+  font-size: 9px;
+  opacity: 0.6;
+}
+
+/* ===== ANALYTICS ===== */
+.coffin-inventory-app .cb-analytics {
+  flex: 1;
+  padding: 12px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.coffin-inventory-app .cb-an-title {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--ink4);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.coffin-inventory-app .cb-an-card {
+  background: var(--card);
+  border: 1px solid var(--brd);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.coffin-inventory-app .cb-an-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.coffin-inventory-app .cb-an-leg {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.coffin-inventory-app .cb-an-leg-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.coffin-inventory-app .cb-an-leg-label {
+  font-size: 11px;
+  color: var(--ink2);
+  flex: 1;
+}
+
+.coffin-inventory-app .cb-an-leg-val {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.coffin-inventory-app .cb-an-leg-pct {
+  font-size: 9px;
+  color: var(--ink4);
+  width: 32px;
+  text-align: right;
+}
+
+.coffin-inventory-app .cb-an-pie-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.coffin-inventory-app .cb-an-pie {
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.coffin-inventory-app .cb-an-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.coffin-inventory-app .cb-an-bar-label {
+  font-size: 10px;
+  color: var(--ink2);
+  width: 80px;
+  flex-shrink: 0;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.coffin-inventory-app .cb-an-bar-track {
+  flex: 1;
+  height: 16px;
+  background: var(--brdl);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.coffin-inventory-app .cb-an-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width .4s ease;
+}
+
+.coffin-inventory-app .cb-an-bar-val {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink);
+  min-width: 18px;
+  text-align: right;
+}
+
+.coffin-inventory-app .cb-an-restock-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.coffin-inventory-app .cb-an-restock-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--brdl);
+  border-radius: 8px;
+  border-left: 3px solid var(--dng);
+  cursor: pointer;
+  transition: all .12s;
+}
+
+.coffin-inventory-app .cb-an-restock-item:hover {
+  background: var(--dngl);
+}
+
+.coffin-inventory-app .cb-an-restock-item.warn {
+  border-left-color: var(--warn);
+}
+
+.coffin-inventory-app .cb-an-restock-item.warn:hover {
+  background: var(--warnl);
+}
+
+.coffin-inventory-app .cb-an-restock-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid var(--brd);
+  flex-shrink: 0;
+}
+
+.coffin-inventory-app .cb-an-restock-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.coffin-inventory-app .cb-an-restock-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.coffin-inventory-app .cb-an-restock-meta {
+  font-size: 9.5px;
+  color: var(--ink4);
+  margin-top: 1px;
+}
+
+.coffin-inventory-app .cb-an-restock-qty {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--dng);
+}
+
+.coffin-inventory-app .cb-an-restock-qty.warn {
+  color: var(--warn);
+}
+
+.coffin-inventory-app .cb-an-restock-empty {
+  text-align: center;
+  padding: 16px 0;
+  color: var(--ink4);
+  font-size: 11px;
+}
+
+/* ===== LIST HEADER & ROWS ===== */
+.coffin-inventory-app .cb-lh {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 3px 1.5fr 0.9fr 0.9fr 0.8fr 0.8fr 0.7fr 0.8fr;
+  align-items: center;
+  padding: 9px 20px 9px 0;
+  border-bottom: 1px solid var(--brd);
+  background: var(--bg);
+}
+
+.coffin-inventory-app .cb-lh > div {
+  padding-left: 10px;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--ink4);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.coffin-inventory-app .cb-lh > div:last-child {
+  text-align: right;
+}
+
+.coffin-inventory-app .cb-r {
+  display: grid;
+  grid-template-columns: 3px 1.5fr 0.9fr 0.9fr 0.8fr 0.8fr 0.7fr 0.8fr;
+  align-items: center;
+  gap: 0;
+  padding: 13px 20px 13px 0;
+  cursor: pointer;
+  transition: all .1s;
+  border-bottom: 1px solid var(--brdl);
+  min-height: 56px;
+  animation: cellIn .15s ease both;
+}
+
+.coffin-inventory-app .cb-r:hover {
+  background: var(--bg);
+}
+
+.coffin-inventory-app .cb-r.active {
+  box-shadow: inset 3px 0 0 var(--acc);
+}
+
+.coffin-inventory-app .cb-r.out-of-stock {
+  opacity: 0.65;
+}
+
+.coffin-inventory-app .cb-bar {
+  width: 3px;
+  min-height: 22px;
+  border-radius: 2px;
+  align-self: stretch;
+}
+
+.coffin-inventory-app .cb-cell {
+  padding: 0 10px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.coffin-inventory-app .cb-variant {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.coffin-inventory-app .cb-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid var(--brd);
+  flex-shrink: 0;
+}
+
+.coffin-inventory-app .cb-variant-info {
+  min-width: 0;
+}
+
+.coffin-inventory-app .cb-variant-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.coffin-inventory-app .cb-variant-meta {
+  font-size: 10px;
+  color: var(--ink4);
+  margin-top: 2px;
+}
+
+.coffin-inventory-app .cb-qty {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.coffin-inventory-app .cb-qty-lbl {
+  font-size: 9.5px;
+  color: var(--ink4);
+  margin-left: 3px;
+  font-weight: 500;
+}
+
+.coffin-inventory-app .cb-qty.booked {
+  color: var(--warn);
+}
+
+.coffin-inventory-app .cb-qty.available {
+  color: var(--suc);
+}
+
+.coffin-inventory-app .cb-qty.out {
+  color: var(--ink4);
+}
+
+.coffin-inventory-app .cb-loc {
+  font-size: 12px;
+  color: var(--ink2);
+}
+
+.coffin-inventory-app .cb-loc-sub {
+  font-size: 10px;
+  color: var(--ink4);
+  margin-top: 2px;
+}
+
+.coffin-inventory-app .cb-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.coffin-inventory-app .cb-status-chip .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.coffin-inventory-app .cb-status-chip.ok {
+  background: var(--sucl);
+  color: var(--suc);
+}
+
+.coffin-inventory-app .cb-status-chip.low {
+  background: var(--warnl);
+  color: var(--warn);
+}
+
+.coffin-inventory-app .cb-status-chip.critical {
+  background: var(--dngl);
+  color: var(--dng);
+}
+
+.coffin-inventory-app .cb-status-chip.out {
+  background: var(--brdl);
+  color: var(--ink4);
+}
+
+.coffin-inventory-app .row-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.coffin-inventory-app .row-btn {
+  padding: 6px 9px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  border: 1px solid;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--card);
+  transition: background .12s;
+}
+
+.coffin-inventory-app .row-btn svg {
+  width: 11px;
+  height: 11px;
+}
+
+.coffin-inventory-app .row-btn.add {
+  color: var(--suc);
+  border-color: rgba(22,163,74,0.3);
+}
+
+.coffin-inventory-app .row-btn.add:hover {
+  background: var(--sucl);
+}
+
+.coffin-inventory-app .row-btn.use {
+  color: #3a55d6;
+  border-color: rgba(58,85,214,0.3);
+}
+
+.coffin-inventory-app .row-btn.use:hover {
+  background: #e9efff;
+}
+
+.coffin-inventory-app .row-btn.del {
+  color: var(--dng);
+  border-color: rgba(220,38,38,0.3);
+}
+
+.coffin-inventory-app .row-btn.del:hover {
+  background: var(--dngl);
+}
+
+.coffin-inventory-app .row-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.coffin-inventory-app .cb-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--ink4);
+  gap: 8px;
+  padding: 40px 0;
+}
+
+.coffin-inventory-app .cb-empty-ico {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink4);
+}
+
+/* ===== MODALS ===== */
+.coffin-inventory-app .modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: cbOvIn .18s ease;
+}
+
+.coffin-inventory-app .modal {
+  background: var(--card);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: var(--shxl);
+  animation: cbPanelIn .22s ease-out;
+  border: 1px solid var(--brd);
+}
+
+.coffin-inventory-app .modal-head {
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--brd);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.coffin-inventory-app .mh-id {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink4);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.coffin-inventory-app .mh-name {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin-top: 2px;
+  color: var(--ink);
+}
+
+.coffin-inventory-app .modal-close {
+  background: var(--bg);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 20px;
+  color: var(--ink3);
+  cursor: pointer;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.coffin-inventory-app .modal-close:hover {
+  background: var(--brdl);
+}
+
+.coffin-inventory-app .modal-body {
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.coffin-inventory-app .modal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.coffin-inventory-app .modal-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink4);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.coffin-inventory-app .field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.coffin-inventory-app .field label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink4);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.coffin-inventory-app .field input,
+.coffin-inventory-app .field select {
+  padding: 10px 12px;
+  border: 1px solid var(--brd);
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--ink);
+  background: var(--card);
+}
+
+.coffin-inventory-app .field input:focus,
+.coffin-inventory-app .field select:focus {
+  outline: none;
+  border-color: var(--acc);
+}
+
+.coffin-inventory-app .field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.coffin-inventory-app .modal-footer {
+  padding: 14px 22px 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid var(--brd);
+}
+
+.coffin-inventory-app .btn-cancel {
+  background: var(--bg);
+  color: var(--ink3);
+  border: 1px solid var(--brd);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.coffin-inventory-app .btn-cancel:hover {
+  background: var(--brdl);
+}
+
+.coffin-inventory-app .btn-save {
+  background: var(--acc);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+
+.coffin-inventory-app .btn-save:hover {
+  background: var(--accl);
+}
+
+/* ===== TOAST NOTIFICATION ===== */
+.coffin-inventory-app .cb-te {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 11px 18px;
+  background: var(--ink);
+  color: #fff;
+  border-radius: 10px;
+  box-shadow: var(--shxl);
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  z-index: 2000;
+  animation: cbTIn .2s ease;
+}
+
+.coffin-inventory-app .cb-te.out {
+  animation: cbTOut .15s ease forwards;
+}
+
+.coffin-inventory-app .cb-te svg {
+  width: 14px;
+  height: 14px;
+  color: var(--suc);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1100px) {
+  .coffin-inventory-app .cb-side {
+    width: 280px;
+  }
+  .coffin-inventory-app .cb-sr-item {
+    padding: 10px 14px;
+  }
+}
+
+@media (max-width: 860px) {
+  .coffin-inventory-app .cb-side {
+    display: none;
+  }
+  .coffin-inventory-app .cb-tb {
+    padding: 8px 16px;
+    flex-wrap: wrap;
+  }
+  .coffin-inventory-app .cb-sr-item {
+    padding: 10px 14px;
+  }
+  .coffin-inventory-app .cb-sr-ico {
+    width: 30px;
+    height: 30px;
+  }
+  .coffin-inventory-app .cb-sr-num {
+    font-size: 16px;
+  }
+  .coffin-inventory-app .cb-lh,
+  .coffin-inventory-app .cb-r {
+    grid-template-columns: 3px 1.5fr 0.9fr 0.9fr 0.7fr 0.8fr;
+  }
+  .coffin-inventory-app .cb-r .cb-cell:nth-child(n+8) {
+    display: none;
+  }
+  .coffin-inventory-app .cb-lh > div:nth-child(n+8) {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .coffin-inventory-app .cb-search {
+    max-width: 100%;
+  }
+  .coffin-inventory-app .cb-lh,
+  .coffin-inventory-app .cb-r {
+    grid-template-columns: 3px 1.5fr 0.9fr 0.8fr;
+  }
+  .coffin-inventory-app .cb-r .cb-cell:nth-child(n+6) {
+    display: none;
+  }
+  .coffin-inventory-app .cb-lh > div:nth-child(n+6) {
+    display: none;
+  }
+}

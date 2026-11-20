@@ -1,0 +1,288 @@
+/* ============================================================================
+   RestPoint Dashboard — Clean White Redesign (2026)
+   Layered last in the import order. Uses rp- tokens from design-tokens.css.
+   ============================================================================ */
+
+/* -- Base tokens -- */
+.rpd {
+  --bg: var(--rp-bg, #f8f9fc);
+  --card: var(--rp-surface, #fff);
+  --sect: var(--rp-accent-bg, #f5f7fb);
+  --field: var(--rp-bg, #f5f6fb);
+  --brd: var(--rp-border, #e7eaf1);
+  --brdl: var(--rp-border-muted, #eef0f5);
+  --tx: var(--rp-text, #172033);
+  --tx2: var(--rp-text-secondary, #48546a);
+  --tx3: var(--rp-text-muted, #78849a);
+  --tx4: #aab3c2;
+  --brand: var(--rp-accent, #635bdf);
+  --brandl: var(--rp-accent-dark, #5149ce);
+  --blue: #3483d7;
+  --green: var(--rp-success, #22a06b);
+  --orange: var(--rp-warning, #d88a35);
+  --pink: var(--rp-danger, #df5e7a);
+  --plum: #8065dc;
+  --acc: var(--brand);
+  --accl: var(--brandl);
+  --acclt: var(--rp-accent-bg, #efedff);
+  --sans: var(--rp-font, Inter, ui-sans-serif, system-ui, sans-serif);
+  --serif: var(--rp-font, Inter, ui-sans-serif, system-ui, sans-serif);
+  background: var(--bg);
+}
+
+/* -- App background -- */
+.rpd .app { background: var(--rp-bg, #f8f9fc); }
+
+/* -- Main content scroll -- */
+.rpd .rpd-scroll { background: transparent; }
+
+.rpd .tb-btn.sq {
+  border: 1px solid var(--rp-border, #e4e7f0);
+  border-radius: var(--rp-radius-md, 10px);
+  background: #fff;
+  color: var(--rp-text-muted, #647089);
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.rpd .tb-btn.sq:hover {
+  background: var(--rp-accent-bg, #efedff);
+  color: var(--rp-accent-dark, #5149ce);
+  border-color: var(--rp-accent, #635bdf);
+}
+
+/* -- Secondary toolbar -- */
+.rpd .tbar {
+  padding: 10px 32px;
+  background: var(--rp-surface, #fff);
+  border-bottom: 1px solid var(--rp-border, #e8eaf1);
+  backdrop-filter: none;
+}
+.rpd .nvp {
+  background: var(--rp-bg, #f5f7fb);
+  padding: 4px;
+  border-radius: var(--rp-radius-md, 10px);
+  gap: 2px;
+  border: 1px solid var(--rp-border-muted, #edf0f5);
+}
+.rpd .nvp button {
+  border-radius: var(--rp-radius-sm, 8px);
+  font-size: 11px;
+  padding: 8px 14px;
+  color: var(--rp-text-muted, #6e7890);
+  font-weight: 600;
+}
+.rpd .nvp button.on {
+  background: #fff;
+  color: var(--rp-accent-dark, #564ed2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--rp-border-muted, #e1e8fb);
+}
+
+/* -- KPI Band -- */
+.rpd .rpd-band {
+  padding: 28px 32px 0;
+  background: transparent;
+  gap: 20px;
+}
+.rpd .rpd-band-grid { gap: 16px; }
+.rpd .rpd-stat { border: 0; }
+.rpd .rpd-stat-wrap {
+  border: 1px solid var(--rp-border, #e7eaf1) !important;
+  border-radius: var(--rp-radius-2xl, 16px);
+  background: var(--rp-surface, #fff);
+  padding: 22px 20px;
+  min-height: 145px;
+  box-shadow: 0 6px 20px rgba(30, 42, 70, 0.045);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.rpd .rpd-stat-wrap:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(30, 42, 70, 0.1);
+  border-color: #c7cfe6;
+}
+.rpd .rpd-stat-ic {
+  height: 48px;
+  width: 48px;
+  border-radius: var(--rp-radius-lg, 14px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.rpd .rpd-stat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.rpd .rpd-stat-lbl {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+  color: var(--rp-text-muted, #8993a6);
+}
+.rpd .rpd-stat-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.rpd .rpd-stat-trend.up { color: #059669; }
+.rpd .rpd-stat-trend.down { color: #dc2626; }
+.rpd .rpd-stat-val {
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: -0.06em;
+  margin: 2px 0;
+  line-height: 1;
+  color: var(--rp-text, #172236);
+}
+.rpd .rpd-stat-sub {
+  font-size: 10px;
+  color: #99a2b0;
+  margin-top: 3px;
+}
+.rpd .rpd-stat-trend-label {
+  font-size: 9px;
+  color: #a3a8b8;
+  margin-top: 4px;
+}
+
+/* -- Chart cards -- */
+.rpd .rpd-band-charts { gap: 20px; }
+.rpd .rpd-chart {
+  border: 1px solid var(--rp-border, #e7eaf1);
+  border-radius: var(--rp-radius-xl, 14px);
+  background: var(--rp-surface, #fff);
+  box-shadow: 0 6px 20px rgba(30, 42, 70, 0.045);
+  overflow: hidden;
+}
+.rpd .rpd-chart-head { padding: 16px 18px; border-bottom: 1px solid var(--rp-border-muted, #f0f1f5); }
+.rpd .rpd-chart-title { font-size: 13px; font-weight: 800; color: var(--rp-text, #172236); }
+.rpd .rpd-chart-sub { font-size: 10px; color: #8c96a8; }
+.rpd .rpd-chart-body { padding: 10px 14px; }
+
+/* -- Main layout -- */
+.rpd .mains { flex: 1; width: 0; min-width: 0; overflow: visible; }
+.rpd .mains > * { width: 100%; min-width: 0; box-sizing: border-box; }
+.rpd .rpd-scroll { min-width: 0; padding-bottom: 36px; }
+
+/* -- Shell (ops sidebar + main) -- */
+.rpd .shell { gap: 22px; padding: 24px 32px 40px; background: transparent; }
+.rpd .side {
+  width: 260px;
+  flex: 0 0 260px;
+}
+.rpd .side > * {
+  border: 1px solid var(--rp-border, #e7eaf1) !important;
+  border-radius: var(--rp-radius-xl, 14px) !important;
+  background: var(--rp-surface, #fff);
+  box-shadow: 0 6px 20px rgba(30, 42, 70, 0.045);
+}
+.rpd .card, .rpd .acard, .rpd .kcard, .rpd .tblwrap, .rpd .sch, .rpd .board {
+  border-color: var(--rp-border, #e7eaf1) !important;
+  border-radius: var(--rp-radius-xl, 14px) !important;
+  box-shadow: 0 6px 20px rgba(30, 42, 70, 0.045) !important;
+  background: var(--rp-surface, #fff);
+}
+.rpd .mains .head, .rpd .mains .chead {
+  border-color: var(--rp-border-muted, #edf0f5) !important;
+  background: var(--rp-surface, #fff);
+}
+
+/* -- Calendar & module views -- */
+.rpd .mains > .md-cal-wrap,
+.rpd .mains > .ci-page,
+.rpd .mains > .fl-wrap,
+.rpd .mains > .workshop-panel {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+.rpd .mains > .md-cal-wrap { padding: 4px 0 0; }
+.rpd .mains > .md-cal-wrap .md-cal-header { margin-bottom: 18px; border-radius: var(--rp-radius-xl, 14px); }
+.rpd .mains > .ci-page { width: 100%; }
+
+/* -- Calendar view -- */
+.rpd .md-calendar-view { padding: 16px 20px 20px; overflow-x: auto; }
+.rpd .md-calendar-view table { min-width: 820px; border-spacing: 8px 4px !important; }
+.rpd .md-calendar-view thead th { padding: 12px 10px !important; color: var(--rp-text-muted, #64748b) !important; font-size: 11px !important; text-transform: uppercase; letter-spacing: 0.05em; }
+.rpd .md-calendar-view tbody tr { height: 180px !important; }
+.rpd .md-calendar-view tbody td { vertical-align: top; }
+.rpd .md-calendar-view tbody td > div {
+  height: 170px !important;
+  padding: 12px !important;
+  border-color: var(--rp-border, #e8edf4) !important;
+  border-radius: var(--rp-radius-xl, 14px) !important;
+  background: var(--rp-surface, #fff) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+.rpd .md-calendar-view tbody td > div:hover {
+  border-color: #b3c2e6 !important;
+  background: #fafbff !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+.rpd .md-calendar-view tbody td > div > div:first-child > div:first-child { font-size: 13px !important; color: #334155 !important; font-weight: 700; }
+.rpd .md-calendar-view tbody td > div > div:first-child > div:last-child { font-size: 11px !important; color: #94a3b8 !important; }
+.rpd .md-calendar-view tbody td > div button {
+  max-width: 100%;
+  padding: 8px 12px !important;
+  border: 0 !important;
+  border-left: 4px solid currentColor !important;
+  border-radius: 10px !important;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px !important;
+  line-height: 1.4;
+}
+.rpd .md-calendar-view tbody td > div button svg { vertical-align: middle; }
+.rpd .md-calendar-view > div[style*="display: flex"] { min-width: 920px; gap: 10px; }
+.rpd .md-calendar-view .md-calendar-empty { padding: 20px 6px; color: #64748b; font-size: 12px; }
+.rpd .md-week-container { gap: 10px !important; }
+
+/* -- Dark theme -- */
+.rpd.dark {
+  --bg: #101423;
+  --card: #181d2d;
+  --sect: #202638;
+  --field: #1d2332;
+  --brd: #2c3448;
+  --brdl: #252c3d;
+  --tx: #eef0f8;
+  --tx2: #c5cbda;
+  --tx3: #929caf;
+  --tx4: #6d778b;
+}
+.rpd.dark .app { background: #101423; }
+.rpd.dark .tbar { background: #181d2de8; }
+.rpd.dark .rpd-stat-wrap, .rpd.dark .rpd-chart, .rpd.dark .side > * { background: #181d2d; }
+.rpd.dark .nvp { background: #222839; }
+.rpd.dark .nvp button.on { background: #303850; color: #d8d3ff; }
+
+/* -- Mobile responsive -- */
+@media (max-width: 1024px) {
+  .rpd .rpd-band, .rpd .shell { padding-left: 18px; padding-right: 18px; }
+  .rpd .tbar { padding-left: 18px; padding-right: 18px; }
+  .rpd .side { width: 230px; flex-basis: 230px; }
+}
+@media (max-width: 760px) {
+  .rpd .md-schedule-toolbar { gap: 8px; padding: 10px; }
+  .rpd .md-mode-tabs { margin-left: 0; }
+  .rpd .md-mode-tabs { width: max-content; }
+  .rpd .md-schedule-toolbar .md-schedule-search { flex-basis: 100%; }
+  .rpd .md-calendar-view { padding: 8px 8px 12px; }
+  .rpd .md-calendar-view table { min-width: 640px; border-spacing: 6px 3px !important; }
+  .rpd .md-calendar-view tbody tr { height: 140px !important; }
+  .rpd .md-calendar-view tbody td > div { height: 130px !important; padding: 8px !important; }
+}

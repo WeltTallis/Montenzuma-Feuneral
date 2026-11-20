@@ -1,0 +1,50 @@
+# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
+
+name: Node.js CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Must match the repo's engines: root is ">=22.0.0 <25.0.0", and
+        # services/scanner-bridge additionally requires ">=24.0.0". The previous
+        # matrix (18/20/22) tested only versions the project does not support
+        # and never tested a version the bridge supports, so it was guaranteed
+        # to report problems the project does not have and miss the ones it does.
+        node-version: ['22.x', '24.x']
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    - run: npm ci --legacy-peer-deps
+    - run: npm run build --if-present
+    - name: Check cross-directory relative require paths
+      run: npm run check:paths
+    - run: npm test
+
+
+
+cd /opt/restpoint
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --force-recreate mpesa-service
+docker compose --env-file .env.production -f docker-compose.prod.yml logs --tail=80 mpesa-service
+
+
+
+
+on the  d eceased   dashbor d use   this   for    intake  colr  #00296B  this  for   released  #132A13  this    for  postmortem now  #5F0F40

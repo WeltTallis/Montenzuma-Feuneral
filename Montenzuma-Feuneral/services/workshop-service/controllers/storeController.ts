@@ -1,0 +1,906 @@
+import { Request, Response } from "express"
+import axios from 'axios';
+import { safeTenantQuery, safeTenantExecute } from '../database/db'
+// @ts-ignore - socket module types not fully declared
+import { getIO } from '../socket'
+
+const SOCKETIO_SERVICE_URL = process.env.SOCKETIO_SERVICE_URL || 'http://localhost:5018';
+
+const emitNotification = async (event: string, data: any, tenantSlug: string) => {
+    try {
+
+        await axios.post(`${SOCKETIO_SERVICE_URL}/emit/${event}`, {
+
+            tenantSlug,
+            data
+
+        }, { timeout: 3000 });
+
+    } catch (error) {
+        console.warn(`[WORKSHOP] Failed to emit ${event}: ${(error as any).message}`);
+    }
+};
+
+/**
+ * Store Management — inventory ledger + dispatch/restock history for the
+ * Workshop "Store" tab. Multi-tenant: each tenant has its own database, so
+ * no tenant_slug column is needed here.
+ */
+
+/**
+ * Add the pickup/driver columns to `store_transactions` if they are missing.
+ *
+ * MySQL has no `ADD COLUMN IF NOT EXISTS`, so the column list is read once
+ * and each missing column is added individually. Failures are swallowed:
+ * a database that already has the column, or a user without ALTER rights,
+ * must not take the whole Store page down — the store still works, it just
+ * does not offer driver assignment.
+ */
+const ensureStoreColumns = async (tenantDb: string) => {
+    const wanted: Array<[string, string]> = [
+        ['driver_id', 'VARCHAR(64) NULL'],
+        ['driver_name', 'VARCHAR(200) NULL'],
+        ['destination', 'VARCHAR(255) NULL'],
+        ['pickup_status', "ENUM('pending','accepted','declined') NOT NULL DEFAULT 'pending'"],
+        ['responded_at', 'VARCHAR(255) NULL'],
+        ['dispatch_type', "VARCHAR(24) NOT NULL DEFAULT 'legacy'"],
+        ['dispatch_id', 'VARCHAR(64) NULL'],
+        ['recipient_name', 'VARCHAR(200) NULL'],
+        ['recipient_phone', 'VARCHAR(64) NULL'],
+        ['destination_branch_id', 'VARCHAR(64) NULL'],
+        ['service_date', 'DATE NULL'],
+        ['service_time', 'TIME NULL'],
+        ['customer_order_id', 'VARCHAR(64) NULL'],
+        ['target_status', "VARCHAR(24) NOT NULL DEFAULT 'not_applicable'"],
+        ['target_error', 'TEXT NULL'],
+    ];
+
+    try {
+        const existing: any = await safeTenantQuery(tenantDb, 'SHOW COLUMNS FROM store_transactions');
+        const present = new Set<string>(
+            (existing || []).map((c: any) => String(c.Field || '').toLowerCase())
+        );
+
+        for (const [name, definition] of wanted) {
+            if (present.has(name)) continue;
+            try {
+                await safeTenantExecute(
+                    tenantDb,
+                    `ALTER TABLE store_transactions ADD COLUMN \`${name}\` ${definition}`
+                );
+            } catch (err: any) {
+                // ER_DUP_FIELDNAME simply means a concurrent request won the race.
+                if (!/ER_DUP_FIELDNAME|Duplicate column/i.test(String(err?.code || err?.message || ''))) {
+                    console.warn(`[WORKSHOP] Could not add '${name}' to store_transactions: ${err?.message}`);
+                }
+            }
+        }
+
+        // Index for the driver-scoped pickup feed. Guarded the same way.
+        try {
+            const idx: any = await safeTenantQuery(tenantDb, 'SHOW INDEX FROM store_transactions');
+            const hasDriverIdx = (idx || []).some((i: any) => String(i.Key_name || '').toLowerCase() === 'idx_txn_driver');
+            if (!hasDriverIdx) {
+                await safeTenantExecute(tenantDb, 'CREATE INDEX idx_txn_driver ON store_transactions (driver_id)');
+            }
+        } catch (err: any) {
+            console.warn(`[WORKSHOP] Could not index store_transactions.driver_id: ${err?.message}`);
+        }
+    } catch (err: any) {
+        console.warn(`[WORKSHOP] Could not inspect store_transactions columns: ${err?.message}`);
+    }
+};
+
+const ensureStoreTables = async (tenantDb: string) => {
+    await safeTenantExecute(tenantDb, `
+        CREATE TABLE IF NOT EXISTS store_items (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            item_key VARCHAR(255) NOT NULL,
+            item_type VARCHAR(50) NOT NULL DEFAULT 'Item',
+            item_name VARCHAR(255) NOT NULL,
+            item_sub VARCHAR(255) DEFAULT '',
+            unit VARCHAR(50) DEFAULT 'pcs',
+            quantity DECIMAL(12,2) NOT NULL DEFAULT 0,
+            created_at VARCHAR(255) NOT NULL,
+            updated_at VARCHAR(255),
+            UNIQUE KEY uniq_item_key (item_key),
+            INDEX idx_item_type (item_type)
+        ) ENGINE=InnoDB`);
+    await safeTenantExecute(tenantDb, `
+        CREATE TABLE IF NOT EXISTS store_transactions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            item_key VARCHAR(255) NOT NULL,
+            item_type VARCHAR(50) NOT NULL DEFAULT 'Item',
+            item_name VARCHAR(255) NOT NULL,
+            item_sub VARCHAR(255) DEFAULT '',
+            unit VARCHAR(50) DEFAULT 'pcs',
+            action ENUM('DISPATCH','RESTOCK') NOT NULL,
+            qty DECIMAL(12,2) NOT NULL DEFAULT 0,
+            txn_date DATE NOT NULL,
+            txn_by VARCHAR(255) NOT NULL DEFAULT '',
+            notes TEXT,
+            created_at VARCHAR(255) NOT NULL,
+            INDEX idx_txn_date (txn_date),
+            INDEX idx_item_key (item_key)
+        ) ENGINE=InnoDB`);
+    /* ── Pickup / driver assignment columns ───────────────────────────────
+
+       A DISPATCH row is what the workshop physically pulls off the store
+       shelf. Historically the driver was typed into a free-text `Driver:`
+       fragment inside `notes`, which made it impossible to answer the only
+       question that matters: "what has been assigned to ME, and have I
+       acknowledged it?". These columns give that row a first-class driver,
+       a route and a response state so the Driver Portal can list them.
+
+       Added idempotently (CREATE TABLE IF NOT EXISTS is a no-op on an
+       existing table) so live databases pick them up on the next request
+       without a separate migration step. */
+    await ensureStoreColumns(tenantDb);
+    /* Monthly workshop output target, per calendar month.
+
+       Keyed by year-month ("2026-10") rather than one global number, because the
+       target is genuinely per month and a flat figure would misreport attainment
+       for every month it was not written for. Row-per-month also keeps history:
+       the target that applied at the time survives, so attainment is measured
+       against what was actually aimed for. */
+    await safeTenantExecute(tenantDb, `
+        CREATE TABLE IF NOT EXISTS workshop_monthly_targets (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            target_month VARCHAR(7) NOT NULL,
+            target_qty DECIMAL(12,2) NOT NULL DEFAULT 0,
+            created_by VARCHAR(255) DEFAULT '',
+            created_at VARCHAR(255) NOT NULL,
+            updated_at VARCHAR(255),
+            UNIQUE KEY uniq_target_month (target_month)
+        ) ENGINE=InnoDB`);
+    /* Per-WORKER monthly target: how many coffins one worker is expected to
+       finish in a month.
+
+       Its own table rather than a worker_id column on workshop_monthly_targets,
+       because that table's UNIQUE key is (target_month) alone — a workshop-wide
+       row and a per-worker row for the same month could not coexist under it.
+
+       (worker_id, target_month) is unique so setting the same worker's month
+       twice overwrites instead of stacking duplicate rows. */
+    await safeTenantExecute(tenantDb, `
+        CREATE TABLE IF NOT EXISTS workshop_worker_targets (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            worker_id INT NOT NULL,
+            target_month VARCHAR(7) NOT NULL,
+            target_qty DECIMAL(12,2) NOT NULL DEFAULT 0,
+            created_by VARCHAR(255) DEFAULT '',
+            created_at VARCHAR(255) NOT NULL,
+            updated_at VARCHAR(255),
+            UNIQUE KEY uniq_worker_target (worker_id, target_month),
+            INDEX idx_worker_target_month (target_month)
+        ) ENGINE=InnoDB`);
+};
+
+/* Accepted month format. A malformed "2026-13" is rejected rather than stored,
+   because it would silently never match a real month and the target would look
+   set while doing nothing. */
+const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+/* GET /store/targets?year=2026 — every month of the year, target plus actual.
+
+   The actual figure is counted from finished coffin orders using exactly the
+   same rules as the worker report (same finished statuses, same credit-date
+   fallback), so the progress bar can never disagree with the per-worker numbers
+   shown beside it. Two different definitions of "finished" on one dashboard is
+   how a payroll dispute starts. */
+const getTargets = async (req: Request, res: Response) => {
+    try {
+        const tenantDb = (req as any).tenant?.db_name;
+        if (!tenantDb) return res.status(400).json({ error: 'Tenant database not resolved' });
+        await ensureStoreTables(tenantDb);
+
+        const year = parseInt(String(req.query.year || new Date().getFullYear()), 10) || new Date().getFullYear();
+
+        const rows: any = await safeTenantQuery(tenantDb,
+            `SELECT target_month, target_qty, created_by, updated_at
+             FROM workshop_monthly_targets
+             WHERE target_month LIKE ?
+             ORDER BY target_month ASC`,
+            [`${year}-%`]
+        );
+
+        const actual: any = await safeTenantQuery(tenantDb,
+            `SELECT
+                 DATE_FORMAT(COALESCE(NULLIF(completed_at,''), NULLIF(order_date,''), NULLIF(created_at,''), NOW()), '%Y-%m') AS ym,
+                 COUNT(*) AS produced
+             FROM coffin_orders
+             WHERE status IN ('completed','delivered','store','dispatched','collected')
+               AND COALESCE(NULLIF(completed_at,''), NULLIF(order_date,''), NULLIF(created_at,''), NOW()) >= ?
+             GROUP BY ym`,
+            [`${year}-01-01`]
+        );
+
+        const actualByMonth = new Map<string, number>(
+            actual.map((a: any) => [String(a.ym), Number(a.produced) || 0])
+        );
+        const targetByMonth = new Map<string, any>(
+            rows.map((r: any) => [String(r.target_month), r])
+        );
+
+        /* All twelve months are always returned so the client renders a complete
+           year without filling gaps itself and getting it subtly wrong. */
+        const months = [];
+        for (let m = 1; m <= 12; m += 1) {
+            const key = `${year}-${String(m).padStart(2, '0')}`;
+            const t = targetByMonth.get(key);
+            const targetQty = t ? Number(t.target_qty) || 0 : 0;
+            const produced = actualByMonth.get(key) || 0;
+            months.push({
+                month: key,
+                target: targetQty,
+                produced,
+                /* A month with no target is null, NOT "missed" — there was
+                   nothing to hit, so the UI says "not set" instead of showing a
+                   red shortfall for a month nobody aimed at. */
+                met: targetQty > 0 ? produced >= targetQty : null,
+                pct: targetQty > 0 ? Math.min(999, Math.round((produced / targetQty) * 100)) : null,
+                setBy: t?.created_by || '',
+                updatedAt: t?.updated_at || '',
+            });
+        }
+
+        /* Per-worker targets for the same year, so the dashboard can colour a
+           worker card the moment they cross their own number. Returned flat —
+           the client indexes it by worker id + month — because the roster is
+           small and a nested shape would only have to be walked twice. */
+        const workerRows: any = await safeTenantQuery(tenantDb,
+            `SELECT worker_id, target_month, target_qty
+             FROM workshop_worker_targets
+             WHERE target_month LIKE ?
+             ORDER BY worker_id ASC, target_month ASC`,
+            [`${year}-%`]
+        );
+
+        res.json({
+            year,
+            months,
+            workerTargets: (workerRows || []).map((r: any) => ({
+                worker_id: r.worker_id,
+                month: String(r.target_month),
+                target: Number(r.target_qty) || 0,
+            })),
+        });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message || 'Failed to load monthly targets' });
+    }
+};
+
+/* PUT /store/targets — set one month's target (upsert).
+
+   Editing a month that already has a target overwrites it rather than failing
+   on the unique key, which is what an admin correcting a typo expects. */
+const setTarget = async (req: Request, res: Response) => {
+    try {
+        const tenantDb = (req as any).tenant?.db_name;
+        if (!tenantDb) return res.status(400).json({ error: 'Tenant database not resolved' });
+        await ensureStoreTables(tenantDb);
+
+        const month = String(req.body?.month || '').trim();
+        const qty = Number(req.body?.target);
+        /* Optional. Absent/null/'' means the workshop-wide target (the original
+           behaviour); a number means that one worker's own target. */
+        const rawWorker = req.body?.worker_id;
+        const workerId = (rawWorker === null || rawWorker === undefined || rawWorker === '')
+            ? null
+            : Number(rawWorker);
+
+        if (!MONTH_RE.test(month)) {
+            return res.status(400).json({ error: 'Month must be in YYYY-MM format' });
+        }
+        if (workerId !== null && (!Number.isInteger(workerId) || workerId <= 0)) {
+            return res.status(400).json({ error: 'worker_id must be a positive whole number' });
+        }
+        if (!Number.isFinite(qty) || qty < 0) {
+            return res.status(400).json({ error: 'Target must be zero or greater' });
+        }
+        /* A fractional coffin is not a real target, and rounding silently would
+           mean the stored number is not the number the admin typed. */
+        if (Math.floor(qty) !== qty) {
+            return res.status(400).json({ error: 'Target must be a whole number of coffins' });
+        }
+
+        const setBy = (req as any).user?.full_name
+            || (req as any).user?.name
+            || (req as any).user?.email
+            || '';
+
+        if (workerId !== null) {
+            await safeTenantExecute(tenantDb,
+                `INSERT INTO workshop_worker_targets
+                    (worker_id, target_month, target_qty, created_by, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, NOW(), NOW())
+                 ON DUPLICATE KEY UPDATE
+                    target_qty = VALUES(target_qty),
+                    created_by = VALUES(created_by),
+                    updated_at = NOW()`,
+                [workerId, month, qty, setBy]
+            );
+            return res.json({ ok: true, worker_id: workerId, month, target: qty, setBy });
+        }
+
+        await safeTenantExecute(tenantDb,
+            `INSERT INTO workshop_monthly_targets
+                (target_month, target_qty, created_by, created_at, updated_at)
+             VALUES (?, ?, ?, NOW(), NOW())
+             ON DUPLICATE KEY UPDATE
+                target_qty = VALUES(target_qty),
+                created_by = VALUES(created_by),
+                updated_at = NOW()`,
+            [month, qty, setBy]
+        );
+
+        res.json({ ok: true, month, target: qty, setBy });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message || 'Failed to save target' });
+    }
+};
+
+const getInventory = async (req: Request, res: Response) => {
+    try {
+        const tenantDb = (req as any).tenant?.db_name;
+        if (!tenantDb) return res.status(400).json({ error: 'Tenant database not resolved' });
+        await ensureStoreTables(tenantDb);
+
+        // Base items: coffins sitting in the Store stage + workshop materials
+        const coffins: any = await safeTenantQuery(tenantDb,
+            `SELECT id, order_number, coffin_name, coffin_type, color, size
+             FROM coffin_orders
+             WHERE status IN ('completed','delivered','store')
+             ORDER BY order_number`);
+        const materials: any = await safeTenantQuery(tenantDb,
+            `SELECT id, name, category, unit, quantity FROM materials ORDER BY name`);
+
+        // Track finished stock by type, color, and size so dispatching one variant
+        // cannot accidentally consume stock from another.
+        const typeKey = (t: string) => {
+            const slug = String(t).trim().toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+            return `cft:${slug || 'uncategorised'}`;
+        };
+        const valueKey = (value: unknown, fallback: string) => {
+            const slug = String(value ?? '').trim().toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+            return slug || fallback;
+        };
+        const variantKey = (type: string, color: string, size: string) =>
+            `${typeKey(type)}:${valueKey(color, 'no-color')}:${valueKey(size, 'no-size')}`;
+
+        /* A row is given ONE label. Previously it was whichever order happened to
+           sort first, so the Store could show "standard" beside the "Standard"
+           the operator had just picked from the order form. The most-used spelling
+           now wins, and a label typed entirely in lower case is title-cased so
+           legacy rows read like the types on the order form, while a spelling that
+           already carries capitals ("XL", "6ft Casket") is left untouched. */
+        const prettify = (s: string) =>
+            s === s.toLowerCase() ? s.replace(/\b[a-z]/g, (ch) => ch.toUpperCase()) : s;
+
+        const byType = new Map<string, {
+            typeKey: string;
+            spellings: Map<string, number>;
+            count: number;
+            color: string;
+            size: string;
+        }>();
+        (coffins || []).forEach((c: any) => {
+            const type = String(c.coffin_type ?? '').trim() || 'Uncategorised';
+            const color = String(c.color ?? '').trim();
+            const size = String(c.size ?? '').trim();
+            const key = variantKey(type, color, size);
+            if (!byType.has(key)) byType.set(key, {
+                typeKey: typeKey(type),
+                spellings: new Map(),
+                count: 0,
+                color,
+                size,
+            });
+            const bucket = byType.get(key)!;
+            bucket.count += 1;
+            bucket.spellings.set(type, (bucket.spellings.get(type) || 0) + 1);
+        });
+
+        const coffinTypes = [...byType.entries()].map(([key, b]) => {
+            const spelling = [...b.spellings.entries()].sort((x, y) => {
+                if (y[1] !== x[1]) return y[1] - x[1];                        // most used
+                const capX = Number(x[0][0] === x[0][0].toUpperCase());
+                const capY = Number(y[0][0] === y[0][0].toUpperCase());
+                if (capX !== capY) return capY - capX;                        // capitalised first
+                if (x[0].length !== y[0].length) return x[0].length - y[0].length;
+                return x[0].localeCompare(y[0]);
+            })[0][0];
+            return {
+                key,
+                typeKey: b.typeKey,
+                type: prettify(spelling),
+                color: b.color,
+                size: b.size,
+                count: b.count,
+            };
+        }).sort((a, b) => a.type.localeCompare(b.type) || a.color.localeCompare(b.color) || a.size.localeCompare(b.size));
+
+        const syncItems: any[] = [];
+        coffinTypes.forEach(({ key, type, count, color, size }) => {
+            syncItems.push({
+                key, type: 'Coffin', name: type, unit: 'pcs', qty: count,
+                sub: `Color: ${color || '—'} · Size: ${size || '—'}`,
+            });
+        });
+        (materials || []).forEach((m: any) => syncItems.push({
+            key: 'mat:' + m.id, type: 'Material', name: m.name, sub: m.category || 'General',
+            unit: m.unit || 'pcs', qty: Number(m.quantity) || 0
+        }));
+
+        // Upsert base rows (create when first seen, refresh metadata otherwise)
+        for (const it of syncItems) {
+            const existing: any = await safeTenantQuery(tenantDb, 'SELECT id FROM store_items WHERE item_key = ?', [it.key]);
+            if (!existing.length) {
+                await safeTenantExecute(tenantDb,
+                    `INSERT INTO store_items (item_key, item_type, item_name, item_sub, unit, quantity, created_at) VALUES (?,?,?,?,?,?,?)`,
+                    [it.key, it.type, it.name, it.sub, it.unit, it.qty, new Date().toISOString()]);
+            } else {
+                await safeTenantExecute(tenantDb,
+                    `UPDATE store_items SET item_type=?, item_name=?, item_sub=?, unit=? WHERE item_key=?`,
+                    [it.type, it.name, it.sub, it.unit, it.key]);
+            }
+        }
+
+        /* quantity = produced + manually added - dispatched.
+
+           "Produced" is how many finished orders of that type exist; the ledger
+           supplies the other two legs. The RESTOCK leg matters: the quantity used
+           to be recomputed from production alone, so an operator's "Add" on a
+           coffin type was silently wiped the next time the Store was opened. */
+        const ledgerRows: any = await safeTenantQuery(tenantDb,
+            `SELECT item_key, action, SUM(qty) AS qty FROM store_transactions
+             WHERE item_key LIKE 'cft:%' AND action IN ('DISPATCH','RESTOCK')
+             GROUP BY item_key, action`);
+        const ledgerByKey = (action: string) => new Map<string, number>(
+            (ledgerRows || [])
+                .filter((r: any) => r.action === action)
+                .map((r: any) => [String(r.item_key), Number(r.qty) || 0])
+        );
+        const dispatchedByKey = ledgerByKey('DISPATCH');
+        const restockedByKey = ledgerByKey('RESTOCK');
+
+        const legacyTypes = new Map<string, typeof coffinTypes>();
+        coffinTypes.forEach((variant) => {
+            const siblings = legacyTypes.get(variant.typeKey) || [];
+            siblings.push(variant);
+            legacyTypes.set(variant.typeKey, siblings);
+        });
+
+        for (const [legacyKey, variants] of legacyTypes) {
+            const remaining = new Map<string, number>();
+            variants.forEach((variant) => {
+                remaining.set(
+                    variant.key,
+                    Math.max(0, variant.count + (restockedByKey.get(variant.key) || 0) - (dispatchedByKey.get(variant.key) || 0))
+                );
+            });
+
+            // Older deployments recorded stock movement against type-only keys.
+            // Preserve those totals by applying legacy adjustments to variants in a
+            // stable order; all new adjustments use their exact variant key.
+            const legacyRestock = restockedByKey.get(legacyKey) || 0;
+            const legacyDispatch = dispatchedByKey.get(legacyKey) || 0;
+            if (variants.length) {
+                remaining.set(variants[0].key, (remaining.get(variants[0].key) || 0) + legacyRestock);
+            }
+            let toDispatch = legacyDispatch;
+            for (const variant of variants) {
+                if (toDispatch <= 0) break;
+                const available = remaining.get(variant.key) || 0;
+                const used = Math.min(available, toDispatch);
+                remaining.set(variant.key, available - used);
+                toDispatch -= used;
+            }
+
+            for (const variant of variants) {
+                const target = remaining.get(variant.key) || 0;
+                await safeTenantExecute(tenantDb, 'UPDATE store_items SET quantity = ? WHERE item_key = ?', [target, variant.key]);
+            }
+
+            // Prevent the old type-only row from appearing as a duplicate variant.
+            if (legacyKey !== variants[0]?.key) {
+                await safeTenantExecute(tenantDb, "UPDATE store_items SET item_type = 'Legacy', quantity = 0 WHERE item_key = ?", [legacyKey]);
+            }
+        }
+
+        // Retire the old per-order `cf:<id>` rows: zero them so they stop
+        // inflating totals, then drop the empty ones entirely.
+        await safeTenantExecute(tenantDb, `UPDATE store_items SET quantity = 0 WHERE item_key LIKE 'cf:%'`);
+        await safeTenantExecute(tenantDb, `DELETE FROM store_items WHERE item_key LIKE 'cf:%' AND quantity = 0`);
+
+        /* Coffin rows that correspond to nothing: no finished order behind them
+           and no ledger entry either. These are leftovers from the old per-order
+           `cf:<id>` scheme, or a type whose orders were all deleted, and leaving
+           them at a stale quantity is what made the Store disagree with the
+           floor. A row WITH history is kept even at zero — that is a real type
+           the Store tracks and has simply run out of. */
+        const derivedKeys = coffinTypes.map((c) => c.key);
+        const orphanFilter = derivedKeys.length
+            ? ` AND item_key NOT IN (${derivedKeys.map(() => '?').join(',')})`
+            : '';
+        await safeTenantExecute(tenantDb,
+            `DELETE FROM store_items
+              WHERE item_key LIKE 'cft:%'${orphanFilter}
+                AND item_key NOT IN (SELECT DISTINCT item_key FROM store_transactions WHERE item_key LIKE 'cft:%')`,
+            derivedKeys);
+
+        const items: any = await safeTenantQuery(tenantDb, 'SELECT * FROM store_items ORDER BY item_type, item_name');
+        const history: any = await safeTenantQuery(tenantDb, 'SELECT * FROM store_transactions ORDER BY txn_date DESC, id DESC');
+
+        let totalUnits = 0, coffinsCount = 0, materialsUnits = 0;
+        (items || []).forEach((it: any) => {
+            const q = Number(it.quantity) || 0;
+            totalUnits += q;
+            if (it.item_type === 'Coffin') coffinsCount += q;
+            else materialsUnits += q;
+        });
+        const todayKey = new Date().toISOString().slice(0, 10);
+        const dispatchedToday = (history || []).filter(h => h.action === 'DISPATCH' && String(h.txn_date).slice(0, 10) === todayKey).reduce((s: number, h: any) => s + Number(h.qty || 0), 0);
+        const totalDispatched = (history || []).filter(h => h.action === 'DISPATCH').reduce((s: number, h: any) => s + Number(h.qty || 0), 0);
+
+        res.json({
+            coffins, materials, items, history, coffinTypes,
+            stats: {
+                totalUnits, coffinsCount, materialsUnits, dispatchedToday, totalDispatched,
+                coffinTypeCount: coffinTypes.length,
+            }
+        });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+const dispatchItem = async (req: Request, res: Response) => {
+    try {
+        const tenantDb = (req as any).tenant?.db_name;
+        if (!tenantDb) return res.status(400).json({ error: 'Tenant database not resolved' });
+        await ensureStoreTables(tenantDb);
+
+        const {
+            item_key, item_type, item_name, item_sub, unit, qty, date, picked_by, notes,
+            driver_id, driver_name, destination, dispatch_type, dispatch_id,
+            recipient_name, recipient_phone, destination_branch_id, service_date, service_time, customer_order_id,
+        } = req.body;
+        if (!item_key) return res.status(400).json({ error: 'item_key is required' });
+        const q = Number(qty) || 0;
+        if (q <= 0) return res.status(400).json({ error: 'Quantity must be greater than 0' });
+        const dispatchType = String(dispatch_type || 'legacy').trim().toLowerCase();
+        if (!['legacy', 'inventory', 'customer'].includes(dispatchType)) {
+            return res.status(400).json({ error: 'dispatch_type must be inventory or customer' });
+        }
+        if (dispatchType === 'inventory' && !String(destination_branch_id || '').trim()) {
+            return res.status(400).json({ error: 'destination_branch_id is required for inventory dispatches' });
+        }
+        if (dispatchType === 'customer' && !String(recipient_name || '').trim()) {
+            return res.status(400).json({ error: 'recipient_name is required for customer dispatches' });
+        }
+        const txnDate = date || new Date().toISOString().slice(0, 10);
+        const serviceDate = service_date ? String(service_date).trim() : null;
+        const serviceTime = service_time ? String(service_time).trim() : null;
+        if (serviceDate && !/^\d{4}-\d{2}-\d{2}$/.test(serviceDate)) {
+            return res.status(400).json({ error: 'service_date must be in YYYY-MM-DD format' });
+        }
+        if (serviceTime && !/^\d{2}:\d{2}$/.test(serviceTime)) {
+            return res.status(400).json({ error: 'service_time must be in HH:MM format' });
+        }
+
+        // The driver is optional — an internal branch-to-branch transfer may not
+        // involve one. When present, both the id and the display name are stored
+        // so the Driver Portal can match on either.
+        const dId = driver_id != null && driver_id !== '' ? String(driver_id) : null;
+        const dName = String(driver_name || '').trim() || null;
+        const dest = String(destination || '').trim() || null;
+
+        let row: any = null;
+        const existing: any = await safeTenantQuery(tenantDb, 'SELECT id, quantity FROM store_items WHERE item_key = ?', [item_key]);
+        if (!existing.length) {
+            await safeTenantExecute(tenantDb,
+                `INSERT INTO store_items (item_key, item_type, item_name, item_sub, unit, quantity, created_at) VALUES (?,?,?,?,?,?,?)`,
+                [item_key, item_type || 'Item', item_name || item_key, item_sub || '', unit || 'pcs', 0, new Date().toISOString()]);
+        } else {
+            row = existing[0];
+        }
+        const available = row ? (Number(row.quantity) || 0) : 0;
+        if (available < q) {
+            return res.status(400).json({ error: `Insufficient stock. Available: ${available}, Requested: ${q}` });
+        }
+
+        await safeTenantExecute(tenantDb, 'UPDATE store_items SET quantity = quantity - ? WHERE item_key = ?', [q, item_key]);
+        const insertResult: any = await safeTenantExecute(tenantDb,
+            `INSERT INTO store_transactions
+                (item_key, item_type, item_name, item_sub, unit, action, qty, txn_date, txn_by, notes,
+                 driver_id, driver_name, destination, pickup_status, dispatch_type, dispatch_id,
+                 recipient_name, recipient_phone, destination_branch_id, service_date, service_time, customer_order_id,
+                 target_status, target_error, created_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            [
+                item_key, item_type || 'Item', item_name || item_key, item_sub || '', unit || 'pcs',
+                'DISPATCH', q, txnDate, picked_by || '', notes || '',
+                dId, dName, dest,
+                // Only ever 'pending' here — the Driver Portal's pickup feed is
+                // filtered to rows that actually have a driver, so a driverless
+                // dispatch never reaches a driver's queue.
+                'pending',
+                dispatchType,
+                String(dispatch_id || '').trim() || null,
+                String(recipient_name || '').trim() || null,
+                String(recipient_phone || '').trim() || null,
+                String(destination_branch_id || '').trim() || null,
+                serviceDate,
+                serviceTime,
+                String(customer_order_id || '').trim() || null,
+                dispatchType === 'legacy' ? 'not_applicable' : 'pending',
+                null,
+                new Date().toISOString(),
+            ]);
+
+        const updated: any = await safeTenantQuery(tenantDb, 'SELECT * FROM store_items WHERE item_key = ?', [item_key]);
+        const txn: any = await safeTenantQuery(tenantDb, 'SELECT * FROM store_transactions WHERE id = ?', [insertResult.insertId]);
+        try { const io = getIO(); if (io) io.emit('store:dispatch', txn[0]); } catch { /* socket optional */ }
+
+        // Emit a notification through the Socket.IO service so the Store dispatch
+        // surfaces in the Notification Bell (same pattern used by deceased/hearse services)
+        await emitNotification('store-dispatch', {
+            id: `store-dispatch-${insertResult.insertId}-${Date.now()}`,
+            transactionId: insertResult.insertId,
+            itemKey: item_key,
+            itemType: item_type || 'Item',
+            itemName: item_name || item_key,
+            unit: unit || 'pcs',
+            qty: q,
+            dispatchedBy: picked_by || '',
+            date: txnDate,
+            title: 'Store Item Dispatched',
+            message: `${item_name || item_key} (${q} ${unit || 'pcs'}) dispatched from store${picked_by ? ` by ${picked_by}` : ''}`,
+            type: 'store-dispatch',
+            priority: 'medium',
+            fullContent: `Item: ${item_name || item_key}\nType: ${item_type || 'Item'}\nQuantity: ${q} ${unit || 'pcs'}\nDate: ${txnDate}\nDispatched By: ${picked_by || 'N/A'}\nNotes: ${notes || 'None'}`
+        }, (req as any).tenantSlug || 'system');
+
+        res.status(201).json({ success: true, item: updated[0], transaction: txn[0] });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+const updateDispatchTarget = async (req: Request, res: Response) => {
+    try {
+        const tenantDb = (req as any).tenant?.db_name;
+        if (!tenantDb) return res.status(400).json({ error: 'Tenant database not resolved' });
+        await ensureStoreTables(tenantDb);
+
+        const id = String(req.params.id || '').trim();
+        const status = String(req.body?.status || '').trim().toLowerCase();
+        const error = String(req.body?.error || '').trim();
+        const customerOrderId = String(req.body?.customer_order_id || '').trim();
+        if (!id) return res.status(400).json({ error: 'Dispatch transaction id is required' });
+        if (!['synced', 'failed'].includes(status)) {
+            return res.status(400).json({ error: 'status must be either "synced" or "failed"' });
+        }
+
+        const existing: any = await safeTenantQuery(
+            tenantDb,
+            "SELECT id FROM store_transactions WHERE id = ? AND action = 'DISPATCH'",
+            [id]
+        );
+        if (!existing?.length) return res.status(404).json({ error: 'Dispatch transaction not found' });
+
+        await safeTenantExecute(
+            tenantDb,
+            `UPDATE store_transactions
+             SET target_status = ?, target_error = ?, customer_order_id = ?
+             WHERE id = ? AND action = 'DISPATCH'`,
+            [status, status === 'failed' ? (error || 'Branch inventory or customer order registration failed') : null, customerOrderId || null, id]
+        );
+        const rows: any = await safeTenantQuery(tenantDb, 'SELECT * FROM store_transactions WHERE id = ?', [id]);
+        res.json({ success: true, transaction: rows[0] });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message || 'Could not update dispatch registration status' });
+    }
+};
+
+const restockItem = async (req: Request, res: Response) => {
+    try {
+        const tenantDb = (req as any).tenant?.db_name;
+        if (!tenantDb) return res.status(400).json({ error: 'Tenant database not resolved' });
+        await ensureStoreTables(tenantDb);
+
+        const { item_key, item_type, item_name, item_sub, unit, qty, date, received_by, notes } = req.body;
+        if (!item_key) return res.status(400).json({ error: 'item_key is required' });
+        const q = Number(qty) || 0;
+        if (q <= 0) return res.status(400).json({ error: 'Quantity must be greater than 0' });
+        const txnDate = date || new Date().toISOString().slice(0, 10);
+        const by = received_by || req.body.picked_by || '';
+
+        const existing: any = await safeTenantQuery(tenantDb, 'SELECT id FROM store_items WHERE item_key = ?', [item_key]);
+        if (!existing.length) {
+            await safeTenantExecute(tenantDb,
+                `INSERT INTO store_items (item_key, item_type, item_name, item_sub, unit, quantity, created_at) VALUES (?,?,?,?,?,?,?)`,
+                [item_key, item_type || 'Item', item_name || item_key, item_sub || '', unit || 'pcs', 0, new Date().toISOString()]);
+        }
+        await safeTenantExecute(tenantDb, 'UPDATE store_items SET quantity = quantity + ? WHERE item_key = ?', [q, item_key]);
+        const insertResult: any = await safeTenantExecute(tenantDb,
+            `INSERT INTO store_transactions (item_key, item_type, item_name, item_sub, unit, action, qty, txn_date, txn_by, notes, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+            [item_key, item_type || 'Item', item_name || item_key, item_sub || '', unit || 'pcs', 'RESTOCK', q, txnDate, by, notes || '', new Date().toISOString()]);
+
+        const updated: any = await safeTenantQuery(tenantDb, 'SELECT * FROM store_items WHERE item_key = ?', [item_key]);
+        const txn: any = await safeTenantQuery(tenantDb, 'SELECT * FROM store_transactions WHERE id = ?', [insertResult.insertId]);
+        try { const io = getIO(); if (io) io.emit('store:restock', txn[0]); } catch { /* socket optional */ }
+
+        res.status(201).json({ success: true, item: updated[0], transaction: txn[0] });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+const getHistory = async (req: Request, res: Response) => {
+    try {
+        const tenantDb = (req as any).tenant?.db_name;
+        if (!tenantDb) return res.status(400).json({ error: 'Tenant database not resolved' });
+        await ensureStoreTables(tenantDb);
+
+        let sql = 'SELECT * FROM store_transactions';
+        const params: any[] = [];
+        const conditions: string[] = [];
+        if (req.query.date) { conditions.push('txn_date = ?'); params.push(req.query.date); }
+        if (req.query.item_key) { conditions.push('item_key = ?'); params.push(req.query.item_key); }
+        if (conditions.length) sql += ' WHERE ' + conditions.join(' AND ');
+        sql += ' ORDER BY txn_date DESC, id DESC';
+
+        const history: any = await safeTenantQuery(tenantDb, sql, params);
+        res.json(history);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+/* ─── DRIVER PICKUP FEED ────────────────────────────────────────────────────
+   The Driver Portal's "Pickups" tab. A pickup is a DISPATCH row that was
+   assigned to a driver: "collect N coffins from the store and take them
+   to <destination>". Only driver-bearing dispatches are returned — a
+   branch-to-branch internal move has nobody waiting on it. */
+const getDriverPickups = async (req: Request, res: Response) => {
+    try {
+        const tenantDb = (req as any).tenant?.db_name;
+        if (!tenantDb) return res.status(400).json({ error: 'Tenant database not resolved' });
+        await ensureStoreTables(tenantDb);
+        await ensureStoreColumns(tenantDb);
+
+        const params: any[] = [];
+        const conditions: string[] = ["action = 'DISPATCH'"];
+        const driverId = String(req.query.driver_id ?? '').trim();
+        const driverName = String(req.query.driver_name ?? '').trim();
+        if (driverId) {
+            conditions.push('driver_id = ?');
+            params.push(driverId);
+        } else if (driverName) {
+            conditions.push('LOWER(driver_name) = LOWER(?)');
+            params.push(driverName);
+        } else {
+            // No identity supplied — return nothing rather than the whole
+            // tenant's dispatch history to whoever asked.
+            return res.json([]);
+        }
+
+        const status = String(req.query.status ?? '').trim().toLowerCase();
+        if (status && ['pending', 'accepted', 'declined'].includes(status)) {
+            conditions.push('pickup_status = ?');
+            params.push(status);
+        }
+
+        let pickups: any = await safeTenantQuery(
+            tenantDb,
+            `SELECT * FROM store_transactions
+             WHERE ${conditions.join(' AND ')}
+             ORDER BY txn_date DESC, id DESC
+             LIMIT 100`,
+            params
+        );
+
+        // Portal user IDs and the hearse roster's driver IDs are not always the
+        // same. If the roster ID has no assigned dispatches, retry by the exact
+        // stored driver name supplied by the portal.
+        if (!pickups?.length && driverId && driverName) {
+            const nameConditions = ["action = 'DISPATCH'", 'LOWER(TRIM(driver_name)) = LOWER(TRIM(?))'];
+            const nameParams: any[] = [driverName];
+            if (status && ['pending', 'accepted', 'declined'].includes(status)) {
+                nameConditions.push('pickup_status = ?');
+                nameParams.push(status);
+            }
+            pickups = await safeTenantQuery(
+                tenantDb,
+                `SELECT * FROM store_transactions
+                 WHERE ${nameConditions.join(' AND ')}
+                 ORDER BY txn_date DESC, id DESC
+                 LIMIT 100`,
+                nameParams
+            );
+        }
+
+        // Only rows that actually name a driver are pickups.
+        res.json((pickups || []).filter((p: any) => p.driver_id || p.driver_name));
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+/**
+ * PATCH /store/pickups/:id — the driver accepts or declines a pickup.
+ *
+ * `accepted` means "I will collect this"; `declined` means the dispatch desk
+ * needs to reassign it. Neither touches stock — the coffin has already left
+ * the shelf, this only records who is responsible for the movement.
+ */
+const respondToPickup = async (req: Request, res: Response) => {
+    try {
+        const tenantDb = (req as any).tenant?.db_name;
+        if (!tenantDb) return res.status(400).json({ error: 'Tenant database not resolved' });
+        await ensureStoreTables(tenantDb);
+        await ensureStoreColumns(tenantDb);
+
+        const id = String(req.params.id || '');
+        const status = String(req.body?.status || '').trim().toLowerCase();
+        if (!id) return res.status(400).json({ error: 'Pickup id is required' });
+        if (!['accepted', 'declined'].includes(status)) {
+            return res.status(400).json({ error: 'status must be either "accepted" or "declined"' });
+        }
+
+        const rows: any = await safeTenantQuery(
+            tenantDb,
+            'SELECT * FROM store_transactions WHERE id = ? AND action = ?',
+            [id, 'DISPATCH']
+        );
+        if (!rows?.length) return res.status(404).json({ error: 'Pickup not found' });
+
+        await safeTenantExecute(
+            tenantDb,
+            'UPDATE store_transactions SET pickup_status = ?, responded_at = ? WHERE id = ?',
+            [status, new Date().toISOString(), id]
+        );
+
+        const updated: any = await safeTenantQuery(
+            tenantDb,
+            'SELECT * FROM store_transactions WHERE id = ?',
+            [id]
+        );
+
+        try { const io = getIO(); if (io) io.emit('store:pickup_response', updated[0]); } catch { /* socket optional */ }
+
+        await emitNotification('store-pickup-response', {
+            id: `store-pickup-${id}-${Date.now()}`,
+            transactionId: id,
+            itemName: updated[0]?.item_name || '',
+            driverName: updated[0]?.driver_name || '',
+            status,
+            title: status === 'accepted' ? 'Pickup Accepted' : 'Pickup Declined',
+            message: `${updated[0]?.driver_name || 'Driver'} ${status} the pickup of ${updated[0]?.item_name || 'item'}`,
+            type: 'store-dispatch',
+            priority: 'medium',
+        }, (req as any).tenantSlug || 'system');
+
+        res.json({ success: true, pickup: updated[0] });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export {
+    getInventory,
+    dispatchItem,
+    updateDispatchTarget,
+    restockItem,
+    getHistory,
+    getTargets,
+    setTarget,
+    getDriverPickups,
+    respondToPickup
+};

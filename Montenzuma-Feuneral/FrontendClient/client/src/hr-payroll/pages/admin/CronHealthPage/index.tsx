@@ -1,0 +1,75 @@
+import { ErrorState } from "@hr/components/ui/error-state";
+import React, { useMemo } from "react";
+import { useAppState } from "@hr/contexts";
+// UU PRO restyle (W13c): lucide → verified @untitledui/icons; the loading
+// spinner is the UU Loading01 arc (kept animate-spin).
+import { Clock, Loading01 } from "@untitledui/icons";
+import { Badge } from "@hr/components/ui/badge";
+import {
+  AdminPageCanvas,
+  AdminPageHeaderCard,
+} from "@hr/components/shared/AdminPageFrame";
+import { PageHeader } from "@hr/components/shared/PageHeader";
+import { useCronJobs, useToggleCronJob } from "@hr/hooks/api/useCronHealth";
+import { CronJobTable, computeCronSummary } from "@hr/components/cron-health";
+
+export default function CronHealthPage() {
+  const { setPageTitle } = useAppState();
+  React.useEffect(() => { setPageTitle("Tác vụ định kỳ"); }, [setPageTitle]);
+
+  const { data: jobs, isLoading, isError, refetch } = useCronJobs();
+  const toggleMutation = useToggleCronJob();
+
+  const summary = useMemo(() => {
+    if (!jobs) return { total: 0, enabled: 0, failed: 0 };
+    return computeCronSummary(jobs);
+  }, [jobs]);
+
+  if (isLoading) {
+    return (
+      <AdminPageCanvas>
+        <div className="flex min-h-64 items-center justify-center">
+          <Loading01 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </AdminPageCanvas>
+    );
+  }
+
+  if (isError) {
+    return (
+      <AdminPageCanvas>
+        <div role="alert" className="p-4">
+          <ErrorState message="Failed to load danh sách tác vụ. Please try again." onRetry={() => void refetch()} />
+        </div>
+      </AdminPageCanvas>
+    );
+  }
+
+  return (
+    <AdminPageCanvas>
+      {/* Header */}
+      <AdminPageHeaderCard>
+        <PageHeader icon={Clock} title="Tác vụ định kỳ">
+          <Badge variant="secondary" className="text-xs font-normal">
+            {summary.total} tác vụ
+          </Badge>
+          <Badge variant="secondary" className="text-xs font-normal">
+            {summary.enabled} bật
+          </Badge>
+          {summary.failed > 0 && (
+            <Badge variant="destructive" className="text-xs">
+              {summary.failed} lỗi
+            </Badge>
+          )}
+        </PageHeader>
+      </AdminPageHeaderCard>
+
+      {/* Table */}
+      <CronJobTable
+        jobs={jobs ?? []}
+        onToggle={(name, enabled) => toggleMutation.mutate({ name, enabled })}
+        isPending={toggleMutation.isPending}
+      />
+    </AdminPageCanvas>
+  );
+}

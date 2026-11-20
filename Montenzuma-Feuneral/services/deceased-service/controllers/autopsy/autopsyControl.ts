@@ -1,0 +1,774 @@
+
+
+import { safeTenantExecute, safeTenantQuery, resolveDatabase, getRootPool } from '../../../../shared/dbConfig';
+import { getKenyaTimeISO, getKenyaDate } from '../../../../packages/shared-utils/dist/timestamps';
+import type { Browser } from 'puppeteer' with { 'resolution-mode': 'import' };
+
+import Logger from '../../../../packages/shared-logger/src/index';
+import { tableColumns, pickAs } from '../../utils/tenantSchema';
+import generateBarcodeBars from '../../utils/generateBarCode'
+import { Request, Response } from 'express';
+
+import { DateTime } from 'luxon';
+import sharp from 'sharp';
+import https from 'https';
+import http from 'http';
+import path from 'path';
+import fs from 'fs';
+import { error } from 'console';
+
+
+const SOCKET_URI = process.env.SOCKETIO_SERVICE_URL;
+
+
+export interface TenantRequest extends Request {
+    tenantSlug?: string;
+}
+
+const nowNairobi = getKenyaTimeISO();
+
+export const formatFacilityName = (tenantSlug: string): string => {
+    if (!tenantSlug || tenantSlug === 'system_shared') return 'RestPoint Mortuary';
+    return tenantSlug
+        .replace(/[-_]/g, ' ')
+        .split(' ')
+        .filter(Boolean)
+        .map((token) => token.charAt(0).toUpperCase() + token.slice(1).toLowerCase())
+        .join(' ');
+};
+
+// ─── PDF HELPERS ──────────────────────────────────────────────
+export function fmtLong(iso: string | null | undefined): string {
+    if (!iso) return 'N/A';
+    try {
+        return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    } catch {
+        return 'N/A';
+    }
+}
+
+export function fmtShort(iso: string | null | undefined): string {
+    if (!iso) return 'N/A';
+    try {
+        return new Date(iso).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch {
+        return 'N/A';
+    }
+}
+
+function esc(s: string | null | undefined): string {
+    if (s == null) return 'N/A';
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+
+
+
+
+/**
+ * Resolve the real tenant branding from `tenant_tracking.tenants`.
+ * The PDF used to derive its header from the URL slug
+ */
+export async function resolveTenantBranding(tenantSlug: string): Promise<{
+    name: string; logoUrl: string; phone: string; email: string; address: string;
+}> {
+    const empty = { name: '', logoUrl: '', phone: '', email: '', address: '' };
+    if (!tenantSlug || tenantSlug === 'system_shared') return empty;
+
+    try {
+        const pool = await getRootPool();
+
+        // Try the slug as-is, then progressively strip trailing `-<segment>`s.
+        let candidate = tenantSlug;
+        for (let attempt = 0; attempt < 8 && candidate.includes('-'); attempt++) {
+            const [rows] = await pool.query(
+                `SELECT tenant_name, logo_url, phone, email, location, country
+                 FROM tenant_tracking.tenants
+                 WHERE tenant_slug = ? AND status = 'active'
+                 LIMIT 1`,
+                [candidate],
+            );
+            const row: any = (rows as any[])[0];
+            if (row) {
+                const location = (row.location || '').trim();
+                const country = (row.country || '').trim();
+                return {
+                    name: (row.tenant_name || '').trim(),
+                    logoUrl: (row.logo_url || '').trim(),
+                    phone: (row.phone || '').trim(),
+                    email: (row.email || '').trim(),
+                    // Avoid "Nairobi, Kenya" style duplication when the stored
+                    // location already ends with the country.
+                    address: location.toLowerCase().endsWith(country.toLowerCase()) && country
+                        ? location
+                        : [location, country].filter(Boolean).join(', '),
+                };
+            }
+            const lastDash = candidate.lastIndexOf('-');
+            candidate = candidate.substring(0, lastDash);
+            if (!candidate) break;
+        }
+    } catch (err: any) {
+        console.warn('[PDF] Tenant branding lookup failed:', err?.message || err);
+    }
+    return empty;
+}
+
+/**
+ * Load the tenant logo as a base64 data URL.
+ *
+ * Logos are stored as a RELATIVE path (`/uploads/tenants/<slug>/logos/x.png`)
+ * by the tenant-service upload handler, so `new URL()` cannot parse them and a
+ * plain HTTP fetch always failed — which is why the PDF showed no logo.
+ *
+ * Strategy, in order:
+ *   1. relative `/uploads/...` path → read from the shared uploads volume
+ *      (same approach already used for the signature image), which works
+ *      without any network hop or DNS;
+ *   2. absolute http(s) URL → fetch it.
+ *
+ * Never throws; returns null when no logo can be loaded, in which case the
+ * template simply omits the image.
+ */
+export async function loadLogoBase64(logoUrl: string): Promise<string | null> {
+    if (!logoUrl) return null;
+
+    const raw = String(logoUrl).trim();
+
+    // ── 1. Relative uploads path → local filesystem ──
+    if (raw.startsWith('/uploads/') || raw.startsWith('uploads/')) {
+        try {
+            const uploadsBase = process.env.GLOBAL_UPLOADS_DIR || process.env.UPLOADS_BASE_DIR || '/opt/storage/uploads';
+            const relativePath = raw.replace(/^\/?uploads\//, '');
+            const fsPath = path.join(uploadsBase, relativePath);
+
+            // Guard against traversal in a stored DB value.
+            if (!fsPath.startsWith(path.resolve(uploadsBase)) && !fsPath.startsWith(uploadsBase)) {
+                return null;
+            }
+            if (!fs.existsSync(fsPath)) return null;
+
+            const buffer = fs.readFileSync(fsPath);
+            if (!buffer.length) return null;
+
+            // Derive the MIME from the extension — a JPEG named .jpg mislabelled
+            // as PNG renders as a broken image in Chromium.
+            const ext = path.extname(fsPath).toLowerCase();
+            const mimeByExt: Record<string, string> = {
+                '.png': 'image/png',
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg',
+                '.gif': 'image/gif',
+                '.webp': 'image/webp',
+                '.svg': 'image/svg+xml',
+                '.bmp': 'image/bmp',
+                '.ico': 'image/x-icon',
+            };
+            const mime = mimeByExt[ext] || 'image/png';
+            return `data:${mime};base64,` + buffer.toString('base64');
+        } catch (err: any) {
+            console.warn('[PDF] Could not read tenant logo from disk:', err?.message || err);
+            return null;
+        }
+    }
+
+    // ── 2. Absolute URL → HTTP fetch ──
+    return fetchLogoBase64(raw);
+}
+
+/**
+ * Fetch a tenant logo and inline it as a base64 data URL.
+ *
+ * The old version only spoke https and always claimed image/png, so an
+ * http:// logo (rejected by Node's https client) or an SVG/JPEG logo produced
+ * a broken image in the PDF. Redirects were also unhandled, and uploads
+ * commonly live behind a redirecting public gateway.
+ */
+function fetchLogoBase64(url: string, depth = 0): Promise<string | null> {
+    return new Promise((resolve) => {
+        if (!url || depth > 3) { resolve(null); return; }
+
+        let parsed: URL;
+        try {
+            parsed = new URL(url);
+        } catch {
+            resolve(null);
+            return;
+        }
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+            resolve(null);
+            return;
+        }
+
+        const client = parsed.protocol === 'https:' ? https : http;
+        const req = client.get(url, { timeout: 8000 }, (res) => {
+            const status = res.statusCode || 0;
+            // Follow redirects so gateway-hosted uploads resolve.
+            if (status >= 300 && status < 400 && res.headers.location) {
+                res.resume();
+                resolve(fetchLogoBase64(new URL(res.headers.location, url).toString(), depth + 1));
+                return;
+            }
+            if (status !== 200) { res.resume(); resolve(null); return; }
+
+            // Preserve the real content type — a JPEG/SVG logo mislabelled as
+            // PNG renders as a broken image in Chromium.
+            const contentType = String(res.headers['content-type'] || '').split(';')[0].trim();
+            const mime = /^image\/(png|jpe?g|gif|webp|svg\+xml|bmp|x-icon|vnd\.microsoft\.icon)$/i.test(contentType)
+                ? contentType
+                : 'image/png';
+
+            const chunks: Buffer[] = [];
+            res.on('data', (chunk: Buffer) => chunks.push(chunk));
+            res.on('end', () => {
+                if (!chunks.length) { resolve(null); return; }
+                resolve(`data:${mime};base64,` + Buffer.concat(chunks).toString('base64'));
+            });
+            res.on('error', () => resolve(null));
+        });
+        req.on('error', () => resolve(null));
+        req.on('timeout', () => { req.destroy(); resolve(null); });
+    });
+}
+
+// HTML TEMPLATE — height:297mm + overflow:hidden = GUARANTEED 1 page
+// flex pushes bottom section to bottom, filling the page
+// async: renders the barcode (await generateBarcodeBars) into the HTML.
+export async function buildReportHtml(p: {
+    tenantName: string;
+    tenantAddress: string;
+    tenantPhone: string;
+    tenantEmail: string;
+    deceasedFullName: string;
+    deceasedAdmission: string;
+    deceasedDateOfDeath: string;
+    deceasedAge: string | number;
+    deceasedGender: string;
+    examDate: string;
+    pathologistName: string;
+    pathologistCredentials: string;
+    pathologistLicense: string;
+    mannerOfDeath: string;
+    immediateCause: string;
+    underlyingCause: string;
+    examinationSummary: string;
+    kinName: string;
+    kinRelationship: string;
+    kinPhone: string;
+    verifiedDate: string;
+    issuedDate: string;
+    logoBase64: string | null;
+    signatureBase64: string | null;
+}): Promise<string> {
+
+    const logoHtml = p.logoBase64
+        ? '<img src="' + p.logoBase64 + '" alt="Logo" style="height:50px;width:auto;max-width:115px;object-fit:contain;" />'
+        : '';
+
+    let pathSig: string;
+    if (p.signatureBase64) {
+        pathSig = '<img src="' + p.signatureBase64 + '" alt="Signature" style="max-width:100%;max-height:32px;object-fit:contain;" />';
+    } else {
+        const shortName = (p.pathologistName || 'Pathologist')
+            .replace(/^Dr\.\s*/i, '').split(' ').slice(0, 2).join(' ');
+        pathSig = esc(shortName);
+    }
+
+    // ACTUALLY RENDER THE BARCODE. This line used to be
+    //   const barcodeBars = generateBarcodeBars;
+    let barcodeBars = '';
+    try {
+        barcodeBars = await generateBarcodeBars(p.deceasedAdmission || '', {
+            width: 2,
+            height: 60,
+            displayValue: true,
+        });
+    } catch (e) {
+        Logger.warn({ message: `Barcode render failed, omitting it: ${(e as Error).message}` });
+        barcodeBars = '';
+    }
+
+    return '<!DOCTYPE html>\n'
+        + '<html lang="en">\n<head>\n<meta charset="UTF-8">\n<style>\n'
+        + '@page { size: A4; margin: 0; }\n'
+        + '* { box-sizing: border-box; margin: 0; padding: 0; }\n'
+        + 'html, body { font-family: "Segoe UI", Tahoma, Arial, sans-serif; color: #3a3530; background: #fbfaf7; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; font-size: 15px; }\n'
+        + '.sheet { width: 210mm; height: 297mm; overflow: hidden; display: flex; flex-direction: column; background: #fbfaf7; position: relative; }\n'
+        + '.sheet-inner { padding: 28px 40px 0; position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; }\n'
+        + '.top-rule { width: 100%; height: 1px; background: #1a1a1a; position: relative; opacity: 0.8; }\n'
+        + '.top-rule::after { content: ""; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 100px; height: 1px; background: #a8906a; opacity: 0.7; }\n'
+        + '.top-ornament { text-align: center; margin: 6px 0 7px; color: #a8906a; font-size: 0.68rem; opacity: 0.35; letter-spacing: 0.8em; }\n'
+        + '.letterhead { display: flex; flex-direction: column; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid #e8e0d4; position: relative; z-index: 1; }\n'
+        + '.home-name { width: 100%; }\n'
+        + '.home-name h2 { font-family: "Segoe UI", sans-serif; margin: 0; font-size: 1.38rem; font-weight: 700; color: #1a1a1a; letter-spacing: 0.04em; line-height: 1.15; text-transform: uppercase; }\n'
+        + '.letterhead-row { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; }\n'
+        + '.logo-left { display: flex; align-items: center; gap: 14px; }\n'
+        + '.logo { flex-shrink: 0; display: flex; align-items: center; justify-content: center; }\n'
+        + '.logo-text .address { font-size: 0.66rem; color: #8a7d6e; font-style: normal; font-family: Consolas, "Courier New", monospace; line-height: 1.45; letter-spacing: 0.02em; font-weight: 600; }\n'
+        + '.letterhead-right { text-align: right; font-family: Consolas, "Courier New", monospace; font-size: 0.68rem; }\n'
+        + '.ref-label { font-family: "Segoe UI", sans-serif; font-size: 0.54rem; text-transform: uppercase; letter-spacing: 0.22em; color: #1a1a1a; margin-bottom: 4px; font-weight: 700; }\n'
+        + '.ref-number { font-family: Georgia, serif; font-size: 1.05rem; font-weight: 700; color: #1a1a1a; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }\n'
+        + '.ref-date { margin-top: 5px; color: #8a7d6e; font-size: 0.64rem; font-weight: 600; }\n'
+        + '.intro-block { margin: 18px 0 20px; position: relative; z-index: 1; padding-left: 15px; border-left: 3px solid #7c2b23; }\n'
+        + '.intro-block .dear { font-family: Georgia, serif; font-size: 1rem; font-weight: 700; color: #3a3530; margin-bottom: 7px; }\n'
+        + '.intro-block .body-text { font-family: Georgia, serif; font-size: 0.92rem; line-height: 1.6; color: #3a3530; font-weight: 700; max-width: 95%; }\n'
+        + '.intro-block .body-text .name { font-style: italic; font-weight: 700; color: #7c2b23; }\n'
+        + '.data-heading { display: flex; align-items: center; gap: 9px; font-family: "Segoe UI", sans-serif; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.18em; font-weight: 700; color: #3a3530; margin-bottom: 11px; }\n'
+        + '.data-heading::after { content: ""; flex: 1; height: 1px; background: linear-gradient(to right, #a8906a, transparent); opacity: 0.5; }\n'
+        + '.data-heading .icon-chip { width: 20px; height: 20px; background: rgba(168,144,106,0.08); display: flex; align-items: center; justify-content: center; color: #a8906a; font-size: 8px; flex-shrink: 0; border: 1px solid rgba(168,144,106,0.18); border-radius: 50%; }\n'
+        + '.dual-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 0 30px; margin-bottom: 18px; position: relative; z-index: 1; page-break-inside: avoid; }\n'
+        + '.data-section { position: relative; z-index: 1; page-break-inside: avoid; }\n'
+        + '.dual-sections .info-grid { display: grid; grid-template-columns: 1fr; gap: 7px; }\n'
+        + '.info-grid.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 32px; }\n'
+        + '.info-row { display: flex; flex-direction: column; gap: 2px; padding-bottom: 7px; border-bottom: 1px dotted #ddd4c6; }\n'
+        + '.info-row.full { grid-column: 1 / -1; }\n'
+        + '.info-row label { font-family: "Segoe UI", sans-serif; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.12em; color: #6b6157; font-weight: 700; }\n'
+        + '.info-row span { font-family: Georgia, serif; font-size: 0.96rem; color: #3a3530; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 0.01em; line-height: 1.28; }\n'
+        + '.summary-box { margin: 14px 0; padding: 14px 18px; background: #f6f2ea; border-left: 4px solid #7c2b23; position: relative; page-break-inside: avoid; border-radius: 0 4px 4px 0; }\n'
+        + '.summary-box::after { content: ""; position: absolute; top: 0; right: 0; width: 24px; height: 24px; border-top: 1px solid #a8906a; border-right: 1px solid #a8906a; opacity: 0.25; border-radius: 0 4px 0 0; }\n'
+        + '.summary-box::before { content: "\\2767"; font-family: Georgia, serif; font-size: 1.2rem; color: #a8906a; position: absolute; top: 8px; right: 14px; opacity: 0.4; }\n'
+        + '.summary-box strong { display: block; margin-bottom: 6px; font-family: Georgia, serif; font-size: 0.96rem; color: #3a3530; font-weight: 700; }\n'
+        + '.summary-box p { margin: 0; font-family: Georgia, serif; font-size: 0.84rem; line-height: 1.6; color: #3a3530; font-weight: 600; }\n'
+        + '.bottom-section { background: #ffffff; padding: 22px 40px 20px; position: relative; z-index: 1; page-break-inside: avoid; margin-top: auto; }\n'
+        + '.signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; position: relative; z-index: 1; page-break-inside: avoid; align-items: start; }\n'
+        + '.signatures::before { content: ""; position: absolute; top: -12px; left: 0; right: 0; height: 1px; background: linear-gradient(to right, transparent, #a8906a, transparent); opacity: 0.4; }\n'
+        + '.sig-block { display: flex; flex-direction: column; min-width: 0; }\n'
+        + '.sig-script { font-family: "Brush Script MT", "Lucida Handwriting", cursive; font-size: 1.95rem; color: #3a3530; line-height: 1; margin-bottom: 4px; min-height: 35px; font-weight: 400; word-break: break-word; }\n'
+        + '.sig-line { border-top: 1px solid #1a1a1a; padding-top: 4px; margin-bottom: 5px; opacity: 0.5; }\n'
+        + '.sig-name { font-family: Georgia, serif; font-weight: 700; font-size: 0.88rem; color: #3a3530; letter-spacing: 0.02em; }\n'
+        + '.sig-title { font-family: Georgia, serif; font-size: 0.74rem; color: #6b6157; margin-top: 2px; font-style: italic; font-weight: 600; }\n'
+        + '.sig-meta { margin-top: 4px; font-family: Consolas, "Courier New", monospace; font-size: 0.6rem; color: #8a7d6e; line-height: 1.5; letter-spacing: 0.02em; font-weight: 600; }\n'
+        + '.barcode-wrap { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }\n'
+        + '.barcode { display: flex; align-items: flex-start; gap: 0; height: 42px; padding: 2px 4px; background: #fff; max-width: 100%; overflow: hidden; }\n'
+        + '.barcode-text { font-family: Consolas, "Courier New", monospace; font-size: 0.68rem; font-weight: 700; color: #1a1a1a; letter-spacing: 0.15em; text-align: left; padding-left: 4px; }\n'
+        + '.family-contact { margin-top: 10px; padding-top: 7px; border-top: 1px dotted #ddd4c6; width: 100%; max-width: 100%; overflow: hidden; }\n'
+        + '.family-contact .fc-heading { font-family: "Segoe UI", sans-serif; font-size: 0.52rem; text-transform: uppercase; letter-spacing: 0.18em; color: #6b6157; font-weight: 700; margin-bottom: 5px; }\n'
+        + '.family-contact .fc-grid { display: grid; grid-template-columns: 1fr; gap: 1px; }\n'
+        + '.family-contact .fc-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 2px 0; min-width: 0; }\n'
+        + '.family-contact .fc-row .fc-label { font-family: "Segoe UI", sans-serif; font-size: 0.54rem; text-transform: uppercase; letter-spacing: 0.1em; color: #6b6157; font-weight: 700; flex-shrink: 0; white-space: nowrap; }\n'
+        + '.family-contact .fc-row .fc-value { font-family: Georgia, serif; font-size: 0.76rem; color: #3a3530; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n'
+        + '.bottom-ornament { text-align: center; margin-top: 18px; padding-top: 13px; border-top: 1px solid #e8e0d4; position: relative; z-index: 1; }\n'
+        + '.bottom-ornament .closing { font-family: Georgia, serif; font-size: 0.84rem; font-style: italic; color: #8a7d6e; font-weight: 700; letter-spacing: 0.02em; }\n'
+        + '.bottom-ornament .closing .leaf { color: #a8906a; opacity: 0.5; margin: 0 8px; }\n'
+        + '</style>\n</head>\n<body>\n'
+        + '<div class="sheet">\n'
+        + '  <div class="sheet-inner">\n'
+        + '    <div class="top-rule"></div>\n'
+        + '    <div class="top-ornament">&#10087;</div>\n'
+        + '    <header class="letterhead">\n'
+        + '      <div class="home-name"><h2>' + esc(p.tenantName) + '</h2></div>\n'
+        + '      <div class="letterhead-row">\n'
+        + '        <div class="logo-left">\n'
+        + '          <div class="logo">' + logoHtml + '</div>\n'
+        + '          <div class="logo-text"><address class="address">' + esc(p.tenantAddress) + (p.tenantPhone ? '<br>Tel: ' + esc(p.tenantPhone) : '') + (p.tenantEmail ? ' &middot; ' + esc(p.tenantEmail) : '') + '</address></div>\n'
+        + '        </div>\n'
+        + '        <div class="letterhead-right">\n'
+        + '          <div class="ref-label">Case Reference</div>\n'
+        + '          <div class="ref-number">' + esc(p.deceasedAdmission) + '</div>\n'
+        + '          <div class="ref-date">Issued: ' + p.issuedDate + '</div>\n'
+        + '        </div>\n'
+        + '      </div>\n'
+        + '    </header>\n'
+        + '    <div class="intro-block">\n'
+        + '      <div class="dear">Dear Family,</div>\n'
+        + '      <div class="body-text">Please find enclosed the postmortem examination report for <span class="name">' + esc(p.deceasedFullName) + '</span>. This document has been prepared with care by the attending pathologist and verified by our records team.</div>\n'
+        + '    </div>\n'
+        + '    <div class="dual-sections">\n'
+        + '      <section class="data-section">\n'
+        + '        <div class="data-heading"><span class="icon-chip">&#10087;</span>About Your Loved One</div>\n'
+        + '        <div class="info-grid">\n'
+        + '          <div class="info-row"><label>Full Name</label><span>' + esc(p.deceasedFullName) + '</span></div>\n'
+        + '          <div class="info-row"><label>Date of Passing</label><span>' + p.deceasedDateOfDeath + '</span></div>\n'
+        + '        </div>\n'
+        + '      </section>\n'
+        + '      <section class="data-section">\n'
+        + '        <div class="data-heading"><span class="icon-chip">&#10087;</span>Requesting Authority</div>\n'
+        + '        <div class="info-grid">\n'
+        + '          <div class="info-row"><label>Name</label><span>' + esc(p.kinName) + '</span></div>\n'
+        + '          <div class="info-row"><label>Role</label><span>' + esc(p.kinRelationship) + '</span></div>\n'
+        + '        </div>\n'
+        + '      </section>\n'
+        + '    </div>\n'
+        + '    <section class="data-section">\n'
+        + '      <div class="data-heading"><span class="icon-chip">&#10087;</span>Examination Report</div>\n'
+        + '      <div class="info-grid two-col">\n'
+        + '        <div class="info-row"><label>Date of Examination</label><span>' + p.examDate + '</span></div>\n'
+        + '        <div class="info-row"><label>Attending Pathologist</label><span>' + esc(p.pathologistName) + '</span></div>\n'
+        + '        <div class="info-row"><label>Manner of Passing</label><span>' + esc(p.mannerOfDeath) + '</span></div>\n'
+        + '        <div class="info-row"><label>Immediate Cause</label><span>' + esc(p.immediateCause) + '</span></div>\n'
+        + '        <div class="info-row full"><label>Underlying Cause</label><span>' + esc(p.underlyingCause) + '</span></div>\n'
+        + '      </div>\n'
+        + (p.examinationSummary ? '      <div class="summary-box"><strong>Examination Summary</strong><p>' + esc(p.examinationSummary) + '</p></div>\n' : '')
+        + '    </section>\n'
+        + '  </div>\n'
+        + '  <div class="bottom-section">\n'
+        + '    <section class="signatures">\n'
+        + '      <div class="sig-block">\n'
+        + '        <div class="sig-script">' + pathSig + '</div>\n'
+        + '        <div class="sig-line"></div>\n'
+        + '        <div class="sig-name">' + esc(p.pathologistName || 'Attending Pathologist') + '</div>\n'
+        + '        <div class="sig-title">' + esc(p.pathologistCredentials || 'Pathologist') + '</div>\n'
+        + '      </div>\n'
+        + '      <div class="barcode-wrap">\n'
+        + '        <div class="barcode">' + barcodeBars + '</div>\n'
+        + '        <div class="barcode-text">' + esc(p.deceasedAdmission) + '</div>\n'
+        + '        <div class="family-contact">\n'
+        + '          <div class="fc-heading">Next of Kin</div>\n'
+        + '          <div class="fc-grid">\n'
+        + '            <div class="fc-row"><span class="fc-label">Name</span><span class="fc-value">' + esc(p.kinName) + '</span></div>\n'
+        + '            <div class="fc-row"><span class="fc-label">Telephone</span><span class="fc-value">' + esc(p.kinPhone) + '</span></div>\n'
+        + '            <div class="fc-row"><span class="fc-label">Verified</span><span class="fc-value">' + p.verifiedDate + '</span></div>\n'
+        + '          </div>\n'
+        + '        </div>\n'
+        + '      </div>\n'
+        + '    </section>\n'
+        + '    <div class="bottom-ornament"><div class="closing"><span class="leaf">&#10087;</span>With our deepest sympathies<span class="leaf">&#10087;</span></div></div>\n'
+        + '  </div>\n'
+        + '</div>\n'
+        + '</body>\n</html>';
+}
+
+// ─── INK-BLUE SIGNATURE NORMALIZATION (unchanged) ─────────────
+export async function toInkBlueBuffer(buffer: Buffer): Promise<Buffer> {
+    const { data, info } = await sharp(buffer)
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+
+    const INK_BLUE = { r: 15, g: 51, b: 231 };
+    const normalized = Buffer.alloc(data.length);
+    for (let i = 0; i < data.length; i += 4) {
+        const alpha = data[i + 3] / 255;
+        const luminance = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) / 255;
+        const ink = alpha * Math.min(1, Math.pow(1 - luminance, 0.45) * 1.13);
+        normalized[i] = INK_BLUE.r;
+        normalized[i + 1] = INK_BLUE.g;
+        normalized[i + 2] = INK_BLUE.b;
+        normalized[i + 3] = Math.round(Math.min(1, Math.max(0, ink)) * 255);
+    }
+
+    return sharp(normalized, { raw: { width: info.width, height: info.height, channels: 4 } })
+        .png({ compressionLevel: 9, palette: false })
+        .toBuffer();
+}
+
+export async function normalizeSignatureToInkBlue(signatureDataUrl: string): Promise<string> {
+    if (!signatureDataUrl || !signatureDataUrl.startsWith('data:image')) {
+        return signatureDataUrl;
+    }
+    try {
+        const base64Data = signatureDataUrl.replace(/^data:image\/\w+;base64,/, '');
+        const buffer = Buffer.from(base64Data, 'base64');
+        const inkBuffer = await toInkBlueBuffer(buffer);
+        return `data:image/png;base64,${inkBuffer.toString('base64')}`;
+    } catch (error: any) {
+        Logger.warn(`[POSTMORTEM] Failed to normalize signature to ink blue: ${error.message}`);
+        return signatureDataUrl;
+    }
+}
+
+
+export const syncPostmortemCompletion = async (
+    dbName: string,
+    deceasedId: string,
+    now: string,
+    completed: boolean,
+): Promise<void> => {
+    // 1. Close out the tracked request so it stops showing as outstanding.
+    try {
+        await safeTenantExecute(
+            dbName,
+            `UPDATE postmortem_requests SET status = ?, completed_at = ?, updated_at = ?
+             WHERE deceased_id = ? AND status <> 'completed'`,
+            [completed ? 'completed' : 'pending', completed ? now : null, now, deceasedId],
+        );
+    } catch (e: any) {
+        Logger.warn({ message: 'Could not close postmortem_requests after examination', error: e?.message });
+    }
+
+    // 2. The deceased row — flags analytics-service reads, plus body_status.
+    //    This update MUST succeed — if it silently fails, the deceased stays on
+    //    'Postmortem Requested' forever even after results are saved.
+    const sets: string[] = ['updated_at = ?', 'postmortem_requested = 1', `postmortem_completed = ${completed ? 1 : 0}`];
+    if (completed) {
+        // Only advance the body_status when it is still awaiting the exam —
+        // a body released since the postmortem must not be dragged back.
+        sets.push("body_status = CASE WHEN body_status = 'Postmortem Requested' THEN 'Postmortem Done' ELSE body_status END");
+    }
+    await safeTenantExecute(dbName, `UPDATE deceased SET ${sets.join(', ')} WHERE deceased_id = ?`, [now, deceasedId]);
+};
+
+// EXPORT: savePostmortem (unchanged)
+
+export const savePostmortem = async (req: TenantRequest, res: Response): Promise<Response> => {
+    const tenantSlug = req.headers['x-slug'] as string || req.headers['x-tenant-slug'] as string || req.tenantSlug;
+
+    if (!tenantSlug || tenantSlug === 'system_shared') {
+        return res.status(400).json({ success: false, message: 'Valid tenant required. Please provide x-tenant-slug header' });
+    }
+
+    try {
+        const {
+            deceased_id, pathologist_name, external_pathologist_name, external_pathologist_mobile, external_pathologist_id,
+            examination_summary, cause_of_death, immediate_cause_of_death, underlying_cause_of_death, contributing_conditions,
+            manner_of_death, requesting_authority, findings, head_findings, chest_findings, abdomen_findings, extremities_findings,
+            toxicology_findings, custom_findings, staff_username, mortuary_name
+        } = req.body;
+
+        if (!deceased_id) return res.status(400).json({ success: false, message: 'deceased_id is required' });
+
+        // The examination form always submits `status: 'completed'`, but an
+        // amended/incomplete save may legitimately send 'in_progress'. Anything
+        // else is treated as completed — filing findings IS the examination
+        // being carried out, and that is what the UI asserts on success.
+        const requestedStatus = String(req.body.status || 'completed').trim().toLowerCase();
+        const finalStatus: string = requestedStatus === 'in_progress' ? 'in_progress' : 'completed';
+        const isCompleted = finalStatus === 'completed';
+
+        const dbName = await resolveDatabase(tenantSlug);
+        if (!dbName) return res.status(404).json({ success: false, message: `No database configured for tenant: ${tenantSlug}` });
+
+        const rawSignature = (req.body as any).signature_base64;
+        const signature_base64 = rawSignature ? await normalizeSignatureToInkBlue(rawSignature) : null;
+
+
+        const existingQuery = 'SELECT id FROM postmortem WHERE deceased_id = ?';
+        const existing = await safeTenantQuery(dbName, existingQuery, [deceased_id]);
+        const now = getKenyaTimeISO();
+
+        if (existing && (existing as any[]).length > 0) {
+            const updateQuery = `
+                UPDATE postmortem SET
+                    pathologist_name = ?, external_pathologist_name = ?, external_pathologist_mobile = ?, external_pathologist_id = ?,
+                    examination_summary = ?, cause_of_death = ?, immediate_cause_of_death = ?, underlying_cause_of_death = ?,
+                    contributing_conditions = ?, manner_of_death = ?, requesting_authority = ?, findings = ?, head_findings = ?,
+                    chest_findings = ?, abdomen_findings = ?, extremities_findings = ?, toxicology_findings = ?, custom_findings = ?,
+                    signature = ?, staff_username = ?, mortuary_name = ?,
+                    status = ?, completed_at = COALESCE(completed_at, ?), updated_at = ?
+                WHERE deceased_id = ?`;
+
+            await safeTenantExecute(dbName, updateQuery, [
+                pathologist_name, external_pathologist_name, external_pathologist_mobile, external_pathologist_id,
+                examination_summary, cause_of_death, immediate_cause_of_death, underlying_cause_of_death, contributing_conditions,
+                manner_of_death, requesting_authority,
+                typeof findings === 'string' ? findings : JSON.stringify(findings),
+                head_findings || null, chest_findings || null, abdomen_findings || null, extremities_findings || null,
+                toxicology_findings || null, custom_findings || null, signature_base64,
+                staff_username || null, mortuary_name || null,
+                finalStatus, isCompleted ? now : null, now, deceased_id]);
+
+            await syncPostmortemCompletion(dbName, deceased_id, now, isCompleted);
+
+            emitPostmortemUpdate(tenantSlug, deceased_id, { status: finalStatus, pathologist_name, cause_of_death, manner_of_death, completed_at: isCompleted ? now : null });
+
+            try {
+
+                let deceasedName = '';
+                try {
+                    const nRows: any[] = (await safeTenantQuery(dbName, 'SELECT full_name FROM deceased WHERE deceased_id = ?', [deceased_id])) || [];
+                    deceasedName = nRows[0]?.full_name || '';
+                } catch { }
+
+                const socketioServiceUrl = SOCKET_URI;
+
+                const axios = require('axios');
+                const who = deceasedName || deceased_id;
+                await axios.post(`${socketioServiceUrl}/emit/postmortem-results-ready`, {
+                    tenantSlug, data: {
+                        id: `postmortem-results-${deceased_id}-${Date.now()}`, deceasedId: deceased_id, deceasedName,
+                        pathologistName: pathologist_name || 'N/A', causeOfDeath: cause_of_death || 'Pending',
+                        mannerOfDeath: manner_of_death || 'Undetermined', title: 'Postmortem Results Available',
+                        message: `Postmortem results for ${who} are now available`, type: 'postmortem_results', priority: 'high',
+                        fullContent: `Deceased: ${who}\nDeceased ID: ${deceased_id}\nPathologist: ${pathologist_name || 'N/A'}\nCause of Death: ${cause_of_death || 'Pending'}\nManner of Death: ${manner_of_death || 'Undetermined'}\nCompleted: ${now}`
+                    }
+                }, { timeout: 5000 });
+            } catch (emitError) {
+                console.warn('[POSTMORTEM] Failed to emit postmortem-results-ready notification:', emitError.message);
+            }
+
+            return res.status(200).json({ success: true, message: 'Postmortem data saved successfully', data: { deceased_id } });
+
+
+        } else {
+            const insertQuery = `
+                INSERT INTO postmortem (
+                    deceased_id, pathologist_name, external_pathologist_name, external_pathologist_mobile, external_pathologist_id,
+                    examination_summary, cause_of_death, immediate_cause_of_death, underlying_cause_of_death, contributing_conditions,
+                    manner_of_death, requesting_authority, findings, head_findings, chest_findings, abdomen_findings, extremities_findings,
+                    toxicology_findings, custom_findings, staff_username, mortuary_name, signature, status, completed_at, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+            const result = await safeTenantExecute(dbName, insertQuery, [
+                deceased_id, pathologist_name, external_pathologist_name, external_pathologist_mobile, external_pathologist_id,
+                examination_summary, cause_of_death, immediate_cause_of_death, underlying_cause_of_death, contributing_conditions,
+                manner_of_death, requesting_authority,
+                typeof findings === 'string' ? findings : JSON.stringify(findings),
+                head_findings || null, chest_findings || null, abdomen_findings || null, extremities_findings || null,
+                toxicology_findings || null, custom_findings || null, staff_username || null, mortuary_name || null,
+                signature_base64, finalStatus, isCompleted ? now : null, now, now]);
+
+            await syncPostmortemCompletion(dbName, deceased_id, now, isCompleted);
+
+            emitPostmortemUpdate(tenantSlug, deceased_id, { status: finalStatus, pathologist_name, cause_of_death, manner_of_death, completed_at: isCompleted ? now : null });
+
+            try {
+                let deceasedName = '';
+                try {
+                    const nRows: any[] = (await safeTenantQuery(dbName, 'SELECT full_name FROM deceased WHERE deceased_id = ?', [deceased_id])) || [];
+                    deceasedName = nRows[0]?.full_name || '';
+                } catch { }
+
+                const socketioServiceUrl = process.env.SOCKETIO_SERVICE_URL;
+
+                const axios = require('axios');
+                const who = deceasedName || deceased_id;
+                await axios.post(`${socketioServiceUrl}/emit/postmortem-results-ready`, {
+                    tenantSlug, data: {
+                        id: `postmortem-results-${deceased_id}-${Date.now()}`, deceasedId: deceased_id, deceasedName,
+                        pathologistName: pathologist_name || 'N/A', causeOfDeath: cause_of_death || 'Pending',
+                        mannerOfDeath: manner_of_death || 'Undetermined', title: 'Postmortem Results Available',
+                        message: `Postmortem results for ${who} are now available`, type: 'postmortem_results', priority: 'high',
+                        fullContent: `Deceased: ${who}\nDeceased ID: ${deceased_id}\nPathologist: ${pathologist_name || 'N/A'}\nCause of Death: ${cause_of_death || 'Pending'}\nManner of Death: ${manner_of_death || 'Undetermined'}\nCompleted: ${now}`
+                    }
+                }, { timeout: 5000 });
+            } catch (emitError) {
+
+
+
+
+                Logger.warn({
+                    message: "  Postmortem   Failed  to  emit   postmortem  redy     notification  ",
+                    error: emitError.message
+                })
+
+
+
+
+            }
+
+            return res.status(201).json({ success: true, message: 'Postmortem data saved successfully', data: { id: (result as any).insertId, deceased_id } });
+        }
+    } catch (error: any) {
+
+
+
+        Logger.error({
+            message: "  An    Eroror   Occurred    While  saving   postmortem",
+            error: error.message
+        })
+        return res.status(500).json({ success: false, message: 'Internal Server Error', error: process.env.NODE_ENV === 'development' ? error.message : undefined });
+    }
+};
+
+export const emitPostmortemUpdate = async (tenantSlug: string, deceasedId: string, data: any) => {
+
+    const socketioServiceUrl = SOCKET_URI;
+
+    try {
+        const axios = require('axios');
+        if (!tenantSlug || tenantSlug === 'system_shared') return;
+
+        try {
+            await axios.post(`${socketioServiceUrl}/emit/postmortem-updated`, {
+                tenantSlug, data: { deceasedId, data, timestamp: new Date().toISOString() }
+            }, { timeout: 5000, headers: { 'Content-Type': 'application/json' } });
+        } catch (error) {
+
+
+            Logger.error({
+                message: "   Postmortrm   Failed   ti    emit   postmortem  updated ",
+                error: error.message
+            })
+
+
+
+
+
+        }
+
+        if (data.status === 'completed') {
+            const notificationPayload = {
+                tenantSlug,
+                data: {
+                    id: `postmortem-${Date.now()}`, type: 'postmortem_completed', title: 'Postmortem Completed',
+                    message: `Postmortem examination has been completed for deceased ID: ${deceasedId}`,
+                    fullContent: `Postmortem Status: Completed\nDeceased ID: ${deceasedId}\nPathologist: ${data.pathologist_name || 'N/A'}\nCause of Death: ${data.cause_of_death || 'N/A'}\nManner of Death: ${data.manner_of_death || 'N/A'}\nCompleted At: ${data.completed_at || 'N/A'}`,
+                    priority: 'high',
+                    data: { deceased_id: deceasedId, status: 'completed', pathologist_name: data.pathologist_name, cause_of_death: data.cause_of_death, manner_of_death: data.manner_of_death, completed_at: data.completed_at },
+                    timestamp: new Date().toISOString(),
+                    expiresAt: Date.now() + (2 * 60 * 60 * 1000)
+                }
+            };
+
+            try {
+                await axios.post(`${socketioServiceUrl}/emit/postmortem-completed`, notificationPayload, { timeout: 5000, headers: { 'Content-Type': 'application/json' } });
+            } catch (error) {
+                if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+                    try {
+                        await axios.post(`http://localhost:5018/emit/postmortem-completed`, notificationPayload, { timeout: 5000, headers: { 'Content-Type': 'application/json' } });
+                    } catch (fallbackError) { }
+                }
+            }
+        }
+    } catch (error) {
+
+
+        Logger.error({
+            message: "   Postmortem   Emit  error",
+            error: error.message
+        })
+
+
+    }
+};
+
+export const getPostmortemByDeceasedId = async (req: TenantRequest, res: Response): Promise<Response> => {
+    const tenantSlug = req.headers['x-slug'] as string || req.headers['x-tenant-slug'] as string || req.tenantSlug;
+    const { deceased_id } = req.params;
+
+    if (!deceased_id || !tenantSlug) return res.status(400).json({ success: false, message: 'deceased_id and tenant are required' });
+
+    try {
+        const dbName = await resolveDatabase(tenantSlug);
+        if (!dbName) return res.status(404).json({ success: false, message: `No database configured for tenant: ${tenantSlug}` });
+
+        const selectQuery = `
+            SELECT 
+                id, deceased_id, status, pathologist_name, external_pathologist_name, external_pathologist_mobile, external_pathologist_id,
+                examination_summary, cause_of_death, immediate_cause_of_death, underlying_cause_of_death, contributing_conditions,
+                manner_of_death, requesting_authority, findings, head_findings, chest_findings, abdomen_findings, extremities_findings,
+                toxicology_findings, custom_findings, signature, report_pdf_url, created_at, updated_at,
+                requested_by, requested_at
+            FROM postmortem WHERE deceased_id = ?`;
+
+        const records = await safeTenantQuery(dbName, selectQuery, [deceased_id]);
+        if (!records || (records as any[]).length === 0) return res.status(404).json({ success: false, message: 'Postmortem record not found' });
+
+        const postmortem = (records as any[])[0];
+        if (postmortem.findings && typeof postmortem.findings === 'string') {
+            try { postmortem.findings = JSON.parse(postmortem.findings); } catch (e) { }
+        }
+
+        return res.status(200).json({ success: true, message: 'Postmortem record fetched successfully', data: postmortem });
+    } catch (error: any) {
+
+
+        Logger.error({
+            message: "  Erroor   occured  in  getting  postmortem   by  id  ",
+            error: error.message
+        })
+
+
+
+        return res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
+};
+
+
+
+
+
