@@ -151,14 +151,14 @@ export const softwareApplicationSchema = {
         {
             '@type': 'Offer',
             name: 'Single Tenant Plan',
-            price: '9200',
+            price: '20000',
             priceCurrency: 'KES',
             billingIncrement: 'P1M'
         },
         {
             '@type': 'Offer',
             name: 'Multi-Tenant Plan',
-            price: '18900',
+            price: '100000',
             priceCurrency: 'KES',
             billingIncrement: 'P1M'
         }
@@ -206,7 +206,7 @@ export const localBusinessSchema = {
         opens: '08:00',
         closes: '18:00'
     },
-    priceRange: 'KES 9,200 - 189,000/month',
+    priceRange: 'KES 20,000 - 100,000/month',
     areaServed: [
         {
             '@type': 'City',
