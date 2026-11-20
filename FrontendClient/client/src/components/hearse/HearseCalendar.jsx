@@ -923,7 +923,7 @@ const DayBranchBadge = styled.span`
 
 const DayBookingBody = styled.span`
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, .85fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.55fr) minmax(0, 1.45fr);
   gap: 18px;
   padding: 16px;
   background: #fff;
