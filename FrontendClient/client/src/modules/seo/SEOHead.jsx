@@ -252,3 +252,4 @@ export const breadcrumbSchema = (items) => ({
 });
 
 export default SEOHead;
+export { SEOHead };

@@ -1,6 +1,7 @@
 
 import { lookupTenantDatabase, safeTenantQuery } from '../../../shared/dbConfig';
-import { getKenyaTimeISO } from '../../../packages/shared-utils/dist/timestamps';
+import getKenyaTimeISO from '../../../packages/shared-stamps/src/index';
+
 import path from 'path';
 import fs from 'fs';
 

@@ -281,7 +281,7 @@ export const getComprehensiveDashboard = async (req: any, res: any): Promise<voi
             } else {
                 return res.status(400).json({ success: false, message: 'branches query parameter is required (comma separated).' });
             }
-        });
+        }
 
         const branchList = branches.split(',').map(b => b.trim()).filter(Boolean);
         if (branchList.length < 2) {

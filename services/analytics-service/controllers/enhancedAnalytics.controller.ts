@@ -175,7 +175,7 @@ export const saveReport = async (req: any, res: any): Promise<void> => {
     success: true,
     message: 'Report saved successfully'
   });
-});
+};
 
 // Get saved reports
 export const getSavedReports = async (req: any, res: any): Promise<void> => {

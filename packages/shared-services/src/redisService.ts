@@ -4,7 +4,7 @@
  */
 
 import { createClient, RedisClientType, RedisModules, RedisFunctions, RedisScripts } from 'redis';
-import Logger from '../../shared-logger/dist/index';
+import Logger from '@montezuma/shared-logger';
 
 type RedisClient = RedisClientType<RedisModules, RedisFunctions, RedisScripts>;
 

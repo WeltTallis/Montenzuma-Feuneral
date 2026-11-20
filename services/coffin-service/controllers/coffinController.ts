@@ -3,7 +3,7 @@ import axios from 'axios';
 import CoffinModel from '../models/coffinModel.js';
 import { coffinQuery, coffinTransaction } from '../db.js';
 import { serviceGet, serviceSet, serviceDel, clearServiceCache } from '@montezuma/shared-services';
-import { centralizedUploadService } from '@montezuma/shared-services/dist/centralizedUploadService';
+import { centralizedUploadService } from '@montezuma/shared-services';
 import logger from '@montezuma/shared-logger';
 
 const SERVICE_NAME = 'coffin-service';

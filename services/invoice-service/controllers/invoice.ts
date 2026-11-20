@@ -1,5 +1,5 @@
 // controllers/invoice.ts
-import { getKenyaTimeISO, getKenyaTimeFormatted } from '../../../packages/shared-utils/dist/timestamps';
+import { getKenyaTimeISO, getKenyaTimeFormatted } from '@montezuma/shared-utils/timestamps';
 import { loadTenantBranding, toUploadsUrl } from './tenantBranding';
 import { Request, Response, NextFunction } from 'express';
 import { safeQuery } from '../../../shared/config/db';

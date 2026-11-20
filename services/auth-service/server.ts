@@ -1,6 +1,6 @@
 import { autoInitSystemAdmin } from './scripts/auto-init-system-admin';
 import express, { Request, Response, NextFunction } from 'express';
-import Logger from '../../packages/shared-logger/dist/index';
+import Logger from '@montezuma/shared-logger';
 import { rateLimit } from 'express-rate-limit';
 import authRoutes from './routes/authRoutes';
 import cookieParser from 'cookie-parser';

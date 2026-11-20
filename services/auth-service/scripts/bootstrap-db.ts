@@ -66,7 +66,7 @@ async function main() {
         await adminConn.query(`DROP USER IF EXISTS \`${configuredUser}\`@'localhost'`);
         console.log(`   Dropped user ${configuredUser}@localhost (to avoid socket auth issues)`);
       } catch (e) {
-        console.warn(`   ⚠️  Could not drop user ${configuredUser}@localhost:`, e.message);
+        console.warn(`   ⚠️  Could not drop user ${configuredUser}@localhost:`, (e as Error).message);
       }
 
       // Create user for localhost, 127.0.0.1, and % to ensure connectivity from any host
@@ -81,7 +81,7 @@ async function main() {
             await adminConn.query(`ALTER USER \`${configuredUser}\`@'${h}' IDENTIFIED BY '${configuredPass}'`);
             console.log(`   Updated password for ${configuredUser}@${h}`);
           } catch (er) {
-            console.warn(`   ⚠️  Could not create/update user ${configuredUser}@${h}:`, er.message);
+            console.warn(`   ⚠️  Could not create/update user ${configuredUser}@${h}:`, (er as Error).message);
           }
         }
         try {
@@ -89,7 +89,7 @@ async function main() {
           await adminConn.query(`GRANT ALL PRIVILEGES ON \`${mainDb}\`.* TO \`${configuredUser}\`@'${h}'`);
           console.log(`   Granted privileges to ${configuredUser}@${h}`);
         } catch (grantErr) {
-          console.warn(`   ⚠️  Grant warning for ${configuredUser}@${h}:`, grantErr.message || grantErr);
+          console.warn(`   ⚠️  Grant warning for ${configuredUser}@${h}:`, (grantErr as Error).message || grantErr);
         }
       }
 
@@ -112,7 +112,7 @@ async function main() {
       userConn = await mysql.createConnection({ host, port, user: configuredUser, password: configuredPass, database: 'tenant_tracking' });
       console.log('✅ Connected as configured user to tenant_tracking');
     } catch (connErr) {
-      console.error('❌ Failed to connect as configured user:', connErr.message);
+      console.error('❌ Failed to connect as configured user:', (connErr as Error).message);
       console.error('   This usually means the user was not created or privileges were not granted correctly');
       console.error('   Try running: mysql -u root -p -e "FLUSH PRIVILEGES;"');
       throw connErr;
@@ -179,7 +179,7 @@ async function main() {
         tenantId = insertResult.insertId;
         console.log('✅ Created system tenant record');
       } catch (insertErr) {
-        console.warn('⚠️  Could not insert tenant record, trying to fetch existing:', insertErr.message);
+        console.warn('⚠️  Could not insert tenant record, trying to fetch existing:', (insertErr as Error).message);
         // Try to get the tenant ID even if insert failed (might already exist)
         const [tenantsAfterFail] = await userConn.query('SELECT id FROM tenants WHERE email = ? LIMIT 1', [SYSTEM_ADMIN.email]);
         tenantId = tenantsAfterFail[0] && tenantsAfterFail[0].id;
@@ -211,7 +211,7 @@ async function main() {
     process.exit(0);
 
   } catch (err) {
-    console.error('Bootstrap failed:', err && err.message ? err.message : err);
+    console.error('Bootstrap failed:', (err as Error)?.message ?? err);
     if (adminConn) await adminConn.end().catch(() => { });
     process.exit(1);
   }

@@ -14,7 +14,7 @@ try {
     require('ts-node').register({ transpileOnly: true });
     db = require('../../services/app-global/config/db.ts');
   } catch (e2) {
-    console.error('Failed to load database config:', e2.message);
+    console.error('Failed to load database config:', (e2 as Error).message);
     throw new Error('Could not load database configuration. Please ensure ts-node is installed.');
   }
 }

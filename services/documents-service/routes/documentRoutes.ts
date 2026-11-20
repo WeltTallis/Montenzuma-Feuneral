@@ -9,7 +9,7 @@ import sharp from 'sharp';
 import { resolveDatabase, safeTenantQuery, safeTenantExecute } from '../../../shared/dbConfig';
 import { safeQuery } from '../../../shared/database';
 import { centralizedUploadService } from '../../../shared/centralizedUploadService';
-import { getKenyaTimeISO } from '../../../packages/shared-utils/dist/timestamps';
+import { getKenyaTimeISO } from '@montezuma/shared-utils/timestamps';
 import { protect, authorizeAny } from '../../app-global/middlewares/authMiddleware';
 
 const GLOBAL_UPLOADS_DIR = resolveGlobalUploadsDir();
