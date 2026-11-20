@@ -1,5 +1,12 @@
-
-import { safeTenantQuery, resolveDatabase, lookupTenantDatabase } from '../../../shared/dbConfig';
+        if (!branches) {
+            const { branch1, branch2 } = req.query;
+            if (branch1 && branch2) {
+                branches = branch1 + ',' + branch2;
+            } else {
+                return res.status(400).json({ success: false, message: 'branches query parameter is required (comma separated).' });
+            }
+        }
+y, resolveDatabase, lookupTenantDatabase } from '../../../shared/dbConfig';
 import serviceClient from '../../../shared/services/serviceClient';
 
 const resolveBranchDatabaseForTenant = async (tenantSlug, branchIdentifier) => {
