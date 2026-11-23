@@ -1232,11 +1232,15 @@ const DayDriverInfo = styled.span`
 `;
 
 const DayAssistant = styled.span`
-  display: block;
-  margin-top: 5px;
+  display: inline-block;
+  min-width: 0;
+  margin: 0;
   color: #64748b;
   font-size: 10px;
-  }
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 
 const EmptyDay = styled.div`
@@ -2187,6 +2191,7 @@ const HearseCalendar = ({
                           <DayDriverInitials>{getInitials(assignedDriverName)}</DayDriverInitials>
                           <DayDriverInfo>
                             <span>{assignedDriverName}</span>
+                            {assistantName && <DayAssistant>+ {assistantName}</DayAssistant>}
                             {driverPhone && <small>{driverPhone}</small>}
                           </DayDriverInfo>
                         </DayDriver>
