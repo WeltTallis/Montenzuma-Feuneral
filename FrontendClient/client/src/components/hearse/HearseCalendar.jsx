@@ -1276,156 +1276,122 @@ const StatIcon = styled.span`
 // Inline styles win over every stylesheet rule except !important — this is
 // the bulletproof approach that makes status colours render correctly.
 const MonthToolbar = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-  padding: 12px 14px;
-  border: 1px solid #e8edf4;
-  border-radius: 14px;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, .04);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap; margin-bottom: 14px; padding: 0 4px;
   .toolbar-left, .toolbar-right {
     display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   }
   .btn {
-    display: inline-flex;
-    min-height: 34px;
-    align-items: center;
-    justify-content: center;
-    background: #FFFFFF; border: 1px solid #e2e8f0; color: #475569;
-    font-weight: 700; font-size: 11px; padding: 0 12px; border-radius: 9px;
+    background: #FFFFFF; border: 1px solid #EEEEEE; color: #000000;
+    font-weight: 600; font-size: 12px; padding: 6px 12px; border-radius: 8px;
     cursor: pointer; transition: all .15s ease; text-transform: capitalize; font-family: inherit;
   }
-  .btn:hover { background: #f8fafc; color: #00296b; border-color: #bfdbfe; }
-  .btn.active { background: #eff6ff; color: #00296b; border-color: #bfdbfe; }
+  .btn:hover { background: #000000; color: #FFFFFF; border-color: #000000; }
+  .btn.active { background: #000000; color: #FFFFFF; border-color: #000000; }
   .btn.dark {
-    background: #00296b; color: #FFFFFF; border-color: #00296b;
-    font-size: 11px; font-weight: 800;
+    background: #101828; color: #FFFFFF; border-color: #101828;
+    text-transform: uppercase; font-size: 9px; font-weight: 800; letter-spacing: .06em;
   }
-  .btn.dark:hover { background: #164e9b; border-color: #164e9b; }
-  .title { margin: 0 4px; color: #172033; font-size: 17px; font-weight: 800; }
-  @media (max-width: 520px) {
-    align-items: flex-start;
-    .toolbar-left { width: 100%; }
-    .title { flex: 1; text-align: center; }
-  }
+  .btn.dark:hover { background: #1d2939; border-color: #1d2939; }
+  .title { font-size: 18px; font-weight: 700; color: #000000; }
 `;
 
 const MonthTable = styled.table`
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 2px;
-  table-layout: fixed;
-  background: #e8edf4;
+  width: 100%; border-collapse: collapse; table-layout: fixed;
   thead th {
-    height: 34px;
-    background: #f8fafc;
-    border: 0;
-    border-radius: 7px;
-    padding: 6px 4px;
-    color: #64748b;
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: .06em;
-    text-align: center;
-    text-transform: uppercase;
+    background: #FFFFFF; border-bottom: 1px solid #EEEEEE;
+    border-top: 2px solid transparent; padding: 8px 4px;
+    font-size: 13px; font-weight: 700; color: #000000; text-align: center;
   }
+  thead th.today { border-top-color: #2E7D32; color: #2E7D32; }
 `;
 
 const MonthCell = styled.td`
-  vertical-align: top;
-  height: 126px;
-  padding: 6px;
-  border: 0;
-  border-radius: 8px;
-  background: #fff;
-  cursor: pointer;
-  overflow: hidden;
-  transition: background .15s ease, box-shadow .15s ease;
-  &:hover { background: #f7faff; }
-  &:focus-visible { outline: 2px solid #2563eb; outline-offset: -2px; }
-  &.other-month { background: #f8fafc; }
-  &.other-month .day-number { color: #a8b2c1; }
-  &.today-cell { background: #f1f7ff; }
-  &.fully-booked { background: #fff7f7; }
-  &.selected-day { box-shadow: inset 0 0 0 2px #bfdbfe; }
+  vertical-align: top; height: 130px; padding: 4px;
+  border: 1px solid #F3F4F6; background: #FFFFFF;
+  cursor: pointer; transition: background .15s ease; overflow: hidden;
+  &:hover { background: #F9FAFB; }
+  &.other-month { background: #FAFAFA; }
+  &.other-month .day-number { opacity: 0.35; }
+  &.today-cell { background: #E8F5E9; }
+  &.has-bookings { background: rgba(17, 24, 39, 0.02); }
+  &.fully-booked { background: #FECACA; }
+  &.fully-booked .day-number { background: #DC2626; color: #FFFFFF; }
   .day-number {
-    display: inline-flex;
-    width: 25px;
-    height: 25px;
-    align-items: center;
-    justify-content: center;
-    margin: 0 0 5px auto;
-    border-radius: 50%;
-    color: #334155;
-    font-size: 11px;
-    font-weight: 700;
+    display: inline-block; font-size: 14px; font-weight: 700; color: #111827;
+    padding: 2px 6px; border-radius: 4px; text-align: right; float: right; margin-bottom: 4px;
   }
-  &.today-cell .day-number { background: #00296b; color: #fff; }
-  &.fully-booked .day-number { background: #dc2626; color: #fff; }
-  .events { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-  .month-event-title, .month-event-detail {
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  &.today-cell .day-number {
+    background: #2E7D32; color: #FFFFFF; border-radius: 50%; min-width: 26px; text-align: center;
   }
-  .month-event-title { font-size: 10px; font-weight: 800; }
-  .month-event-detail { margin-top: 2px; font-size: 9px; font-weight: 600; opacity: .84; }
-  @media (max-width: 640px) {
-    height: 82px;
-    padding: 3px;
-    .day-number { width: 21px; height: 21px; margin-bottom: 3px; font-size: 10px; }
-    .month-event-detail { display: none; }
-  }
+  .events::after { content: ''; display: table; clear: both; }
+  @media (max-width: 640px) { height: 100px; .day-number { font-size: 12px; padding: 1px 4px; } }
 `;
 
 const MonthMoreLink = styled.span`
-  display: inline-flex;
-  width: fit-content;
-  margin-top: 3px;
-  padding: 3px 7px;
-  border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
-  font-size: 9px;
-  font-weight: 800;
-  cursor: pointer;
-  &:hover { background: #dbeafe; }
+  display: inline-block; margin-top: 4px; padding: 3px 6px;
+  background: #EFF6FF; color: #00296B; border-radius: 4px;
+  font-size: 11px; font-weight: 700; cursor: pointer;
+  &:hover { background: #DBEAFE; }
 `;
 
-const MonthEventCard = ({ color, hearseName, plate, routeFrom, routeTo, pickupTime, onClick }) => {
-  const detail = [pickupTime, plate && plate !== '—' ? plate : '', routeTo || routeFrom]
-    .filter(Boolean)
-    .join(' · ');
-  return (
-    <div
-      className="month-event"
-      onClick={onClick}
-      title={[hearseName, routeFrom, routeTo, pickupTime, plate].filter(Boolean).join(' · ')}
-      style={{
-        backgroundColor: color,
-        color: '#fff',
-        borderLeft: '3px solid rgba(255, 255, 255, .72)',
-        borderRadius: 6,
-        padding: '4px 6px',
-        margin: '1px 0',
-        cursor: 'pointer',
-        overflow: 'hidden',
-        boxShadow: '0 1px 2px rgba(15, 23, 42, .12)',
-        fontFamily: 'inherit',
-        lineHeight: 1.2,
-        boxSizing: 'border-box',
-      }}
-    >
-      <span className="month-event-title">{hearseName}</span>
-      {detail && <span className="month-event-detail">{detail}</span>}
-    </div>
-  );
-};
+// THE COLORED CARD — plain <div> with inline backgroundColor.
+// Cannot be overridden by CSS except via !important.
+const MonthEventCard = ({ color, hearseName, plate, routeFrom, routeTo, pickupTime, onClick }) => (
+  <div
+    onClick={onClick}
+    style={{
+      backgroundColor: color,
+      color: '#FFFFFF',
+      borderRadius: '6px',
+      padding: '6px 8px',
+      margin: '2px 0',
+      minHeight: '56px',
+      cursor: 'pointer',
+      overflow: 'hidden',
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.15)',
+      fontFamily: 'inherit',
+      lineHeight: '1.2',
+      boxSizing: 'border-box',
+      display: 'block',
+    }}
+  >
+    <div style={{
+      fontSize: '13px', fontWeight: 700, color: '#FFFFFF',
+      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '1px',
+    }}>{hearseName}</div>
+    {plate && plate !== '\u2014' && (
+      <div style={{
+        fontSize: '10px', color: 'rgba(255,255,255,0.85)',
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '2px',
+      }}>{plate}</div>
+    )}
+    {routeFrom && (
+      <div style={{
+        fontSize: '11px', fontWeight: 600, color: '#FFFFFF',
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.25',
+      }}>
+        <span style={{ color: 'rgba(255,255,255,0.95)', fontWeight: 700 }}>From:</span>
+        <span style={{ color: 'rgba(255,255,255,0.85)', marginLeft: '3px' }}>{routeFrom}</span>
+      </div>
+    )}
+    {routeTo && (
+      <div style={{
+        fontSize: '11px', fontWeight: 600, color: '#FFFFFF',
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.25',
+      }}>
+        <span style={{ color: 'rgba(255,255,255,0.95)', fontWeight: 700 }}>To:</span>
+        <span style={{ color: 'rgba(255,255,255,0.85)', marginLeft: '3px' }}>{routeTo}</span>
+      </div>
+    )}
+    {pickupTime && (
+      <div style={{
+        fontSize: '10px', fontWeight: 600, color: 'rgba(255,255,255,0.9)', marginTop: '2px',
+      }}>{pickupTime}</div>
+    )}
+  </div>
+);
 
 const HearseCalendar = ({
   bookings = [],
@@ -1469,17 +1435,22 @@ const HearseCalendar = ({
 
   const gridDays = useMemo(() => {
     const year = visibleMonth.getFullYear();
-    const currentMonth = visibleMonth.getMonth();
-    const monthStart = new Date(year, currentMonth, 1);
-    const gridStart = addDays(monthStart, -monthStart.getDay());
-    return Array.from({ length: 42 }, (_, index) => {
-      const date = addDays(gridStart, index);
-      return {
-        day: date.getDate(),
-        otherMonth: date.getMonth() !== currentMonth,
-        date,
-      };
-    });
+    const m = visibleMonth.getMonth();
+    const startDayOfWeek = new Date(year, m, 1).getDay();
+    const daysInMonth = new Date(year, m + 1, 0).getDate();
+    const daysInPrevMonth = new Date(year, m, 0).getDate();
+    const days = [];
+    for (let i = startDayOfWeek - 1; i >= 0; i--) {
+      days.push({ day: daysInPrevMonth - i, otherMonth: true, date: null });
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      days.push({ day: d, otherMonth: false, date: new Date(year, m, d) });
+    }
+    const trailing = 42 - days.length;
+    for (let i = 1; i <= trailing; i++) {
+      days.push({ day: i, otherMonth: true, date: null });
+    }
+    return days;
   }, [visibleMonth]);
 
   const bookingsByDate = useMemo(() => {
@@ -1505,6 +1476,13 @@ const HearseCalendar = ({
     const d = new Date();
     onMonthChange?.(d.getMonth(), d.getFullYear());
   }, [onMonthChange]);
+
+  const todayDowV3 = useMemo(() => {
+    const now = new Date();
+    if (now.getFullYear() !== visibleMonth.getFullYear()
+      || now.getMonth() !== visibleMonth.getMonth()) return -1;
+    return now.getDay();
+  }, [visibleMonth]);
 
   const formatPickupTimeV3 = (startDate) => {
     if (!startDate) return '';
@@ -2318,20 +2296,20 @@ const HearseCalendar = ({
               <button className="btn active">Month</button>
             </div>
           </MonthToolbar>
-          <MonthTable aria-label="Hearse bookings calendar">
+          <MonthTable>
             <thead>
               <tr>
-                {WEEKDAYS.map((d) => (
-                  <th key={d}>{d}</th>
+                {WEEKDAYS.map((d, i) => (
+                  <th key={d} className={i === todayDowV3 ? 'today' : ''}>{d}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {Array.from({ length: 6 }).map((_, weekIdx) => (
                 <tr key={weekIdx}>
-                  {gridDays.slice(weekIdx * 7, weekIdx * 7 + 7).map((cell) => {
-                    const dateKey = toDateKey(cell.date);
-                    const dayBookings = bookingsByDate.get(dateKey) || [];
+                  {gridDays.slice(weekIdx * 7, weekIdx * 7 + 7).map((cell, cellIdx) => {
+                    const dateKey = cell.date ? toDateKey(cell.date) : '';
+                    const dayBookings = cell.date ? (bookingsByDate.get(dateKey) || []) : [];
                     const hasBookings = dayBookings.length > 0;
                     const fullyBooked = dayBookings.length >= FULLY_BOOKED_THRESHOLD_V3;
                     const visible = dayBookings.slice(0, MAX_EVENTS_PER_CELL_V3);
@@ -2339,20 +2317,14 @@ const HearseCalendar = ({
                     const classes = [];
                     if (cell.otherMonth) classes.push('other-month');
                     if (dateKey === todayKey) classes.push('today-cell');
-                    if (dateKey === selectedDate) classes.push('selected-day');
                     if (hasBookings) classes.push('has-bookings');
                     if (fullyBooked) classes.push('fully-booked');
                     return (
                       <MonthCell
-                        key={dateKey}
+                        key={cellIdx}
                         className={classes.join(' ')}
-                        role="button"
-                        tabIndex={0}
-                        aria-label={`${cell.date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}, ${dayBookings.length} booking${dayBookings.length === 1 ? '' : 's'}`}
-                        onClick={() => selectDay(dateKey)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
+                        onClick={() => {
+                          if (cell.date) {
                             selectDay(dateKey);
                           }
                         }}
