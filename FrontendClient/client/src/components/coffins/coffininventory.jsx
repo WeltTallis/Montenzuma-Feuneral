@@ -42,7 +42,7 @@ const {
   getBookingDotColor,
   getCoffinName,
   getStatusColor,
-  formatKES,
+  formatKes: formatKES,
   getStockStatus,
 } = variables;
 
