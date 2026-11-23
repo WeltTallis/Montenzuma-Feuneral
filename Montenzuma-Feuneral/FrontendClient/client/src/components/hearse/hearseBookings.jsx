@@ -54,7 +54,7 @@ const GENERIC_BRANCH_NAMES = new Set([
 
 
 const COLORS = {
-  // Dispatch palette (matches HTML reference design)
+  // Dispatch palette 
   ink: '#15171A',
   bone: '#FAF8F4',
   bone2: '#F3EFE6',
@@ -374,24 +374,15 @@ const api = {
     }
     return [];
   },
-  getDailyLineup: async (date) => {
-    const r = await fetchWithCredentials(`${API_BASE_URL}/hearse-lineups/day?date=${encodeURIComponent(date)}`, { headers: getAuthHeaders() });
-    if (!r.ok) throw new Error('Failed to load the daily driver lineup');
-    return r.json();
-  },
-  saveStandbyDriver: async (date, assignment) => {
+  sendSmsLineup: async ({ date, message, driverIds }) => {
     const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
-    const r = await fetchWithCredentials(`${API_BASE_URL}/hearse-lineups/standby`, {
-      method: 'PUT',
+    const r = await fetchWithCredentials(`${API_BASE_URL}/hearse-lineups/send-sms`, {
+      method: 'POST',
       headers,
-      body: JSON.stringify({
-        date,
-        driver_id: assignment.driver_id || null,
-        driver_name: assignment.driver_name || null,
-      }),
+      body: JSON.stringify({ date, message, driver_ids: driverIds || [] }),
     });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.message || 'Failed to save the standby driver');
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.message || 'Failed to send the SMS lineup.');
     return data;
   },
   assignBookingLineup: async (bookingId, lineup) => {
@@ -647,6 +638,13 @@ const DriverTag = styled.span`
     font-size: 0.75rem;
     font-weight: 600;
     flex-shrink: 0;
+  }
+  .assistant {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: ${COLORS.brass};
+    margin-left: 0.15rem;
+    letter-spacing: 0.02em;
   }
 `;
 
@@ -1029,10 +1027,6 @@ const HearseBookings = () => {
   const [bookings, setBookings] = useState([]);
   const [allHearses, setAllHearses] = useState([]);
   const [drivers, setDrivers] = useState([]);
-  const [standbyDriverId, setStandbyDriverId] = useState('');
-  const [standbyDriverName, setStandbyDriverName] = useState('');
-  const [lineupLoading, setLineupLoading] = useState(false);
-  const [savingStandby, setSavingStandby] = useState(false);
   const [savingBookingLineup, setSavingBookingLineup] = useState(null);
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1058,6 +1052,13 @@ const HearseBookings = () => {
   });
   const [newBookingOpen, setNewBookingOpen] = useState(false);
   const [newBookingInitialDates, setNewBookingInitialDates] = useState([]);
+  // Send SMS lineup modal
+  const [smsLineupOpen, setSmsLineupOpen] = useState(false);
+  const [smsLineupDate, setSmsLineupDate] = useState(selectedDate);
+  const [smsLineupMessage, setSmsLineupMessage] = useState('');
+  const [smsLineupLoading, setSmsLineupLoading] = useState(false);
+  const [smsLineupResults, setSmsLineupResults] = useState(null);
+  const [smsSelectedDriverIds, setSmsSelectedDriverIds] = useState([]);
   const [editingBooking, setEditingBooking] = useState(null);
   const [bookingDetailsEditing, setBookingDetailsEditing] = useState(false);
   const [editBookingDraft, setEditBookingDraft] = useState(null);
@@ -1183,39 +1184,6 @@ const HearseBookings = () => {
   // view survives week strips that cross a month boundary.
   useEffect(() => { refreshData(); }, [refreshData]);
 
-  useEffect(() => {
-    let current = true;
-    setLineupLoading(true);
-    api.getDailyLineup(selectedDate)
-      .then((lineup) => {
-        if (current) {
-          setStandbyDriverId(lineup.standby_driver_id == null ? '' : String(lineup.standby_driver_id));
-          setStandbyDriverName(lineup.standby_driver_name || '');
-        }
-      })
-      .catch((error) => {
-        if (current) notify.error(error.message || 'Failed to load the standby driver.');
-      })
-      .finally(() => {
-        if (current) setLineupLoading(false);
-      });
-    return () => { current = false; };
-  }, [selectedDate]);
-
-  const saveStandby = useCallback(async (assignment) => {
-    setSavingStandby(true);
-    try {
-      const lineup = await api.saveStandbyDriver(selectedDate, assignment);
-      setStandbyDriverId(lineup.standby_driver_id == null ? '' : String(lineup.standby_driver_id));
-      setStandbyDriverName(lineup.standby_driver_name || '');
-      notify.success(assignment.driver_id || assignment.driver_name ? 'Standby driver assigned for this day.' : 'Standby driver removed.');
-    } catch (error) {
-      notify.error(error.message || 'Failed to save the standby driver.');
-    } finally {
-      setSavingStandby(false);
-    }
-  }, [selectedDate]);
-
   const saveBookingLineup = useCallback(async (bookingId, lineup) => {
     setSavingBookingLineup(String(bookingId));
     try {
@@ -1340,6 +1308,54 @@ const HearseBookings = () => {
     setActionMenuId(null);
   }, []);
   const closeDrawer = useCallback(() => { setDrawerOpen(false); setSelectedBooking(null); }, []);
+
+  // ── Send SMS lineup ───────────────────────────────────────────────────────
+  const buildLineupMessage = useCallback((date) => {
+    const dayBookings = bookings.filter((b) => {
+      let dates = [];
+      try { dates = typeof b.booking_dates === 'string' ? JSON.parse(b.booking_dates) : (b.booking_dates || []); } catch { dates = []; }
+      if (dates.length === 0 && b.booking_date) dates = [String(b.booking_date).slice(0, 10)];
+      if (dates.length === 0 && b.estimated_departure_time) dates = [String(b.estimated_departure_time).slice(0, 10)];
+      return dates.some((d) => String(d).slice(0, 10) === date);
+    });
+    const lines = dayBookings.map((b) => {
+      const time = fmtBookingTime(b);
+      return `- ${b.client_name || 'Client'}: ${b.from_location || b.from || '—'} → ${b.to_location || b.destination || '—'}${time !== 'Not specified' ? ` @ ${time}` : ''}`;
+    }).join('\n');
+    const label = new Date(date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    return `Rest Point Hearse Lineup — ${label}:\n${lines || 'No bookings scheduled for this day.'}\n\nPlease reply to confirm receipt.`;
+  }, [bookings, fmtBookingTime]);
+
+  const openSmsLineup = useCallback(() => {
+    const today = formatDateStr(new Date());
+    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+    const defaultDate = selectedDate === today ? formatDateStr(tomorrow) : selectedDate;
+    setSmsLineupDate(defaultDate);
+    setSmsLineupMessage(buildLineupMessage(defaultDate));
+    setSmsLineupResults(null);
+    setSmsSelectedDriverIds([]);
+    setSmsLineupOpen(true);
+  }, [selectedDate, buildLineupMessage]);
+
+  const sendSmsLineup = useCallback(async () => {
+    setSmsLineupLoading(true);
+    setSmsLineupResults(null);
+    try {
+      const data = await api.sendSmsLineup({
+        date: smsLineupDate,
+        message: smsLineupMessage,
+        driverIds: smsSelectedDriverIds,
+      });
+      setSmsLineupResults(data);
+      notify.success(`SMS lineup sent to ${data.sent || 0} of ${data.total || 0} driver(s).`);
+    } catch (error) {
+      notify.error(error.message || 'Failed to send SMS lineup.');
+    } finally {
+      setSmsLineupLoading(false);
+    }
+  }, [smsLineupDate, smsLineupMessage, smsSelectedDriverIds]);
+
+  const closeSmsLineup = useCallback(() => { setSmsLineupOpen(false); setSmsLineupResults(null); }, []);
 
   const changeStatus = useCallback(async (booking, status, reason, skipConfirmation = false) => {
     const id = booking.booking_id || booking.id;
@@ -1795,6 +1811,11 @@ const HearseBookings = () => {
               }}
               $bg={COLORS.success}
             >{Icons.plus} Register Hearse</PrimaryButton>
+            <PrimaryButton
+              onClick={openSmsLineup}
+              disabled={smsLineupLoading}
+              style={{ background: COLORS.accent, color: COLORS.white, borderColor: COLORS.accent, marginLeft: '0.5rem' }}
+            >{Phone} Send SMS Line Up</PrimaryButton>
           </FilterRow>
         </FilterCard>
 
@@ -1839,6 +1860,7 @@ const HearseBookings = () => {
                               priority === 'Medium' || priority === 'medium' ? COLORS.yellow :
                                 COLORS.green;
                         const driverName = b.driver_name || b.driver || 'Unassigned';
+                        const assistantName = b.assistant_name || '';
                         const driverInitials = driverName
                           .split(' ')
                           .map((w) => w[0])
@@ -1875,6 +1897,7 @@ const HearseBookings = () => {
                               <DriverTag>
                                 <span className="dot">{driverInitials}</span>
                                 {driverName}
+                                {assistantName && <span className="assistant">+ {assistantName}</span>}
                               </DriverTag>
                             </TableCell>
                             <TableCell>
@@ -1931,11 +1954,6 @@ const HearseBookings = () => {
               hearses={allHearses}
               branches={branches}
               drivers={drivers}
-              standbyDriverId={standbyDriverId}
-              standbyDriverName={standbyDriverName}
-              lineupLoading={lineupLoading}
-              savingStandby={savingStandby}
-              onSaveStandby={saveStandby}
               selectedDate={selectedDate}
               onDateSelect={setSelectedDate}
               onDateClick={(date) => {
@@ -1977,275 +1995,275 @@ const HearseBookings = () => {
                 <span className="cap">Current status</span>
               </StatusStrip>
 
-             <DrawerColumns>
-              <DetailGrid>
-              {bookingDetailsEditing && editBookingDraft ? (
-                <BookingInlineEditor
-                  draft={editBookingDraft}
-                  setDraft={setEditBookingDraft}
-                  hearses={allHearses}
-                  branches={branches}
-                  onSubmit={saveEditBooking}
-                  onCancel={cancelEditBooking}
-                  saving={editBookingSaving}
-                />
-              ) : (<>
-                <DetailItem>
-                  <DetailLabel>Client</DetailLabel>
-                  <DetailValue>
-                    {selectedBooking.client_name || 'N/A'}
-                    {selectedBooking.client_phone && (
-                      <div style={{ fontSize: '0.78rem', color: COLORS.textSecondary, marginTop: '0.15rem' }}>
-                        {selectedBooking.client_phone}
-                      </div>
-                    )}
-                  </DetailValue>
-                </DetailItem>
-                <DetailItem>
-                  <DetailLabel>Route</DetailLabel>
-                  <DetailValue>{fmtRoute(selectedBooking)}</DetailValue>
-                </DetailItem>
-                <DetailItem>
-                  <DetailLabel>Pickup time</DetailLabel>
-                  <DetailValue>{fmtBookingTime(selectedBooking)}</DetailValue>
-                </DetailItem>
-                <DetailItem>
-                  <DetailLabel>Dates</DetailLabel>
-                  <DetailValue>
-                    {(() => {
-                      const multiDay = isMultiDay(selectedBooking);
-                      const dates = multiDay ? getBookingDateRange(selectedBooking) : [];
-                      const color = multiDay ? getMultiDayColor(selectedBooking) : null;
-                      return (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          <div>{fmtBookingDates(selectedBooking)}</div>
-                          {multiDay && dates.length > 1 && (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                              {dates.map((d, idx) => {
-                                const dt = new Date(d + 'T00:00:00');
-                                const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dt.getDay()];
-                                return (
-                                  <span key={d} style={{
-                                    background: color,
-                                    color: '#fff',
-                                    padding: '2px 6px',
-                                    borderRadius: 4,
-                                    fontSize: 10,
-                                    fontWeight: 600,
-                                  }}>
-                                    {dayName} {dt.getDate()}
-                                  </span>
-                                );
-                              })}
+              <DrawerColumns>
+                <DetailGrid>
+                  {bookingDetailsEditing && editBookingDraft ? (
+                    <BookingInlineEditor
+                      draft={editBookingDraft}
+                      setDraft={setEditBookingDraft}
+                      hearses={allHearses}
+                      branches={branches}
+                      onSubmit={saveEditBooking}
+                      onCancel={cancelEditBooking}
+                      saving={editBookingSaving}
+                    />
+                  ) : (<>
+                    <DetailItem>
+                      <DetailLabel>Client</DetailLabel>
+                      <DetailValue>
+                        {selectedBooking.client_name || 'N/A'}
+                        {selectedBooking.client_phone && (
+                          <div style={{ fontSize: '0.78rem', color: COLORS.textSecondary, marginTop: '0.15rem' }}>
+                            {selectedBooking.client_phone}
+                          </div>
+                        )}
+                      </DetailValue>
+                    </DetailItem>
+                    <DetailItem>
+                      <DetailLabel>Route</DetailLabel>
+                      <DetailValue>{fmtRoute(selectedBooking)}</DetailValue>
+                    </DetailItem>
+                    <DetailItem>
+                      <DetailLabel>Pickup time</DetailLabel>
+                      <DetailValue>{fmtBookingTime(selectedBooking)}</DetailValue>
+                    </DetailItem>
+                    <DetailItem>
+                      <DetailLabel>Dates</DetailLabel>
+                      <DetailValue>
+                        {(() => {
+                          const multiDay = isMultiDay(selectedBooking);
+                          const dates = multiDay ? getBookingDateRange(selectedBooking) : [];
+                          const color = multiDay ? getMultiDayColor(selectedBooking) : null;
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              <div>{fmtBookingDates(selectedBooking)}</div>
+                              {multiDay && dates.length > 1 && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                                  {dates.map((d, idx) => {
+                                    const dt = new Date(d + 'T00:00:00');
+                                    const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dt.getDay()];
+                                    return (
+                                      <span key={d} style={{
+                                        background: color,
+                                        color: '#fff',
+                                        padding: '2px 6px',
+                                        borderRadius: 4,
+                                        fontSize: 10,
+                                        fontWeight: 600,
+                                      }}>
+                                        {dayName} {dt.getDate()}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </DetailValue>
-                </DetailItem>
-                <DetailItem>
-                  <DetailLabel>Hearse</DetailLabel>
-                  <DetailValue>
-                    {selectedBooking.hearse_name || 'N/A'}
-                    {selectedBooking.plate_number && (
-                      <div style={{ fontSize: '0.78rem', color: COLORS.textSecondary, marginTop: '0.15rem' }}>
-                        {selectedBooking.plate_number}
-                      </div>
+                          );
+                        })()}
+                      </DetailValue>
+                    </DetailItem>
+                    <DetailItem>
+                      <DetailLabel>Hearse</DetailLabel>
+                      <DetailValue>
+                        {selectedBooking.hearse_name || 'N/A'}
+                        {selectedBooking.plate_number && (
+                          <div style={{ fontSize: '0.78rem', color: COLORS.textSecondary, marginTop: '0.15rem' }}>
+                            {selectedBooking.plate_number}
+                          </div>
+                        )}
+                      </DetailValue>
+                    </DetailItem>
+                    <DetailItem>
+                      <DetailLabel>Total Service Charge</DetailLabel>
+                      <DetailValue
+                        style={{
+                          fontWeight: 700,
+                          color: Number(selectedBooking.service_charge ?? selectedBooking.total_service_charge ?? selectedBooking.total_charge) > 0
+                            ? COLORS.successDark
+                            : COLORS.textSecondary,
+                        }}
+                      >
+                        {(() => {
+                          const charge = Number(selectedBooking.service_charge ?? selectedBooking.total_service_charge ?? selectedBooking.total_charge) || 0;
+                          return charge > 0 ? `KSH ${charge.toLocaleString()}` : 'Not set (optional)';
+                        })()}
+                      </DetailValue>
+                    </DetailItem>
+                    {selectedBooking.cancel_reason && (
+                      <DetailItem style={{ gridColumn: '1 / -1' }}>
+                        <DetailLabel>Cancel Reason</DetailLabel>
+                        <DetailValue style={{ color: COLORS.danger }}>{selectedBooking.cancel_reason}</DetailValue>
+                      </DetailItem>
                     )}
-                  </DetailValue>
-                </DetailItem>
-                <DetailItem>
-                  <DetailLabel>Total Service Charge</DetailLabel>
-                  <DetailValue
+                    {selectedBooking.postpone_reason && (
+                      <DetailItem style={{ gridColumn: '1 / -1' }}>
+                        <DetailLabel>Postponement Reason</DetailLabel>
+                        <DetailValue>{selectedBooking.postpone_reason}</DetailValue>
+                      </DetailItem>
+                    )}
+                  </>)}
+                </DetailGrid>
+
+                <div style={{ minWidth: 0 }}>
+                  <div style={{
+                    border: `1px solid ${COLORS.line}`,
+                    borderRadius: COLORS.radiusSm,
+                    padding: '1rem',
+                    marginBottom: '1.25rem',
+                    background: COLORS.bone,
+                  }}>
+                    <div style={{ marginBottom: '0.85rem' }}>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 700, color: COLORS.ink }}>Driver lineup</div>
+                      <div style={{ marginTop: '0.2rem', fontSize: '0.75rem', color: COLORS.gray }}>
+                        Assign or update the driver and assistant for this booking.
+                      </div>
+                    </div>
+                    <LineupForm
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        const selectedDriver = drivers.find((driver) =>
+                          String(driver.driver_id ?? driver.driver_key ?? '') === String(bookingLineupDraft.driverId || '')
+                        );
+                        saveBookingLineup(selectedBooking.booking_id || selectedBooking.id, {
+                          driver_id: selectedDriver
+                            ? (selectedDriver.driver_id ?? null)
+                            : (bookingLineupDraft.driverName.trim() ? null : bookingLineupDraft.driverId || null),
+                          driver_name: bookingLineupDraft.driverName.trim() || selectedDriver?.driver_name || '',
+                          registered_driver_key: selectedDriver?.tenant_user_id || null,
+                          assistant_name: bookingLineupDraft.assistantName,
+                        });
+                      }}
+                    >
+                      <div>
+                        <ModalLabel htmlFor="booking-lineup-driver">Select driver (optional)</ModalLabel>
+                        <Select
+                          id="booking-lineup-driver"
+                          value={bookingLineupDraft.driverId}
+                          onChange={(event) => setBookingLineupDraft((current) => ({
+                            ...current,
+                            driverId: event.target.value,
+                            driverName: '',
+                          }))}
+                          style={{ width: '100%' }}
+                        >
+                          <option value="">{drivers.length ? 'Unassigned' : 'No drivers found for this tenant'}</option>
+                          {drivers.map((driver) => {
+                            const driverId = driver.driver_id ?? driver.driver_key ?? driver.id;
+                            return (
+                              <option key={driverId} value={driverId}>
+                                {driver.driver_name || driver.full_name || `Driver ${driverId}`}
+                              </option>
+                            );
+                          })}
+                        </Select>
+                      </div>
+                      <div>
+                        <ModalLabel htmlFor="booking-lineup-manual-driver">Or enter driver name</ModalLabel>
+                        <ModalInput
+                          id="booking-lineup-manual-driver"
+                          value={bookingLineupDraft.driverName}
+                          onChange={(event) => setBookingLineupDraft((current) => ({
+                            ...current,
+                            driverId: '',
+                            driverName: event.target.value,
+                          }))}
+                          placeholder="Type driver name"
+                        />
+                      </div>
+                      <div>
+                        <ModalLabel htmlFor="booking-lineup-assistant">Assistant name (optional)</ModalLabel>
+                        <ModalInput
+                          id="booking-lineup-assistant"
+                          value={bookingLineupDraft.assistantName}
+                          onChange={(event) => setBookingLineupDraft((current) => ({
+                            ...current,
+                            assistantName: event.target.value,
+                          }))}
+                          placeholder="Enter assistant name"
+                        />
+                      </div>
+                      <div>
+                        <PrimaryButton
+                          type="submit"
+                          disabled={String(savingBookingLineup || '') === String(selectedBooking.booking_id || selectedBooking.id)}
+                        >
+                          {String(savingBookingLineup || '') === String(selectedBooking.booking_id || selectedBooking.id)
+                            ? 'Saving lineup...'
+                            : 'Save lineup'}
+                        </PrimaryButton>
+                      </div>
+                    </LineupForm>
+                  </div>
+                  <BookingMetaGrid style={{ marginTop: '1rem', marginBottom: 0 }}>
+                    <DetailItem>
+                      <DetailLabel>Branch</DetailLabel>
+                      <DetailValue style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {(() => {
+                          const name = branchLabel(selectedBooking);
+                          const multiDay = isMultiDay(selectedBooking);
+                          const color = multiDay ? getMultiDayColor(selectedBooking) : null;
+                          return (
+                            <>
+                              {color && (
+                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0 }} />
+                              )}
+                              <span style={{ fontWeight: 600, color: color || 'inherit' }}>{name}</span>
+                            </>
+                          );
+                        })()}
+                      </DetailValue>
+                    </DetailItem>
+                    <DetailItem>
+                      <DetailLabel>Booked By</DetailLabel>
+                      <DetailValue style={{ color: COLORS.bookingAccent }}>
+                        {selectedBooking.booked_by || 'System'}
+                      </DetailValue>
+                    </DetailItem>
+                    <DetailItem>
+                      <DetailLabel>Created</DetailLabel>
+                      <DetailValue>{fmtDate(selectedBooking.created_at)}</DetailValue>
+                    </DetailItem>
+                  </BookingMetaGrid>
+                  <SecondaryButton
+                    type="button"
+                    onClick={() => openEditBooking(selectedBooking)}
                     style={{
-                      fontWeight: 700,
-                      color: Number(selectedBooking.service_charge ?? selectedBooking.total_service_charge ?? selectedBooking.total_charge) > 0
-                        ? COLORS.successDark
-                        : COLORS.textSecondary,
+                      width: '100%',
+                      justifyContent: 'center',
+                      marginTop: '1rem',
+                      background: '#134b5f',
+                      color: COLORS.white,
+                      borderColor: '#134b5f',
                     }}
                   >
-                    {(() => {
-                      const charge = Number(selectedBooking.service_charge ?? selectedBooking.total_service_charge ?? selectedBooking.total_charge) || 0;
-                      return charge > 0 ? `KSH ${charge.toLocaleString()}` : 'Not set (optional)';
-                    })()}
-                  </DetailValue>
-                </DetailItem>
-                {selectedBooking.cancel_reason && (
-                  <DetailItem style={{ gridColumn: '1 / -1' }}>
-                    <DetailLabel>Cancel Reason</DetailLabel>
-                    <DetailValue style={{ color: COLORS.danger }}>{selectedBooking.cancel_reason}</DetailValue>
-                  </DetailItem>
-                )}
-                {selectedBooking.postpone_reason && (
-                  <DetailItem style={{ gridColumn: '1 / -1' }}>
-                    <DetailLabel>Postponement Reason</DetailLabel>
-                    <DetailValue>{selectedBooking.postpone_reason}</DetailValue>
-                  </DetailItem>
-                )}
-              </>)}
-              </DetailGrid>
-
-              <div style={{ minWidth: 0 }}>
-              <div style={{
-                border: `1px solid ${COLORS.line}`,
-                borderRadius: COLORS.radiusSm,
-                padding: '1rem',
-                marginBottom: '1.25rem',
-                background: COLORS.bone,
-              }}>
-                <div style={{ marginBottom: '0.85rem' }}>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 700, color: COLORS.ink }}>Driver lineup</div>
-                  <div style={{ marginTop: '0.2rem', fontSize: '0.75rem', color: COLORS.gray }}>
-                    Assign or update the driver and assistant for this booking.
-                  </div>
+                    Edit Booking
+                  </SecondaryButton>
+                  {!['completed', 'cancelled'].includes(selectedBooking.status) && (
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+                      {selectedBooking.status === 'booked' && (
+                        <PrimaryButton onClick={() => { changeStatus(selectedBooking, 'in_transit'); }}>
+                          {Icons.truck} Mark In Transit
+                        </PrimaryButton>
+                      )}
+                      {selectedBooking.status === 'in_transit' && (
+                        <PrimaryButton onClick={() => { changeStatus(selectedBooking, 'completed'); }}>
+                          {Icons.check} Mark Completed
+                        </PrimaryButton>
+                      )}
+                      <SecondaryButton
+                        onClick={() => { openCancelModal(selectedBooking); closeDrawer(); }}
+                        style={{
+                          background: COLORS.bookingAccent,
+                          color: COLORS.white,
+                          borderColor: COLORS.bookingAccent,
+                        }}
+                      >
+                        {Icons.x} Cancel Booking
+                      </SecondaryButton>
+                    </div>
+                  )}
                 </div>
-                <LineupForm
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    const selectedDriver = drivers.find((driver) =>
-                      String(driver.driver_id ?? driver.driver_key ?? '') === String(bookingLineupDraft.driverId || '')
-                    );
-                    saveBookingLineup(selectedBooking.booking_id || selectedBooking.id, {
-                      driver_id: selectedDriver
-                        ? (selectedDriver.driver_id ?? null)
-                        : (bookingLineupDraft.driverName.trim() ? null : bookingLineupDraft.driverId || null),
-                      driver_name: bookingLineupDraft.driverName.trim() || selectedDriver?.driver_name || '',
-                      registered_driver_key: selectedDriver?.tenant_user_id || null,
-                      assistant_name: bookingLineupDraft.assistantName,
-                    });
-                  }}
-                >
-                  <div>
-                    <ModalLabel htmlFor="booking-lineup-driver">Select driver (optional)</ModalLabel>
-                    <Select
-                      id="booking-lineup-driver"
-                      value={bookingLineupDraft.driverId}
-                      onChange={(event) => setBookingLineupDraft((current) => ({
-                        ...current,
-                        driverId: event.target.value,
-                        driverName: '',
-                      }))}
-                      style={{ width: '100%' }}
-                    >
-                      <option value="">{drivers.length ? 'Unassigned' : 'No drivers found for this tenant'}</option>
-                      {drivers.map((driver) => {
-                        const driverId = driver.driver_id ?? driver.driver_key ?? driver.id;
-                        return (
-                          <option key={driverId} value={driverId}>
-                            {driver.driver_name || driver.full_name || `Driver ${driverId}`}
-                          </option>
-                        );
-                      })}
-                    </Select>
-                  </div>
-                  <div>
-                    <ModalLabel htmlFor="booking-lineup-manual-driver">Or enter driver name</ModalLabel>
-                    <ModalInput
-                      id="booking-lineup-manual-driver"
-                      value={bookingLineupDraft.driverName}
-                      onChange={(event) => setBookingLineupDraft((current) => ({
-                        ...current,
-                        driverId: '',
-                        driverName: event.target.value,
-                      }))}
-                      placeholder="Type driver name"
-                    />
-                  </div>
-                  <div>
-                    <ModalLabel htmlFor="booking-lineup-assistant">Assistant name (optional)</ModalLabel>
-                    <ModalInput
-                      id="booking-lineup-assistant"
-                      value={bookingLineupDraft.assistantName}
-                      onChange={(event) => setBookingLineupDraft((current) => ({
-                        ...current,
-                        assistantName: event.target.value,
-                      }))}
-                      placeholder="Enter assistant name"
-                    />
-                  </div>
-                  <div>
-                    <PrimaryButton
-                      type="submit"
-                      disabled={String(savingBookingLineup || '') === String(selectedBooking.booking_id || selectedBooking.id)}
-                    >
-                      {String(savingBookingLineup || '') === String(selectedBooking.booking_id || selectedBooking.id)
-                        ? 'Saving lineup...'
-                        : 'Save lineup'}
-                    </PrimaryButton>
-                  </div>
-                </LineupForm>
-              </div>
-               <BookingMetaGrid style={{ marginTop: '1rem', marginBottom: 0 }}>
-                 <DetailItem>
-                   <DetailLabel>Branch</DetailLabel>
-                   <DetailValue style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                     {(() => {
-                       const name = branchLabel(selectedBooking);
-                       const multiDay = isMultiDay(selectedBooking);
-                       const color = multiDay ? getMultiDayColor(selectedBooking) : null;
-                       return (
-                         <>
-                           {color && (
-                             <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0 }} />
-                           )}
-                           <span style={{ fontWeight: 600, color: color || 'inherit' }}>{name}</span>
-                         </>
-                       );
-                     })()}
-                   </DetailValue>
-                 </DetailItem>
-                 <DetailItem>
-                   <DetailLabel>Booked By</DetailLabel>
-                   <DetailValue style={{ color: COLORS.bookingAccent }}>
-                     {selectedBooking.booked_by || 'System'}
-                   </DetailValue>
-                 </DetailItem>
-                 <DetailItem>
-                   <DetailLabel>Created</DetailLabel>
-                   <DetailValue>{fmtDate(selectedBooking.created_at)}</DetailValue>
-                 </DetailItem>
-               </BookingMetaGrid>
-               <SecondaryButton
-                 type="button"
-                 onClick={() => openEditBooking(selectedBooking)}
-                 style={{
-                   width: '100%',
-                   justifyContent: 'center',
-                   marginTop: '1rem',
-                   background: '#134b5f',
-                   color: COLORS.white,
-                   borderColor: '#134b5f',
-                 }}
-               >
-                 Edit Booking
-               </SecondaryButton>
-               {!['completed', 'cancelled'].includes(selectedBooking.status) && (
-                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
-                   {selectedBooking.status === 'booked' && (
-                     <PrimaryButton onClick={() => { changeStatus(selectedBooking, 'in_transit'); }}>
-                       {Icons.truck} Mark In Transit
-                     </PrimaryButton>
-                   )}
-                   {selectedBooking.status === 'in_transit' && (
-                     <PrimaryButton onClick={() => { changeStatus(selectedBooking, 'completed'); }}>
-                       {Icons.check} Mark Completed
-                     </PrimaryButton>
-                   )}
-                   <SecondaryButton
-                     onClick={() => { openCancelModal(selectedBooking); closeDrawer(); }}
-                     style={{
-                       background: COLORS.bookingAccent,
-                       color: COLORS.white,
-                       borderColor: COLORS.bookingAccent,
-                     }}
-                   >
-                     {Icons.x} Cancel Booking
-                   </SecondaryButton>
-                 </div>
-               )}
-               </div>
-             </DrawerColumns>
+              </DrawerColumns>
             </>
           )}
         </DrawerBody>
@@ -2459,6 +2477,108 @@ const HearseBookings = () => {
           onCreated={loadData}
           onUpdated={loadData}
         />
+      )}
+      {/* ─── Send SMS Line Up Modal ─── */}
+      {smsLineupOpen && (
+        <ModalOverlay onClick={closeSmsLineup}>
+          <ModalBox onClick={(e) => e.stopPropagation()}>
+            <ModalHead>
+              <div>
+                <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>Send SMS Line Up</div>
+                <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.75)' }}>
+                  Drivers for {new Date(smsLineupDate + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                </div>
+              </div>
+              <button
+                style={{ width: 28, height: 28, borderRadius: 6, background: 'rgba(255,255,255,0.12)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                onClick={closeSmsLineup}
+              ><X size={14} /></button>
+            </ModalHead>
+            <ModalBody>
+              <div>
+                <ModalLabel htmlFor="sms-lineup-date">Date</ModalLabel>
+                <ModalInput
+                  id="sms-lineup-date"
+                  type="date"
+                  value={smsLineupDate}
+                  onChange={(event) => {
+                    setSmsLineupDate(event.target.value);
+                    setSmsLineupMessage(buildLineupMessage(event.target.value));
+                  }}
+                  required
+                />
+              </div>
+              <div style={{ marginTop: '0.75rem' }}>
+                <ModalLabel htmlFor="sms-lineup-message">Message</ModalLabel>
+                <textarea
+                  id="sms-lineup-message"
+                  value={smsLineupMessage}
+                  onChange={(event) => setSmsLineupMessage(event.target.value)}
+                  rows="5"
+                  style={{
+                    width: '100%', padding: '0.5rem 0.75rem', border: '1px solid ' + COLORS.border,
+                    borderRadius: COLORS.radiusSm, fontSize: '0.8125rem', color: COLORS.text,
+                    background: COLORS.white, outline: 'none', resize: 'vertical', fontFamily: 'inherit',
+                  }}
+                />
+              </div>
+              <div style={{ marginTop: '0.75rem' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: COLORS.ink, marginBottom: '0.4rem' }}>Select drivers</div>
+                <div style={{
+                  maxHeight: '220px', overflowY: 'auto', border: '1px solid ' + COLORS.border,
+                  borderRadius: COLORS.radiusSm, background: COLORS.white, padding: '0.5rem',
+                }}>
+                  {drivers.map((driver) => {
+                    const id = String(driver.driver_id ?? driver.id ?? '');
+                    const phone = driver.driver_phone || driver.phone || '';
+                    const checked = smsSelectedDriverIds.includes(id);
+                    return (
+                      <label key={id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0', cursor: 'pointer', fontSize: '0.8125rem' }}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => {
+                            setSmsSelectedDriverIds(checked
+                              ? smsSelectedDriverIds.filter((x) => x !== id)
+                              : [...smsSelectedDriverIds, id]);
+                          }}
+                          style={{ width: 16, height: 16 }}
+                        />
+                        <span>{driver.driver_name || driver.full_name || `Driver ${id}`}</span>
+                        {phone && <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: COLORS.textSecondary }}>{phone}</span>}
+                      </label>
+                    );
+                  })}
+                  {!drivers.length && <div style={{ fontSize: '0.8rem', color: COLORS.textSecondary, padding: '0.5rem' }}>No drivers found.</div>}
+                </div>
+                <div style={{ fontSize: '0.7rem', color: COLORS.textSecondary, marginTop: '0.3rem' }}>
+                  Leave all unchecked to send to every driver with a phone number.
+                </div>
+              </div>
+              {smsLineupResults && (
+                <div style={{
+                  marginTop: '0.75rem', padding: '0.6rem', borderRadius: COLORS.radiusSm,
+                  background: smsLineupResults.sent ? COLORS.successLight : COLORS.dangerLight,
+                  color: smsLineupResults.sent ? COLORS.successDark : COLORS.dangerDark,
+                  fontSize: '0.8rem',
+                }}>
+                  {smsLineupResults.sent} of {smsLineupResults.total} driver(s) sent.
+                </div>
+              )}
+            </ModalBody>
+            <ModalFoot>
+              <SecondaryButton type="button" onClick={closeSmsLineup} disabled={smsLineupLoading}>Cancel</SecondaryButton>
+              <PrimaryButton
+                type="button"
+                onClick={sendSmsLineup}
+                disabled={smsLineupLoading || !smsLineupMessage.trim()}
+                $bg={COLORS.accent}
+              >
+                {smsLineupLoading ? 'Sending…' : 'Send SMS Lineup'}
+              </PrimaryButton>
+            </ModalFoot>
+          </ModalBox>
+        </ModalOverlay>
       )}
     </Container>
   );

@@ -1,4 +1,5 @@
 
+import axios from 'axios';
 import { extractRowDates, isValidDateKey } from '../utilities/hearseAvailability';
 import { emitHearseDataChanged } from '../utilities/hearseRealtime';
 import { getHearseConnection, getHearsePool } from '../database';
@@ -295,5 +296,66 @@ export const assignBookingLineup = asyncHandler(async (req: Request, res: Respon
         sendError(res, error, 'Unable to save the booking lineup.');
     } finally {
         connection.release();
+    }
+});
+
+/**
+ * POST /hearse-lineups/send-sms
+ * Send the day's driver lineup (SMS) to every available driver for the given date.
+ * Body: { date: 'YYYY-MM-DD', message: '...', driver_ids?: number[] }
+ */
+export const sendSmsLineup = asyncHandler(async (req: Request, res: Response) => {
+    const tenantScope = requireTenant(req, res);
+    if (!tenantScope) return;
+    const date = dateParam(req.body.date);
+    const message = String(req.body.message || '').trim();
+    const driverIdsRaw = req.body.driver_ids;
+    const driverIds = Array.isArray(driverIdsRaw)
+        ? driverIdsRaw.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0)
+        : [];
+    if (!date || !message) {
+        res.status(400).json({ success: false, message: 'Provide a valid lineup date (YYYY-MM-DD) and a message.' });
+        return;
+    }
+    try {
+        const pool = await getHearsePool();
+        const [drivers]: any = await pool.query(
+            `SELECT id AS driver_id, full_name AS driver_name, phone AS driver_phone
+               FROM drivers
+              ORDER BY full_name ASC`
+        );
+        const driverList = Array.isArray(drivers) ? (drivers as any[]) : [];
+        const targetDrivers = driverIds.length
+            ? driverList.filter((d) => driverIds.includes(Number(d.driver_id)))
+            : driverList.filter((d) => String(d.driver_phone || '').trim());
+
+        const smsUrl = (process.env.SMS_SERVICE_URL || 'http://restpoint_sms_service:8080').replace(/\/+$/, '');
+        const results = [];
+        let sent = 0;
+        for (const driver of targetDrivers) {
+            const phone = String(driver.driver_phone || '').trim();
+            if (!phone) {
+                results.push({ driver_id: driver.driver_id, driver_name: driver.driver_name, status: 'skipped', reason: 'no phone number' });
+                continue;
+            }
+            try {
+                await axios.post(`${smsUrl}/send-sms`, { recipient: phone, message }, { timeout: 8000 });
+                results.push({ driver_id: driver.driver_id, driver_name: driver.driver_name, phone, status: 'sent' });
+                sent += 1;
+            } catch (error: any) {
+                results.push({
+                    driver_id: driver.driver_id,
+                    driver_name: driver.driver_name,
+                    phone,
+                    status: 'error',
+                    error: error?.message || String(error),
+                });
+            }
+        }
+        await invalidateHearseCache(req);
+        await emitHearseDataChanged(req, 'hearse_sms_lineup_sent', { date, sent, total: targetDrivers.length });
+        res.json({ success: true, date, total: targetDrivers.length, sent, results });
+    } catch (error) {
+        sendError(res, error, 'Unable to send the SMS lineup.');
     }
 });

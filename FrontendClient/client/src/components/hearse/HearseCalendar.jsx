@@ -5,7 +5,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import FullCalendar from '@fullcalendar/react';
 import styled from 'styled-components';
-import { Calendar, Clock, BarChart3, MapPin, Home, Car, Building, Users } from '../../utils/icons/icons';
+import { Calendar, Clock, BarChart3, MapPin, Home, Car, Building } from '../../utils/icons/icons';
 import { STATUS_CONFIG } from './statusColors';
 import { BR, BRANCH_SLUG_TO_NAME, getBookingRoute } from './viewerShared';
 
@@ -646,6 +646,59 @@ const StandbyBadge = styled.div`
   button:hover { background: #dcfce7; }
 `;
 
+const AvailableDriversOverlay = styled.div`
+  position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); z-index: 60;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+`;
+
+const AvailableDriversBox = styled.div`
+  width: 100%; max-width: 520px; max-height: 82vh; overflow: hidden;
+  background: #fff; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+  display: flex; flex-direction: column;
+`;
+
+const AvailableDriversHead = styled.div`
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-bottom: 1px solid #e4e7ec;
+  background: #f5f7fa;
+`;
+const AvailableDriversHeadTitle = styled.div`
+  font-size: 1rem; font-weight: 700; color: #111827;
+`;
+const AvailableDriversHeadSub = styled.div`
+  font-size: 0.72rem; color: #6b7280; margin-top: 2px;
+`;
+const AvailableDriversClose = styled.button`
+  width: 26px; height: 26px; border-radius: 6px; border: none; background: #e5e7eb;
+  color: #111827; cursor: pointer; display: flex; align-items: center; justify-content: center;
+`;
+
+const AvailableDriversBody = styled.div`
+  padding: 12px 16px; overflow-y: auto; max-height: 50vh;
+`;
+
+const AvailableDriversItem = styled.div`
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 6px; border-radius: 6px;
+  &:hover { background: #f3f4f6; }
+`;
+const AvailableDriversName = styled.div`
+  display: flex; flex-direction: column; gap: 2px;
+`;
+const AvailableDriversNameStrong = styled.div`
+  font-size: 0.88rem; font-weight: 700; color: #111827;
+`;
+const AvailableDriversPhone = styled.div`
+  font-size: 0.76rem; color: #6b7280;
+`;
+const AvailableDriversStatus = styled.span`
+  font-size: 0.72rem; font-weight: 700;
+`;
+const AvailableDriversFoot = styled.div`
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; border-top: 1px solid #e4e7ec; background: #fafafa;
+`;
+
 const ViewSwitchButton = styled.button`
   display: inline-flex;
   align-items: center;
@@ -1221,11 +1274,6 @@ const HearseCalendar = ({
   hearses = [],
   branches = [],
   drivers = [],
-  standbyDriverId = '',
-  standbyDriverName = '',
-  lineupLoading = false,
-  savingStandby = false,
-  onSaveStandby,
   onItemClick,
   onCreateBooking,
   selectedDate,
@@ -1237,8 +1285,7 @@ const HearseCalendar = ({
 }) => {
   const [calendarView, setCalendarView] = useState('dayGridMonth');
   const [dayViewDate, setDayViewDate] = useState(null);
-  const [editingStandby, setEditingStandby] = useState(false);
-  const [standbyDraft, setStandbyDraft] = useState('');
+  const [availableDriversOpen, setAvailableDriversOpen] = useState(false);
 
   useEffect(() => {
     onDayViewChange?.(Boolean(dayViewDate));
@@ -1339,19 +1386,6 @@ const HearseCalendar = ({
     );
   };
 
-
-  useEffect(() => {
-    setEditingStandby(false);
-    const assigned = drivers.find((driver) =>
-      String(driver.driver_id ?? driver.id) === String(standbyDriverId ?? '')
-    );
-    setStandbyDraft(
-      standbyDriverName
-      || assigned?.driver_name
-      || assigned?.full_name
-      || (standbyDriverId ? `Driver ${standbyDriverId}` : '')
-    );
-  }, [dayViewDate, drivers, standbyDriverId, standbyDriverName]);
   const calendarRef = useRef(null);
   const wrapperRef = useRef(null);
   const lastReportedMonth = useRef(null);
@@ -1514,15 +1548,27 @@ const HearseCalendar = ({
   }, [bookings, selectedDate]);
 
   const dailyStats = getDailyStats();
-  const standbyDriver = standbyDriverId != null && String(standbyDriverId) !== ''
-    ? drivers.find((driver) => String(driver.driver_id ?? driver.id) === String(standbyDriverId))
-    : null;
-  const registeredDrivers = drivers.filter((driver) =>
-    /^[1-9]\d*$/.test(String(driver.driver_id ?? driver.id ?? ''))
-  );
-  const resolvedStandbyDriverName = standbyDriverName || (standbyDriver
-    ? standbyDriver.driver_name || standbyDriver.full_name || `Driver ${standbyDriverId}`
-    : standbyDriverId ? `Driver ${standbyDriverId}` : '');
+
+  // Drivers NOT assigned to any active booking (and not driving a booked hearse)
+  // on the selected day — i.e. the available / standby pool.
+  const availableDrivers = useMemo(() => {
+    if (!dayViewDate) return [];
+    const activeStatuses = new Set(['pending', 'booked', 'confirmed', 'in_transit', 'transit', 'reserved', 'in_progress']);
+    const busy = new Set();
+    (allBookings || []).forEach((booking) => {
+      if (!activeStatuses.has(String(booking.status || '').toLowerCase())) return;
+      if (!getBookingDates(booking).some((date) => String(date).slice(0, 10) === dayViewDate)) return;
+      const did = booking.driver_id ?? booking.assigned_driver_id;
+      if (did != null) busy.add(String(did));
+      const hid = booking.hearse_id ?? booking.hearseId ?? booking.hearse?.id;
+      if (hid != null) {
+        const hearse = (hearses || []).find((h) => String(h.id ?? h.hearse_id ?? '') === String(hid));
+        if (hearse && hearse.driver_id != null) busy.add(String(hearse.driver_id));
+      }
+    });
+    return (drivers || []).filter((driver) => !busy.has(String(driver.driver_id ?? driver.id)));
+  }, [dayViewDate, drivers, allBookings, hearses]);
+
   const dayBookings = useMemo(() => {
     if (!dayViewDate) return [];
     return bookings
@@ -1857,67 +1903,13 @@ const HearseCalendar = ({
                 </span>
               </SelectedDateBadge>
               <StandbyControl>
-                {lineupLoading ? (
-                  <StandbyEditor><label>Standby</label><span>Loading…</span></StandbyEditor>
-                ) : resolvedStandbyDriverName && !editingStandby ? (
-                  <StandbyBadge aria-label={`Standby driver for this day: ${resolvedStandbyDriverName}`}>
-                    <span className="icon"><Users size={13} aria-hidden="true" /></span>
-                    <span className="label">Standby</span>
-                    <span className="name">{resolvedStandbyDriverName}</span>
-                    <button type="button" onClick={() => setEditingStandby(true)}>Edit</button>
-                  </StandbyBadge>
-                ) : (
-                  <StandbyEditor>
-                    <label htmlFor="daily-standby-driver">Standby</label>
-                    <input
-                      id="daily-standby-driver"
-                      type="text"
-                      list="daily-standby-driver-options"
-                      value={standbyDraft}
-                      onChange={(event) => setStandbyDraft(event.target.value)}
-                      disabled={savingStandby}
-                      placeholder="Enter driver name"
-                      aria-label="Standby driver for this day"
-                      maxLength={200}
-                    />
-                    <datalist id="daily-standby-driver-options">
-                      {registeredDrivers.map((driver) => (
-                        <option
-                          key={driver.driver_id ?? driver.id}
-                          value={driver.driver_name || driver.full_name || `Driver ${driver.driver_id ?? driver.id}`}
-                        />
-                      ))}
-                    </datalist>
-                    <TodayButton
-                      type="button"
-                      disabled={savingStandby || standbyDraft.trim() === resolvedStandbyDriverName.trim()}
-                      onClick={() => {
-                        const enteredName = standbyDraft.trim();
-                        const selectedDriver = registeredDrivers.find((driver) =>
-                          String(driver.driver_name || driver.full_name || '').trim().toLowerCase() === enteredName.toLowerCase()
-                        );
-                        onSaveStandby?.({
-                          driver_id: enteredName && selectedDriver ? selectedDriver.driver_id ?? selectedDriver.id : null,
-                          driver_name: enteredName || null,
-                        });
-                      }}
-                    >
-                      {savingStandby ? 'Saving…' : standbyDraft.trim() ? 'Save standby' : 'Clear standby'}
-                    </TodayButton>
-                    {resolvedStandbyDriverName && (
-                      <ViewSwitchButton
-                        type="button"
-                        disabled={savingStandby}
-                        onClick={() => {
-                          setStandbyDraft(resolvedStandbyDriverName);
-                          setEditingStandby(false);
-                        }}
-                      >
-                        Cancel
-                      </ViewSwitchButton>
-                    )}
-                  </StandbyEditor>
-                )}
+                <TodayButton
+                  type="button"
+                  onClick={() => setAvailableDriversOpen(true)}
+                  disabled={availableDrivers.length === 0}
+                >
+                  {availableDrivers.length === 0 ? 'No available drivers' : `Available drivers (${availableDrivers.length})`}
+                </TodayButton>
               </StandbyControl>
             </DailyHeadingActions>
           </DailyHeading>
@@ -2190,6 +2182,57 @@ const HearseCalendar = ({
           </MonthTable>
 
         </CalendarWrapper>
+      )}
+
+      {availableDriversOpen && (
+        <AvailableDriversOverlay onClick={() => setAvailableDriversOpen(false)}>
+          <AvailableDriversBox onClick={(e) => e.stopPropagation()}>
+            <AvailableDriversHead>
+              <div>
+                <AvailableDriversHeadTitle>Available drivers (standby)</AvailableDriversHeadTitle>
+                <AvailableDriversHeadSub>
+                  Not assigned to any active booking on{' '}
+                  {new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                </AvailableDriversHeadSub>
+              </div>
+              <AvailableDriversClose onClick={() => setAvailableDriversOpen(false)}>×</AvailableDriversClose>
+            </AvailableDriversHead>
+            <AvailableDriversBody>
+              {availableDrivers.length === 0 ? (
+                <div style={{ fontSize: '0.85rem', color: '#6b7280', padding: '1rem 0', textAlign: 'center' }}>
+                  Every registered driver is already assigned on this day.
+                </div>
+              ) : (
+                availableDrivers.map((driver) => {
+                  const id = String(driver.driver_id ?? driver.id ?? '');
+                  const phone = driver.driver_phone || driver.phone || '';
+                  return (
+                    <AvailableDriversItem key={id}>
+                      <AvailableDriversName>
+                        <AvailableDriversNameStrong>{driver.driver_name || driver.full_name || `Driver ${id}`}</AvailableDriversNameStrong>
+                        {phone && <AvailableDriversPhone>{phone}</AvailableDriversPhone>}
+                      </AvailableDriversName>
+                      <AvailableDriversStatus style={{ color: '#15803d' }}>Available</AvailableDriversStatus>
+                    </AvailableDriversItem>
+                  );
+                })
+              )}
+            </AvailableDriversBody>
+            <AvailableDriversFoot>
+              <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{availableDrivers.length} driver(s) available</span>
+              <button
+                type="button"
+                onClick={() => setAvailableDriversOpen(false)}
+                style={{
+                  border: '1px solid #101828', borderRadius: 5, background: '#fff', color: '#101828',
+                  padding: '4px 12px', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                Close
+              </button>
+            </AvailableDriversFoot>
+          </AvailableDriversBox>
+        </AvailableDriversOverlay>
       )}
     </Shell>
   );

@@ -3,7 +3,7 @@ import { addFuelDeposit, allocateFuelFunds, getDriverFuelCards, getFuelWallet, r
 import { checkHearseAvailability, getAvailabilityAcrossBranches, checkAvailabilityByDate, checkAvailabilityByDates } from '../controllers/checkHeraseAvailablity';
 import { registerHearse, updateHearse, deleteHearse, getAllHearses, getAvailableHearses, upload } from '../controllers/registerHearse';
 
-import { assignBookingLineup, getDailyLineup, saveStandbyDriver } from '../controllers/hearseLineups';
+import { assignBookingLineup, getDailyLineup, saveStandbyDriver, sendSmsLineup } from '../controllers/hearseLineups';
 import { getHearseFleetAnalytics, getHearsePeriodAnalytics } from '../controllers/hearseAnalytics';
 import { getAllDrivers, getBookingsByDriver, getDriverDashboard } from '../controllers/drivers';
 import { getAllHearseBookings } from '../controllers/getAllHearseBookings';
@@ -43,6 +43,7 @@ router.put('/hearse-bookings/:booking_id/assign-driver', protect, assignDriverTo
 router.put('/hearse-bookings/:booking_id/lineup', protect, assignBookingLineup);
 router.get('/hearse-lineups/day', protect, getDailyLineup);
 router.put('/hearse-lineups/standby', protect, saveStandbyDriver);
+router.post('/hearse-lineups/send-sms', protect, sendSmsLineup);
 router.patch('/hearse-bookings/:booking_id/postpone', protect, postponeHearseBooking);
 
 // Drivers
