@@ -856,6 +856,25 @@ const ModalBody = styled.div`padding:1.25rem;`;
 const ModalFoot = styled.div`display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem;border-top:1px solid ${COLORS.border};padding-top:1rem;`;
 const ModalInput = styled.input`width:100%;padding:0.5rem 0.75rem;border:1px solid ${COLORS.border};border-radius:${COLORS.radiusSm};font-size:0.8125rem;color:${COLORS.text};background:${COLORS.white};outline:none;box-sizing:border-box;&::placeholder{color:${COLORS.textSecondary}}&:focus{border-color:${COLORS.accent};box-shadow:0 0 0 2px rgba(61,79,71,0.1);}`;
 const ModalLabel = styled.label`display:block;font-weight:600;margin-bottom:0.35rem;font-size:0.78rem;color:${COLORS.text};`;
+const SmsDateQuickActions = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+`;
+const SmsDateQuickButton = styled.button`
+  flex: 1;
+  min-height: 34px;
+  border: 1px solid ${props => props.$active ? COLORS.accent : COLORS.border};
+  border-radius: 8px;
+  background: ${props => props.$active ? COLORS.accent : COLORS.white};
+  color: ${props => props.$active ? COLORS.white : COLORS.textSecondary};
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  &:hover { border-color: ${COLORS.accent}; color: ${props => props.$active ? COLORS.white : COLORS.accent}; }
+  &:focus-visible { outline: 3px solid rgba(61, 79, 71, .25); outline-offset: 2px; }
+`;
 
 const ActionMenu = styled.div`
   position: absolute;
@@ -1326,16 +1345,14 @@ const HearseBookings = () => {
     return `Rest Point Hearse Lineup — ${label}:\n${lines || 'No bookings scheduled for this day.'}\n\nPlease reply to confirm receipt.`;
   }, [bookings, fmtBookingTime]);
 
-  const openSmsLineup = useCallback((date) => {
-    const today = formatDateStr(new Date());
-    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-    const defaultDate = date || (selectedDate === today ? formatDateStr(tomorrow) : selectedDate);
+  const openSmsLineup = useCallback(() => {
+    const defaultDate = formatDateStr(new Date());
     setSmsLineupDate(defaultDate);
     setSmsLineupMessage(buildLineupMessage(defaultDate));
     setSmsLineupResults(null);
     setSmsSelectedDriverIds([]);
     setSmsLineupOpen(true);
-  }, [selectedDate, buildLineupMessage]);
+  }, [buildLineupMessage]);
 
   const sendSmsLineup = useCallback(async () => {
     setSmsLineupLoading(true);
@@ -1356,6 +1373,10 @@ const HearseBookings = () => {
   }, [smsLineupDate, smsLineupMessage, smsSelectedDriverIds]);
 
   const closeSmsLineup = useCallback(() => { setSmsLineupOpen(false); setSmsLineupResults(null); }, []);
+  const smsTodayDate = formatDateStr(new Date());
+  const smsTomorrowDateObject = new Date();
+  smsTomorrowDateObject.setDate(smsTomorrowDateObject.getDate() + 1);
+  const smsTomorrowDate = formatDateStr(smsTomorrowDateObject);
 
   const changeStatus = useCallback(async (booking, status, reason, skipConfirmation = false) => {
     const id = booking.booking_id || booking.id;
@@ -2503,6 +2524,28 @@ const HearseBookings = () => {
                   }}
                   required
                 />
+                <SmsDateQuickActions role="group" aria-label="Quick select SMS lineup date">
+                  <SmsDateQuickButton
+                    type="button"
+                    $active={smsLineupDate === smsTodayDate}
+                    onClick={() => {
+                      setSmsLineupDate(smsTodayDate);
+                      setSmsLineupMessage(buildLineupMessage(smsTodayDate));
+                    }}
+                  >
+                    Today
+                  </SmsDateQuickButton>
+                  <SmsDateQuickButton
+                    type="button"
+                    $active={smsLineupDate === smsTomorrowDate}
+                    onClick={() => {
+                      setSmsLineupDate(smsTomorrowDate);
+                      setSmsLineupMessage(buildLineupMessage(smsTomorrowDate));
+                    }}
+                  >
+                    Tomorrow
+                  </SmsDateQuickButton>
+                </SmsDateQuickActions>
               </div>
               <div style={{ marginTop: '0.75rem' }}>
                 <ModalLabel htmlFor="sms-lineup-message">Message</ModalLabel>
