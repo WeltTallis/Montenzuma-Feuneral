@@ -61,11 +61,6 @@ const dateSchema = Zod.z
 
 const timeSchema = Zod.z
     .string()
-    .trim()
-    .regex(
-        /^([01]\d|2[0-3]):[0-5]\d$/,
-        "Time must be in HH:mm format (e.g. 14:30)"
-    );
 
 // Optional date and time fields
 const optionalDate = dateSchema.optional();
