@@ -35,14 +35,14 @@ const { styles, Tag } = stylesModule;
 import S from './utils/colors'
 import variables from './utils/variables';
 const {
-  getCoofinStok,
+  getCoofinStok: getCoffinStock,
   getCoffinImageUrl,
   getBookingStatus,
   getReqStatus,
   getBookingDotColor,
   getCoffinName,
   getStatusColor,
-  formatKes,
+  formatKes: formatKES,
   getStockStatus,
 } = variables;
 
