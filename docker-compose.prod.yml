@@ -14,9 +14,6 @@ services:
       MARIADB_DATABASE: ${DB_NAME}
       MARIADB_USER: ${DB_USER}
       MARIADB_PASSWORD: ${DB_PASSWORD}
-      # Kept ONLY for the healthcheck below. The image entrypoint unsets
-      # MARIADB_ROOT_PASSWORD before exec'ing the server (so it is not readable
-      # at runtime), which is why a separate variable is needed.
       MARIADB_HEALTH_PW: ${DB_ROOT_PASSWORD}
     volumes:
       - mariadb_data:/var/lib/mysql
@@ -929,17 +926,15 @@ services:
 
 networks:
   restpoint_network:
-    driver: bridge
+    external: true
     name: restpoint_network
-    attachable: true
   deceased_internal:
-    driver: bridge
+    external: true
     name: restpoint_deceased_internal
     internal: true
   deceased_egress:
-    driver: bridge
+    external: true
     name: restpoint_deceased_egress
-    attachable: true
 
 # VOLUMES
 volumes:

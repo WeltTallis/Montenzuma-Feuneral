@@ -35,7 +35,7 @@ const { styles, Tag } = stylesModule;
 import S from './utils/colors'
 import variables from './utils/variables';
 const {
-  getCoofinStok,
+  getCoffinStock,
   getCoffinImageUrl,
   getBookingStatus,
   getReqStatus,

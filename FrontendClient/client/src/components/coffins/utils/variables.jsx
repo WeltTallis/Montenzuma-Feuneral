@@ -100,6 +100,7 @@ const getStockStatus = (stock) => {
 
 
 export default {
+    getCoffinStock,
     getCoofinStok,
     getCoffinImageUrl,
     getBookingStatus,

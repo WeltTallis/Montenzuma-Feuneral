@@ -914,17 +914,15 @@ services:
 
 networks:
   restpoint_network:
-    driver: bridge
+    external: true
     name: restpoint_network
-    attachable: true
   deceased_internal:
-    driver: bridge
+    external: true
     name: restpoint_deceased_internal
     internal: true
   deceased_egress:
-    driver: bridge
+    external: true
     name: restpoint_deceased_egress
-    attachable: true
 
 # VOLUMES
 volumes:

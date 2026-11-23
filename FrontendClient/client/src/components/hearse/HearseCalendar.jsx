@@ -25,7 +25,7 @@ export const COLORS = {
 };
 
 // Calendar booking colors identify the branch, while the status label remains
-// visible as text. This makes bookings easy to distinguish at a glance.
+
 export const getBranchBookingColor = (branchName, status) => {
   if (String(status || '').toLowerCase() === 'cancelled') return '#DD2D4A';
   const branch = String(branchName || '').trim().toLowerCase();
@@ -1989,48 +1989,48 @@ const HearseCalendar = ({
                 const assistantName = booking.assistant_name || '';
                 const bookingKey = String(booking.booking_id || booking.id);
                 return (
-                      <DayBookingRow
-                        key={bookingKey}
-                        type="button"
-                        aria-label={`View booking ${bookingId}`}
-                        onClick={() => onItemClick?.(booking)}
-                      >
-                        <DayBookingHeader>
-                          <DayBookingVehicle>
-                            {plate && <HearsePlateBadge>{plate}</HearsePlateBadge>}
-                            <DayBookingVehicleText>
-                              <HearseTitle>{vehicleTitle}</HearseTitle>
-                            </DayBookingVehicleText>
-                          </DayBookingVehicle>
-                          <DayBookingMeta>
-                            {branchName !== '—' && <DayBranchBadge>{branchName}</DayBranchBadge>}
-                          </DayBookingMeta>
-                        </DayBookingHeader>
-                        <DayBookingBody>
-                          <DayDetail>
-                            <strong>Route / itinerary</strong>
-                            <DayRoute><span>{routeFrom}</span><b aria-hidden="true">→</b><span>{routeTo}</span></DayRoute>
-                          </DayDetail>
-                          <DayDetail>
-                            <strong>Client / contact</strong>
-                            <DayClient><span>{clientName}</span><span>{clientPhone}</span></DayClient>
-                          </DayDetail>
-                          <DayDetail>
-                            <strong>Schedule &amp; assigned driver</strong>
-                            <DayBookingSchedule>
-                              <span>{new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                              <span>{schedule.range}</span>
-                            </DayBookingSchedule>
-                            <DayDriver>
-                              <DayDriverInitials>{getInitials(assignedDriverName)}</DayDriverInitials>
-                              <DayDriverInfo>
-                                <span>{assignedDriverName}</span>
-                                {driverPhone && <small>{driverPhone}</small>}
-                              </DayDriverInfo>
-                            </DayDriver>
-                          </DayDetail>
-                        </DayBookingBody>
-                      </DayBookingRow>
+                  <DayBookingRow
+                    key={bookingKey}
+                    type="button"
+                    aria-label={`View booking ${bookingId}`}
+                    onClick={() => onItemClick?.(booking)}
+                  >
+                    <DayBookingHeader>
+                      <DayBookingVehicle>
+                        {plate && <HearsePlateBadge>{plate}</HearsePlateBadge>}
+                        <DayBookingVehicleText>
+                          <HearseTitle>{vehicleTitle}</HearseTitle>
+                        </DayBookingVehicleText>
+                      </DayBookingVehicle>
+                      <DayBookingMeta>
+                        {branchName !== '—' && <DayBranchBadge>{branchName}</DayBranchBadge>}
+                      </DayBookingMeta>
+                    </DayBookingHeader>
+                    <DayBookingBody>
+                      <DayDetail>
+                        <strong>Route / itinerary</strong>
+                        <DayRoute><span>{routeFrom}</span><b aria-hidden="true">→</b><span>{routeTo}</span></DayRoute>
+                      </DayDetail>
+                      <DayDetail>
+                        <strong>Client / contact</strong>
+                        <DayClient><span>{clientName}</span><span>{clientPhone}</span></DayClient>
+                      </DayDetail>
+                      <DayDetail>
+                        <strong>Schedule &amp; assigned driver</strong>
+                        <DayBookingSchedule>
+                          <span>{new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                          <span>{schedule.range}</span>
+                        </DayBookingSchedule>
+                        <DayDriver>
+                          <DayDriverInitials>{getInitials(assignedDriverName)}</DayDriverInitials>
+                          <DayDriverInfo>
+                            <span>{assignedDriverName}</span>
+                            {driverPhone && <small>{driverPhone}</small>}
+                          </DayDriverInfo>
+                        </DayDriver>
+                      </DayDetail>
+                    </DayBookingBody>
+                  </DayBookingRow>
                 );
               }) : (
                 <EmptyDay>
