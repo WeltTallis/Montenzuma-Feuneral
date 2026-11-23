@@ -5,7 +5,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import FullCalendar from '@fullcalendar/react';
 import styled from 'styled-components';
-import { Calendar, Clock, BarChart3, MapPin, Home, Car, Building } from '../../utils/icons/icons';
+import { Calendar, Clock, BarChart3, MapPin, Home, Car, Building, MessageSquare } from '../../utils/icons/icons';
 import { STATUS_CONFIG } from './statusColors';
 import { BR, BRANCH_SLUG_TO_NAME, getBookingRoute } from './viewerShared';
 
@@ -581,10 +581,36 @@ const DailyHeadingActions = styled.div`
 
 const StandbyControl = styled.div`
   display: flex;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
   justify-content: flex-end;
   margin-left: auto;
-  @media (max-width: 420px) { width: 100%; }
+  @media (max-width: 420px) {
+    width: 100%;
+    button { flex: 1; }
+  }
+`;
+
+const SmsLineupButton = styled.button`
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 13px;
+  border: 1px solid #00296b;
+  border-radius: 9px;
+  background: #00296b;
+  color: #fff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .16s ease, box-shadow .16s ease, transform .16s ease;
+  &:hover { background: #003b91; box-shadow: 0 4px 12px rgba(0, 41, 107, .2); transform: translateY(-1px); }
+  &:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
 `;
 
 const StandbyEditor = styled.div`
@@ -647,65 +673,155 @@ const StandbyBadge = styled.div`
 `;
 
 const AvailableDriversOverlay = styled.div`
-  position: fixed; right: 0; top: 0; bottom: 0; background: rgba(15, 23, 42, 0.45); z-index: 60;
-  width: 320px; padding: 24px;
-  transition: transform 0.3s ease-in-out;
+  position: fixed;
+  inset: 0;
+  z-index: 9997;
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px;
+  background: rgba(15, 23, 42, .42);
+  backdrop-filter: blur(4px);
+  @media (max-width: 520px) { padding: 0; }
 `;
 
 const AvailableDriversBox = styled.div`
-  width: 100%; max-height: 90vh; overflow: hidden;
-  background: #fff; border-radius: 10px; box-shadow: -10px 0 30px rgba(0,0,0,0.18);
-  display: flex; flex-direction: column;
-`;
-
-const AvailableDriversOpen = styled.div`
-  transform: translateX(0);
-`;
-
-const AvailableDriversClosed = styled.div`
-  transform: translateX(100%);
+  display: flex;
+  width: min(420px, calc(100vw - 24px));
+  height: calc(100vh - 24px);
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .7);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, .24);
+  @media (max-width: 520px) {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+  }
 `;
 
 const AvailableDriversHead = styled.div`
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 16px; border-bottom: 1px solid #e4e7ec;
-  background: #f5f7fa;
+  gap: 14px;
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, .14);
+  background: linear-gradient(135deg, #00296b, #164e9b);
 `;
 const AvailableDriversHeadTitle = styled.div`
-  font-size: 1rem; font-weight: 700; color: #111827;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
 `;
 const AvailableDriversHeadSub = styled.div`
-  font-size: 0.72rem; color: #6b7280; margin-top: 2px;
+  margin-top: 5px;
+  color: rgba(255, 255, 255, .78);
+  font-size: 11px;
+  line-height: 1.5;
 `;
 const AvailableDriversClose = styled.button`
-  width: 26px; height: 26px; border-radius: 6px; border: none; background: #e5e7eb;
-  color: #111827; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, .26);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .12);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  &:hover { background: rgba(255, 255, 255, .22); }
+  &:focus-visible { outline: 3px solid #bfdbfe; outline-offset: 2px; }
 `;
 
 const AvailableDriversBody = styled.div`
-  padding: 12px 16px; overflow-y: auto; max-height: 50vh;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 9px;
+  padding: 16px;
+  overflow-y: auto;
+  background: #f8fafc;
 `;
 
 const AvailableDriversItem = styled.div`
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 6px; border-radius: 6px;
-  &:hover { background: #f3f4f6; }
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e7edf5;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+  transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+  &:hover { border-color: #bfdbfe; box-shadow: 0 5px 14px rgba(15, 23, 42, .07); transform: translateY(-1px); }
+`;
+const AvailableDriversAvatar = styled.span`
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  place-items: center;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #eff6ff, #dbeafe);
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 900;
+`;
+const AvailableDriversMain = styled.div`
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
 `;
 const AvailableDriversName = styled.div`
-  display: flex; flex-direction: column; gap: 2px;
+  overflow: hidden;
+  color: #172033;
+  font-size: 13px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 const AvailableDriversNameStrong = styled.div`
-  font-size: 0.88rem; font-weight: 700; color: #111827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 const AvailableDriversPhone = styled.div`
-  font-size: 0.76rem; color: #6b7280;
+  color: #64748b;
+  font-size: 11px;
 `;
 const AvailableDriversStatus = styled.span`
-  font-size: 0.72rem; font-weight: 700;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  background: #f0fdf4;
+  color: #15803d;
+  font-size: 10px;
+  font-weight: 800;
 `;
 const AvailableDriversFoot = styled.div`
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 16px; border-top: 1px solid #e4e7ec; background: #fafafa;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-top: 1px solid #e8edf4;
+  background: #fff;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
 `;
 
 const ViewSwitchButton = styled.button`
@@ -1283,6 +1399,7 @@ const HearseCalendar = ({
   hearses = [],
   branches = [],
   drivers = [],
+  onSendSmsLineup,
   onItemClick,
   onCreateBooking,
   selectedDate,
@@ -1295,6 +1412,15 @@ const HearseCalendar = ({
   const [calendarView, setCalendarView] = useState('dayGridMonth');
   const [dayViewDate, setDayViewDate] = useState(null);
   const [availableDriversOpen, setAvailableDriversOpen] = useState(false);
+
+  useEffect(() => {
+    if (!availableDriversOpen) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setAvailableDriversOpen(false);
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [availableDriversOpen]);
 
   useEffect(() => {
     onDayViewChange?.(Boolean(dayViewDate));
@@ -1919,6 +2045,10 @@ const HearseCalendar = ({
                 >
                   {availableDrivers.length === 0 ? 'No available drivers' : `Available drivers (${availableDrivers.length})`}
                 </TodayButton>
+                <SmsLineupButton type="button" onClick={() => onSendSmsLineup?.(dayViewDate)}>
+                  <MessageSquare size={14} />
+                  Send SMS lineup
+                </SmsLineupButton>
               </StandbyControl>
             </DailyHeadingActions>
           </DailyHeading>
@@ -2194,47 +2324,58 @@ const HearseCalendar = ({
       )}
 
       {availableDriversOpen && (
-        <AvailableDriversOverlay onClick={() => setAvailableDriversOpen(false)}>
-          <AvailableDriversBox onClick={(e) => e.stopPropagation()}>
+        <AvailableDriversOverlay onClick={(event) => {
+          if (event.target === event.currentTarget) setAvailableDriversOpen(false);
+        }}>
+          <AvailableDriversBox
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="available-drivers-title"
+            onClick={(e) => e.stopPropagation()}
+          >
             <AvailableDriversHead>
               <div>
-                <AvailableDriversHeadTitle>Available drivers (standby)</AvailableDriversHeadTitle>
+                <AvailableDriversHeadTitle id="available-drivers-title">Available drivers</AvailableDriversHeadTitle>
                 <AvailableDriversHeadSub>
-                  Not assigned to any active booking on{' '}
+                  Standby drivers not assigned to a booking on{' '}
                   {new Date(`${dayViewDate}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
                 </AvailableDriversHeadSub>
               </div>
-              <AvailableDriversClose onClick={() => setAvailableDriversOpen(false)}>×</AvailableDriversClose>
+              <AvailableDriversClose type="button" onClick={() => setAvailableDriversOpen(false)} aria-label="Close available drivers">×</AvailableDriversClose>
             </AvailableDriversHead>
             <AvailableDriversBody>
               {availableDrivers.length === 0 ? (
-                <div style={{ fontSize: '0.85rem', color: '#6b7280', padding: '1rem 0', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.85rem', color: '#64748b', padding: '2rem 1rem', textAlign: 'center', background: '#fff', border: '1px dashed #cbd5e1', borderRadius: 12 }}>
                   Every registered driver is already assigned on this day.
                 </div>
               ) : (
                 availableDrivers.map((driver) => {
                   const id = String(driver.driver_id ?? driver.id ?? '');
                   const phone = driver.driver_phone || driver.phone || '';
+                  const name = driver.driver_name || driver.full_name || `Driver ${id}`;
                   return (
                     <AvailableDriversItem key={id}>
-                      <AvailableDriversName>
-                        <AvailableDriversNameStrong>{driver.driver_name || driver.full_name || `Driver ${id}`}</AvailableDriversNameStrong>
+                      <AvailableDriversAvatar aria-hidden="true">{getInitials(name)}</AvailableDriversAvatar>
+                      <AvailableDriversMain>
+                        <AvailableDriversName>
+                          <AvailableDriversNameStrong>{name}</AvailableDriversNameStrong>
+                        </AvailableDriversName>
                         {phone && <AvailableDriversPhone>{phone}</AvailableDriversPhone>}
-                      </AvailableDriversName>
-                      <AvailableDriversStatus style={{ color: '#15803d' }}>Available</AvailableDriversStatus>
+                      </AvailableDriversMain>
+                      <AvailableDriversStatus><span aria-hidden="true">●</span> Available</AvailableDriversStatus>
                     </AvailableDriversItem>
                   );
                 })
               )}
             </AvailableDriversBody>
             <AvailableDriversFoot>
-              <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{availableDrivers.length} driver(s) available</span>
+              <span>{availableDrivers.length} {availableDrivers.length === 1 ? 'driver' : 'drivers'} available</span>
               <button
                 type="button"
                 onClick={() => setAvailableDriversOpen(false)}
                 style={{
-                  border: '1px solid #101828', borderRadius: 5, background: '#fff', color: '#101828',
-                  padding: '4px 12px', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+                  border: '1px solid #d0d5dd', borderRadius: 8, background: '#fff', color: '#344054',
+                  padding: '8px 14px', fontSize: '11px', fontWeight: 800, cursor: 'pointer',
                 }}
               >
                 Close

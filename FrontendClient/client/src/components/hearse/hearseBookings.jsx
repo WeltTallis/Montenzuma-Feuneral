@@ -1326,10 +1326,10 @@ const HearseBookings = () => {
     return `Rest Point Hearse Lineup — ${label}:\n${lines || 'No bookings scheduled for this day.'}\n\nPlease reply to confirm receipt.`;
   }, [bookings, fmtBookingTime]);
 
-  const openSmsLineup = useCallback(() => {
+  const openSmsLineup = useCallback((date) => {
     const today = formatDateStr(new Date());
     const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-    const defaultDate = selectedDate === today ? formatDateStr(tomorrow) : selectedDate;
+    const defaultDate = date || (selectedDate === today ? formatDateStr(tomorrow) : selectedDate);
     setSmsLineupDate(defaultDate);
     setSmsLineupMessage(buildLineupMessage(defaultDate));
     setSmsLineupResults(null);
@@ -1949,6 +1949,7 @@ const HearseBookings = () => {
               hearses={allHearses}
               branches={branches}
               drivers={drivers}
+              onSendSmsLineup={openSmsLineup}
               selectedDate={selectedDate}
               onDateSelect={setSelectedDate}
               onDateClick={(date) => {
