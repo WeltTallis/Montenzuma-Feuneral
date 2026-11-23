@@ -302,21 +302,21 @@ export const assignBookingLineup = asyncHandler(async (req: Request, res: Respon
 /**
  * POST /hearse-lineups/send-sms
  * Send the day's driver lineup (SMS) to every available driver for the given date.
- * Body: { date: 'YYYY-MM-DD', message: '...', driver_ids?: number[] }
+ * Body: { date: 'YYYY-MM-DD', driverMessages: [{ driver_id, message }] }
+ * If driverMessages is omitted, falls back to a single message for all drivers.
  */
 export const sendSmsLineup = asyncHandler(async (req: Request, res: Response) => {
     const tenantScope = requireTenant(req, res);
     if (!tenantScope) return;
     const date = dateParam(req.body.date);
-    const message = String(req.body.message || '').trim();
-    const driverIdsRaw = req.body.driver_ids;
-    const driverIds = Array.isArray(driverIdsRaw)
-        ? driverIdsRaw.map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0)
-        : [];
-    if (!date || !message) {
-        res.status(400).json({ success: false, message: 'Provide a valid lineup date (YYYY-MM-DD) and a message.' });
+    const driverMessagesRaw = req.body.driverMessages;
+    const singleMessage = String(req.body.message || '').trim();
+
+    if (!date) {
+        res.status(400).json({ success: false, message: 'Provide a valid lineup date (YYYY-MM-DD).' });
         return;
     }
+
     try {
         const pool = await getHearsePool();
         const [drivers]: any = await pool.query(
@@ -325,15 +325,42 @@ export const sendSmsLineup = asyncHandler(async (req: Request, res: Response) =>
               ORDER BY full_name ASC`
         );
         const driverList = Array.isArray(drivers) ? (drivers as any[]) : [];
-        const targetDrivers = driverIds.length
-            ? driverList.filter((d) => driverIds.includes(Number(d.driver_id)))
-            : driverList.filter((d) => String(d.driver_phone || '').trim());
+        const driverMap = Object.fromEntries(driverList.map(d => [String(d.driver_id), d]));
+
+        let targetDrivers: any[] = [];
+        let messagesByDriver: Map<number, string> = new Map();
+
+        if (Array.isArray(driverMessagesRaw) && driverMessagesRaw.length > 0) {
+            // Per-driver messages
+            targetDrivers = driverList.filter((d) =>
+                driverMessagesRaw.some((m: any) => Number(d.driver_id) === m.driver_id)
+            );
+            for (const m of driverMessagesRaw) {
+                const driver = driverMap[String(m.driver_id)];
+                if (driver && String(driver.driver_phone || '').trim()) {
+                    messagesByDriver.set(Number(m.driver_id), String(m.message || '').trim());
+                }
+            }
+        } else if (singleMessage) {
+            // Single message for all drivers
+            targetDrivers = driverList.filter((d) => String(d.driver_phone || '').trim());
+            for (const d of driverList) {
+                if (String(d.driver_phone || '').trim()) {
+                    messagesByDriver.set(Number(d.driver_id), singleMessage);
+                }
+            }
+        } else {
+            res.status(400).json({ success: false, message: 'Provide either driverMessages array or a single message.' });
+            return;
+        }
 
         const smsUrl = (process.env.SMS_SERVICE_URL || 'http://restpoint_sms_service:8080').replace(/\/+$/, '');
         const results = [];
         let sent = 0;
+
         for (const driver of targetDrivers) {
             const phone = String(driver.driver_phone || '').trim();
+            const message = messagesByDriver.get(Number(driver.driver_id)) || '';
             if (!phone) {
                 results.push({ driver_id: driver.driver_id, driver_name: driver.driver_name, status: 'skipped', reason: 'no phone number' });
                 continue;

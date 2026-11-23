@@ -647,14 +647,23 @@ const StandbyBadge = styled.div`
 `;
 
 const AvailableDriversOverlay = styled.div`
-  position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); z-index: 60;
-  display: flex; align-items: center; justify-content: center; padding: 24px;
+  position: fixed; right: 0; top: 0; bottom: 0; background: rgba(15, 23, 42, 0.45); z-index: 60;
+  width: 320px; padding: 24px;
+  transition: transform 0.3s ease-in-out;
 `;
 
 const AvailableDriversBox = styled.div`
-  width: 100%; max-width: 520px; max-height: 82vh; overflow: hidden;
-  background: #fff; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+  width: 100%; max-height: 90vh; overflow: hidden;
+  background: #fff; border-radius: 10px; box-shadow: -10px 0 30px rgba(0,0,0,0.18);
   display: flex; flex-direction: column;
+`;
+
+const AvailableDriversOpen = styled.div`
+  transform: translateX(0);
+`;
+
+const AvailableDriversClosed = styled.div`
+  transform: translateX(100%);
 `;
 
 const AvailableDriversHead = styled.div`

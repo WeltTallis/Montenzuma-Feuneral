@@ -1811,11 +1811,6 @@ const HearseBookings = () => {
               }}
               $bg={COLORS.success}
             >{Icons.plus} Register Hearse</PrimaryButton>
-            <PrimaryButton
-              onClick={openSmsLineup}
-              disabled={smsLineupLoading}
-              style={{ background: COLORS.accent, color: COLORS.white, borderColor: COLORS.accent, marginLeft: '0.5rem' }}
-            >{Phone} Send SMS Line Up</PrimaryButton>
           </FilterRow>
         </FilterCard>
 
