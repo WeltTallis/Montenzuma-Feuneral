@@ -1689,19 +1689,35 @@ const HearseCalendar = ({
   const availableDrivers = useMemo(() => {
     if (!dayViewDate) return [];
     const activeStatuses = new Set(['pending', 'booked', 'confirmed', 'in_transit', 'transit', 'reserved', 'in_progress']);
-    const busy = new Set();
+    const busyIds = new Set();
+    const busyNames = new Set();
+    const normalizeName = (name) => String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
     (allBookings || []).forEach((booking) => {
       if (!activeStatuses.has(String(booking.status || '').toLowerCase())) return;
       if (!getBookingDates(booking).some((date) => String(date).slice(0, 10) === dayViewDate)) return;
-      const did = booking.driver_id ?? booking.assigned_driver_id;
-      if (did != null) busy.add(String(did));
+      const did = booking.assigned_driver_id
+        ?? booking.driver_id
+        ?? booking.driverId
+        ?? booking.hearse_driver_id
+        ?? booking.hearse?.driver_id;
+      if (did != null && did !== '') busyIds.add(String(did));
+      const driverName = booking.manual_driver_name
+        || booking.assigned_driver_name
+        || booking.driver_name
+        || (typeof booking.driver === 'string' ? booking.driver : booking.driver?.driver_name || booking.driver?.name);
+      const normalizedName = normalizeName(driverName);
+      if (normalizedName) busyNames.add(normalizedName);
       const hid = booking.hearse_id ?? booking.hearseId ?? booking.hearse?.id;
       if (hid != null) {
         const hearse = (hearses || []).find((h) => String(h.id ?? h.hearse_id ?? '') === String(hid));
-        if (hearse && hearse.driver_id != null) busy.add(String(hearse.driver_id));
+        if (hearse?.driver_id != null && hearse.driver_id !== '') busyIds.add(String(hearse.driver_id));
       }
     });
-    return (drivers || []).filter((driver) => !busy.has(String(driver.driver_id ?? driver.id)));
+    return (drivers || []).filter((driver) => {
+      const id = driver.driver_id ?? driver.id ?? driver.driver_key ?? driver.tenant_user_id;
+      const name = normalizeName(driver.driver_name || driver.full_name || driver.name);
+      return !(id != null && busyIds.has(String(id))) && !(name && busyNames.has(name));
+    });
   }, [dayViewDate, drivers, allBookings, hearses]);
 
   const dayBookings = useMemo(() => {
@@ -2098,11 +2114,26 @@ const HearseCalendar = ({
                 const hearseName = booking.hearse_name || booking.hearse?.hearse_name || hearse?.hearse_name || 'Hearse not assigned';
                 const plate = booking.plate_number || booking.hearse_plate || booking.hearse?.plate_number || hearse?.plate_number || '';
                 const vehicleTitle = booking.model || hearse?.model || booking.hearse?.model || hearseName;
-                const assignedDriverId = booking.driver_id ?? booking.driverId ?? booking.assigned_driver_id;
-                const assignedDriver = drivers.find((driver) =>
+                const assignedDriverId = booking.assigned_driver_id
+                  ?? booking.driver_id
+                  ?? booking.driverId
+                  ?? booking.hearse_driver_id
+                  ?? booking.hearse?.driver_id
+                  ?? hearse?.driver_id;
+                const assignedDriverById = drivers.find((driver) =>
                   String(driver.driver_id ?? driver.id) === String(assignedDriverId ?? '')
                 );
-                const assignedDriverName = booking.assigned_driver_name
+                const bookingDriverName = booking.manual_driver_name
+                  || booking.assigned_driver_name
+                  || booking.driver_name
+                  || (typeof booking.driver === 'string' ? booking.driver : booking.driver?.driver_name || booking.driver?.name);
+                const assignedDriver = assignedDriverById || (bookingDriverName
+                  ? drivers.find((driver) =>
+                    String(driver.driver_name || driver.full_name || driver.name || '').trim().toLowerCase()
+                      === String(bookingDriverName).trim().toLowerCase()
+                  )
+                  : null);
+                const assignedDriverName = bookingDriverName
                   || assignedDriver?.driver_name
                   || assignedDriver?.full_name
                   || (assignedDriverId ? `Driver ${assignedDriverId}` : 'Unassigned');
