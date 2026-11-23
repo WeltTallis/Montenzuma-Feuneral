@@ -1329,21 +1329,33 @@ const HearseBookings = () => {
   const closeDrawer = useCallback(() => { setDrawerOpen(false); setSelectedBooking(null); }, []);
 
   // ── Send SMS lineup ───────────────────────────────────────────────────────
-  const buildLineupMessage = useCallback((date) => {
+  const getLineupBookingsForDate = useCallback((date) => {
+    if (!date) return [];
     const dayBookings = bookings.filter((b) => {
       let dates = [];
-      try { dates = typeof b.booking_dates === 'string' ? JSON.parse(b.booking_dates) : (b.booking_dates || []); } catch { dates = []; }
+      try {
+        const parsedDates = typeof b.booking_dates === 'string' ? JSON.parse(b.booking_dates) : b.booking_dates;
+        dates = Array.isArray(parsedDates) ? parsedDates : [];
+      } catch {
+        dates = [];
+      }
       if (dates.length === 0 && b.booking_date) dates = [String(b.booking_date).slice(0, 10)];
       if (dates.length === 0 && b.estimated_departure_time) dates = [String(b.estimated_departure_time).slice(0, 10)];
       return dates.some((d) => String(d).slice(0, 10) === date);
     });
+    return dayBookings;
+  }, [bookings]);
+
+  const buildLineupMessage = useCallback((date) => {
+    const dayBookings = getLineupBookingsForDate(date);
+    if (dayBookings.length === 0) return '';
     const lines = dayBookings.map((b) => {
       const time = fmtBookingTime(b);
       return `- ${b.client_name || 'Client'}: ${b.from_location || b.from || '—'} → ${b.to_location || b.destination || '—'}${time !== 'Not specified' ? ` @ ${time}` : ''}`;
     }).join('\n');
     const label = new Date(date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-    return `Rest Point Hearse Lineup — ${label}:\n${lines || 'No bookings scheduled for this day.'}\n\nPlease reply to confirm receipt.`;
-  }, [bookings, fmtBookingTime]);
+    return `Rest Point Hearse Lineup — ${label}:\n${lines}\n\nPlease reply to confirm receipt.`;
+  }, [getLineupBookingsForDate, fmtBookingTime]);
 
   const openSmsLineup = useCallback(() => {
     const defaultDate = formatDateStr(new Date());
@@ -1355,6 +1367,11 @@ const HearseBookings = () => {
   }, [buildLineupMessage]);
 
   const sendSmsLineup = useCallback(async () => {
+    if (getLineupBookingsForDate(smsLineupDate).length === 0) {
+      setSmsLineupMessage('');
+      notify.error('No bookings are scheduled for this date. No SMS was sent.');
+      return;
+    }
     setSmsLineupLoading(true);
     setSmsLineupResults(null);
     try {
@@ -1370,9 +1387,10 @@ const HearseBookings = () => {
     } finally {
       setSmsLineupLoading(false);
     }
-  }, [smsLineupDate, smsLineupMessage, smsSelectedDriverIds]);
+  }, [smsLineupDate, smsLineupMessage, smsSelectedDriverIds, getLineupBookingsForDate]);
 
   const closeSmsLineup = useCallback(() => { setSmsLineupOpen(false); setSmsLineupResults(null); }, []);
+  const smsLineupBookingCount = getLineupBookingsForDate(smsLineupDate).length;
   const smsTodayDate = formatDateStr(new Date());
   const smsTomorrowDateObject = new Date();
   smsTomorrowDateObject.setDate(smsTomorrowDateObject.getDate() + 1);
@@ -2552,14 +2570,22 @@ const HearseBookings = () => {
                 <textarea
                   id="sms-lineup-message"
                   value={smsLineupMessage}
+                  disabled={smsLineupBookingCount === 0}
+                  placeholder={smsLineupBookingCount === 0 ? 'No bookings for this date.' : ''}
                   onChange={(event) => setSmsLineupMessage(event.target.value)}
                   rows="5"
                   style={{
                     width: '100%', padding: '0.5rem 0.75rem', border: '1px solid ' + COLORS.border,
                     borderRadius: COLORS.radiusSm, fontSize: '0.8125rem', color: COLORS.text,
                     background: COLORS.white, outline: 'none', resize: 'vertical', fontFamily: 'inherit',
+                    opacity: smsLineupBookingCount === 0 ? 0.65 : 1,
                   }}
                 />
+                {smsLineupBookingCount === 0 && (
+                  <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: COLORS.muted }}>
+                    A lineup message is generated only for dates with bookings.
+                  </div>
+                )}
               </div>
               <div style={{ marginTop: '0.75rem' }}>
                 <div style={{ fontSize: '0.75rem', fontWeight: 700, color: COLORS.ink, marginBottom: '0.4rem' }}>Select drivers</div>
@@ -2610,7 +2636,7 @@ const HearseBookings = () => {
               <PrimaryButton
                 type="button"
                 onClick={sendSmsLineup}
-                disabled={smsLineupLoading || !smsLineupMessage.trim()}
+                disabled={smsLineupLoading || smsLineupBookingCount === 0 || !smsLineupMessage.trim()}
                 $bg={COLORS.accent}
               >
                 {smsLineupLoading ? 'Sending…' : 'Send SMS Lineup'}
