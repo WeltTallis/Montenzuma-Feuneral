@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import OfficialStamp from  '../../utils/stamp/stamp';
 import ReusableSignaturePad from '../../utils/signature/signaturepad';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -308,7 +307,7 @@ const EmbalmingConsentForm = () => {
         * { box-sizing: border-box; }
         html { -webkit-text-size-adjust: 100%; }
         body {
-          margin: 0; background: #EFEAE1; color: var(--ink);
+          margin: 0; background: #ffffff; color: var(--ink);
           font-family: 'Saira', 'Segoe UI', system-ui, Roboto, Arial, sans-serif;
           font-size: 15px; line-height: 1.5; padding: 24px 12px 0;
         }
@@ -385,11 +384,7 @@ const EmbalmingConsentForm = () => {
         .date-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.6rem; }
         .date-row .d { font-size: 0.95rem; font-weight: 600; }
         .note { font-family: 'Segoe Script', 'Bradley Hand', 'Comic Sans MS', cursive; font-size: 0.95rem; color: var(--pen); transform: rotate(-4deg); opacity: 0.9; }
-        .stamp { position: absolute; top: 3.3rem; right: clamp(16px, 4vw, 56px); color: var(--red); font-family: ui-monospace, 'Cascadia Mono', Consolas, 'Courier New', monospace; font-weight: 800; font-size: 1.15rem; letter-spacing: 0.24em; transform: rotate(-6deg); opacity: 0.85; pointer-events: none; }
         .section.relative { position: relative; }
-        @media (max-width: 640px) {
-          .stamp { position: static; display: block; text-align: right; margin-bottom: 0.6rem; }
-        }
         .accept { display: flex; align-items: flex-start; gap: 0.85rem; cursor: pointer; user-select: none; margin: 1.6rem 0; }
         .accept input { appearance: none; -webkit-appearance: none; width: 21px; height: 21px; flex: none; margin-top: 0.1rem; position: relative; border: 1.5px solid var(--ink); border-radius: 3px; background: var(--white); cursor: pointer; transition: all 0.15s ease; }
         .accept input:hover { border-color: var(--verdigris); }
@@ -430,12 +425,44 @@ const EmbalmingConsentForm = () => {
           .elegant-footer { padding: 44px 20px 0; }
           .footer-bar { flex-direction: column; gap: 6px; padding: 16px 20px; text-align: center; }
         }
+
+        /* ─── PRINT: one A4 page, white background, no body padding ─── */
         @media print {
-          body { background: #fff; padding: 0; }
-          .sheet { box-shadow: none; max-width: none; }
-          .actions, .search-status, .field-hint { display: none !important; }
+          @page { size: A4 portrait; margin: 8mm; }
+
+          html, body {
+            background: #fff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            font-size: 12px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .sheet { box-shadow: none; max-width: none; width: 100%; margin: 0; background: #fff; }
+
+          /* hide non-paper elements */
+          .actions, .search-status, .field-hint, .no-print, .elegant-footer, .msg { display: none !important; }
+
+          /* undo mobile layout rules that trigger at A4 width */
+          .branches { grid-template-columns: 1fr 1fr 1fr !important; }
+          .branches .b + .b { border-left: 1px solid var(--line) !important; border-top: none !important; }
+          .mast-main { flex-wrap: nowrap; gap: 1rem; }
+          .mast-right { align-items: flex-end !important; }
+          .date-block, .verify-block { text-align: right !important; }
+
+          /* compact spacing so everything fits on one page */
+          .masthead { padding: 0.8rem 1rem 0.6rem; }
+          .sec-label { margin: 0.6rem 0 0.3rem; }
+          .branches .b { padding: 0.4rem 0.5rem; line-height: 1.5; }
+          .form-body { padding: 1rem 1rem 0.5rem; }
+          .section { margin-bottom: 1.2rem; break-inside: avoid; }
+          .section-head { margin-bottom: 0.8rem; padding: 0.4rem 0.8rem; }
+          .date-row { margin-bottom: 0.8rem; }
+          .consent li { margin-bottom: 0.6rem; line-height: 1.9; }
+          .accept { margin: 0.8rem 0; }
+          .divider { margin: 0.8rem 0; }
+          .record-strip { margin: 0.8rem 1rem 0; padding-top: 0.5rem; }
           .input-lg.found { background: transparent; }
-          @page { size: A4 portrait; margin: 12mm; }
         }
       `}</style>
 
@@ -491,8 +518,8 @@ const EmbalmingConsentForm = () => {
               <div className={`msg ${msg.kind}`} dangerouslySetInnerHTML={{ __html: msg.html }} />
             )}
 
-            {/* Section 01 */}
-            <div className="section">
+            {/* Section 01 (screen only) */}
+            <div className="section no-print">
               <div className="section-head"><span className="section-num">01</span><h2 className="section-title">Record Search &amp; Auto-fill</h2></div>
               <label className="label" htmlFor="adm">Admission Number <span className="req">*</span></label>
               <div className="search-wrap">
@@ -517,7 +544,6 @@ const EmbalmingConsentForm = () => {
             {/* Section 02 */}
             <div className="section relative">
               <div className="section-head"><span className="section-num">02</span><h2 className="section-title">Consent for Embalming</h2></div>
-              <span className="stamp">1366</span>
 
               <div className="date-row">
                 <span className="note">Already Embalmed.</span>
@@ -587,7 +613,7 @@ const EmbalmingConsentForm = () => {
             - Official Embalming Consent Record -
           </div>
 
-          {/* Footer */}
+          {/* Footer (screen only) */}
           <footer className="elegant-footer">
             <div className="leaf-mark">
               <svg viewBox="0 0 24 24" fill="none" stroke="#EDE9DB" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" width="21" height="21">
@@ -649,9 +675,6 @@ const EmbalmingConsentForm = () => {
           </div>
         </div>
       )}
-
-      {/* Official Stamp */}
-      <OfficialStamp admissionNo="1366" />
     </>
   );
 };
