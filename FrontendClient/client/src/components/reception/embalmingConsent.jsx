@@ -309,7 +309,7 @@ const EmbalmingConsentForm = () => {
         body {
           margin: 0; background: #ffffff; color: var(--ink);
           font-family: 'Saira', 'Segoe UI', system-ui, Roboto, Arial, sans-serif;
-          font-size: 15px; line-height: 1.5; padding: 24px 12px 0;
+          font-size: 15px; line-height: 1.5; padding: 10px 12px 0;
         }
         .mono { font-family: ui-monospace, 'Cascadia Mono', Consolas, 'Courier New', monospace; }
         .sheet {

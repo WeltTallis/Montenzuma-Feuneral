@@ -1,8 +1,6 @@
 sudo systemctl enable --now restpoint-backup.timer
 sudo systemctl start restpoint-backup.service
 
-
-
 Start hourly backups:
 
 sudo systemctl daemon-reload
