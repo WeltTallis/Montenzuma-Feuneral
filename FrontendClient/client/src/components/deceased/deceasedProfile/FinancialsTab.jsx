@@ -42,7 +42,7 @@ const FX_CSS = `
   --fx-mono: ui-monospace, 'Cascadia Mono', Consolas, 'Courier New', monospace;
   color: var(--ink); font-family: var(--fx-sans); line-height: 1.5;
   -webkit-font-smoothing: antialiased; overflow-wrap: anywhere;
-  background: #EFEAE1;
+  background: #ffffff;
   padding: 18px;
   border-radius: 10px;
 }
