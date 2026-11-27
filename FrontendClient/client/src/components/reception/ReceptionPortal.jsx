@@ -491,7 +491,8 @@ export default function App() {
     // NOT /insurance — that route is the Rest Point B2B insurance page and is
     // still used by the main website. Deliberately NOT prefixed with
     // tenantSlug: the reception portal is public, and this page is public.
-    else if (serviceName === "Embalming Consent") redirectPath = "/embalming-consent";
+    else if (serviceName === "Embalming Consent")
+      redirectPath = `/${tenantSlug}/embalming-consent?adm=1366`;
     navigate(redirectPath);
   };
 
