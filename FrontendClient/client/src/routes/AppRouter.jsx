@@ -1102,6 +1102,7 @@ const AppRouter = () => (
       <Route path="/:slug/postmortem-verify" element={<PostmortemVerifyPage />} />
       <Route path="/:slug/postmortem/results/:sessionId" element={<PostmortemResultsPage />} />
       <Route path="/:slug/release-form/:id" element={<ReleaseFormPage />} />
+      <Route path="/:slug/embalming-consent" element={<EmbalmingConsentForm />} />
       <Route path="/postmortem/verify" element={<PostmortemVerifyPage />} />
       <Route path="/postmortem/request" element={<PostmortemRequestForm />} />
       <Route path="/postmortem/results/:sessionId" element={<PostmortemResultsPage />} />
