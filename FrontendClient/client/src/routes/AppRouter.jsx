@@ -85,6 +85,7 @@ const CookiesPolicy = lazy(() => import('../modules/pages/CookiesPolicy'));
 const SupportPage = lazy(() => import('../components/support/SupportPage'));
 
 const PostmortemRequestForm = lazy(() => import('../components/reception/PostmortemRequestForm'));
+const EmbalmingConsentForm = lazy(() => import('../components/reception/embalmingConsent'));
 const PostmortemResults = lazy(() => import('../components/reception/PostmortemResults'));
 const PostmortemQRPage = lazy(() => import('../components/reception/PostmortemQRPage'));
 const ReceptionPortal = lazy(() => import('../components/reception/ReceptionPortal'));
@@ -94,6 +95,7 @@ const ContactPage = lazy(() => import('../modules/pages/ContactPage'));
 const WhyUsPage = lazy(() => import('../modules/pages/WhyUsPage'));
 const AboutPage = lazy(() => import('../modules/pages/AboutPage'));
 const LoginPage = lazy(() => import('../components/auth/login'));
+
 
 const PayrollRouteRedirect = () => {
   const location = useLocation();
@@ -690,6 +692,13 @@ const TenantDashboardRoutes = ({ tenantData, tenantSlug: propTenantSlug }) => {
         <Route path="postmortem-form/:deceased_id" element={
           <PostmortemFormPage />
         } />
+
+
+        {/* Postmortem Examination Form */}
+        <Route path="/embalming-consent" element={
+          <EmbalmingConsentForm />
+        } />
+
 
         {/* Memorial - Public access */}
         <Route path="memorial/:tenantSlug/:deceasedId" element={

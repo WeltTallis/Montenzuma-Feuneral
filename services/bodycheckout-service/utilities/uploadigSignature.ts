@@ -38,10 +38,7 @@ const upload = multer({
 });
 
 // Signature processing function with high-quality compression
-// NOTE: signatures are ALWAYS stored as ink blue (#0f33e7) on a transparent
-// background inside the ONE global uploads folder
-// (/opt/storage/uploads/<tenant>/signatures) — no local paths, no options
-// that could change the colour or location.
+
 const processSignature = async (
     file: Express.Multer.File,
     tenantSlug?: string,

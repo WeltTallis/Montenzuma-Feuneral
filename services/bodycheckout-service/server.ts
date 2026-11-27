@@ -1,13 +1,12 @@
 
 
-import {
-    closeAsyncSideEffectResources,
-    startAsyncSideEffectWorker,
+import { closeAsyncSideEffectResources, startAsyncSideEffectWorker,
 } from '../app-global/utils/asyncSideEffectQueue';
 import { runBodyCheckoutMigrations } from './utilities/migrate';
 import Logger from '../../packages/shared-logger/dist/index';
-import bodyReleaseRoutes from './routes/routes';
 import { closeAllConnections } from '../../shared/dbConfig';
+import bodyReleaseRoutes from './routes/routes';
+
 
 
 import express from 'express';
