@@ -7,7 +7,7 @@ import { useTenantStore } from '../../../modules/seo/useTenantStore';
 import env from '../../../utils/config/env';
 import axios from 'axios';
 
-//  Icons 
+//  Icons
 const Ico = ({ d, w = 15, sw = 1.8, style }) => (
   <svg width={w} height={w} viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={style}>
@@ -26,16 +26,13 @@ const IcoPhone = (p) => <Ico {...p} d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 
 const IcoMail = (p) => <Ico {...p} d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z M3.4 6.2 12 12.6l8.6-6.4" />;
 const IcoPin = (p) => <Ico {...p} d="M20 10.5c0 5.6-8 11.5-8 11.5S4 16.1 4 10.5a8 8 0 1 1 16 0z M12 13.2a2.7 2.7 0 1 0 0-5.4 2.7 2.7 0 0 0 0 5.4z" />;
 const IcoGlobe = (p) => <Ico {...p} d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M2.5 12h19 M12 2c2.6 2.6 4 6.1 4 10s-1.4 7.4-4 10c-2.6-2.6-4-6.1-4-10s1.4-7.4 4-10z" />;
-
-
 const IcoTrend = (p) => <Ico {...p} d="M12 3v18M5 8l7-5 7 5" />;
-
 const IcoCheck = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.2"
     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m4 12.5 5 5L20 6.5" /></svg>
 );
 
-// ── Design system, scoped to .fx-root ──────────────────────────────────────
+// ── Design system (unchanged from original) ──────────────────────────────
 const FX_CSS = `
 .fx-root{
   --fx-bg:#f4f3f0; --fx-paper:#fdfcf9;
@@ -67,7 +64,6 @@ const FX_CSS = `
 .fx-root input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
 .fx-hidden{ display:none !important; }
 
-/* Buttons — slim: lighter padding, no lift/shadow play */
 .fx-btn{ display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:8px 14px; border-radius:8px; font-size:.8rem; font-weight:600; border:1px solid transparent; white-space:nowrap; transition:background .15s ease, border-color .15s ease; }
 .fx-btn:disabled{ opacity:.55; cursor:not-allowed; transform:none !important; }
 .fx-btn-primary{ background:var(--fx-ink); color:#fff; border-color:var(--fx-ink); }
@@ -80,7 +76,6 @@ const FX_CSS = `
 .fx-icon-btn:hover:not(:disabled){ background:var(--fx-red-bg); color:var(--fx-red); }
 .fx-icon-btn:disabled{ opacity:.4; cursor:not-allowed; }
 
-/* Sub topbar */
 .fx-topbar{ position:sticky; top:0; z-index:40; background:rgba(253,252,249,.94); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border-bottom:1px solid var(--fx-line); }
 .fx-topbar-inner{ display:flex; align-items:stretch; gap:22px; }
 .fx-topbar-label{ display:flex; align-items:center; font-size:.68rem; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--fx-ink-faint); flex:none; }
@@ -99,11 +94,6 @@ const FX_CSS = `
 .fx-chip.ok{ background:var(--fx-green-bg); color:#047857; border-color:#a7f3d0; }
 .fx-chip.due{ background:var(--fx-amber-bg); color:#b45309; border-color:#fde68a; }
 
-/* Cards + panels */
-/* Card + stat tile borders are dropped and replaced with a soft shadow.
-   The hard 1px --fx-line outline on every tile boxed the tab in and clashed
-   with the already-borderless receipt. The background contrast plus the
-   shadow still separates each tile, so nothing is lost visually. */
 .fx-card{ background:#fff; border:0; border-radius:var(--fx-radius); box-shadow:var(--fx-shadow-md); }
 .fx-panel{ display:none; }
 .fx-panel.active{ display:block; animation:fxFadeUp .28s ease; }
@@ -119,7 +109,6 @@ const FX_CSS = `
 .fx-tile-brass{ background:var(--fx-accent); }
 .fx-tile-ink{ background:var(--fx-ink); }
 
-/* Stat cards — slim flat tiles, soft single shadow, no gradient wash */
 .fx-stats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin-bottom:20px; }
 .fx-stat{ padding:14px 16px; border-radius:var(--fx-radius); border:1px solid var(--fx-line-soft); position:relative; overflow:hidden; background:#fff; box-shadow:var(--fx-shadow-sm); }
 .fx-stat::after{ content:""; position:absolute; right:-24px; top:-24px; width:76px; height:76px; border-radius:50%; opacity:.35; }
@@ -145,7 +134,6 @@ const FX_CSS = `
 .fx-stat.green .fx-stat-val{ color:var(--fx-green); }
 `;
 
-/* Tables + pills — slim: light 1px header rule, airy rows, small pills */
 const FX_CSS2 = `
 .fx-table-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
 .fx-root table.fx{ width:100%; border-collapse:collapse; min-width:680px; }
@@ -171,7 +159,6 @@ const FX_CSS2 = `
 .fx-pill-insurance{ background:var(--fx-brass-bg); color:var(--fx-accent-dark); }
 .fx-empty{ text-align:center; padding:28px 10px; color:var(--fx-ink-faint); font-size:.83rem; }
 
-/* Forms — slim: normal-size labels (the 2rem label was a typo), light inputs */
 .fx-field label{ display:block; font-size:.66rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--fx-ink-soft); margin-bottom:6px; }
 .fx-input{ width:100%; padding:9px 12px; border:1px solid var(--fx-line); border-radius:8px; background:#fff; font-size:.85rem; color:var(--fx-ink); transition:border-color .15s, box-shadow .15s; }
 .fx-input::placeholder{ color:#b9b4aa; }
@@ -180,14 +167,68 @@ const FX_CSS2 = `
 .fx-form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
 .fx-form-grid .fx-full{ grid-column:1/-1; }
 .fx-form-actions{ display:flex; justify-content:flex-end; gap:10px; grid-column:1/-1; margin-top:2px; }
-.fx-add-form{ border:1px dashed #d9c9a6; border-radius:12px; background:linear-gradient(160deg,var(--fx-brass-bg),#fdfcf9); padding:18px; margin-bottom:20px; animation:fxFadeUp .22s ease; }
 `;
 
-/* Receipt layout + statement paper */
+/* Charge picker CSS */
+const FX_CSS_PICKER = `
+.fx-picker{ border:1px solid var(--fx-line); border-radius:10px; overflow:hidden; margin-bottom:18px; }
+.fx-pick{ display:grid; grid-template-columns:24px 1fr auto; align-items:flex-start; gap:1rem; padding:.85rem 1rem; border-bottom:1px solid var(--fx-line-soft); transition:background .15s ease; }
+.fx-pick:last-child{ border-bottom:0; }
+.fx-pick.on{ background:rgba(16,185,129,.05); }
+.fx-pick.waived{ background:rgba(156,163,175,.06); }
+.fx-pick-check{ appearance:none; -webkit-appearance:none; width:20px; height:20px; margin-top:3px; border:1.5px solid var(--fx-ink); border-radius:3px; background:#fff; cursor:pointer; position:relative; flex:none; }
+.fx-pick-check:hover{ border-color:var(--fx-green); }
+.fx-pick-check:checked{ background:var(--fx-green); border-color:var(--fx-green); }
+.fx-pick-check:checked::after{ content:''; position:absolute; left:6px; top:2px; width:5px; height:10px; border:solid #fff; border-width:0 2.5px 2.5px 0; transform:rotate(45deg); }
+.fx-pick-body{ min-width:0; }
+.fx-pick-title{ font-weight:700; font-size:.88rem; color:var(--fx-ink); display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+.fx-pick-desc{ font-size:.76rem; color:var(--fx-ink-faint); margin-top:2px; line-height:1.4; }
+.fx-pick-amt{ font-family:var(--fx-sans); font-weight:700; font-size:.88rem; color:var(--fx-ink); text-align:right; white-space:nowrap; padding-top:2px; font-variant-numeric:tabular-nums; }
+.fx-pick.waived .fx-pick-amt{ color:var(--fx-ink-faint); }
+.fx-pick.waived .fx-pick-amt s{ color:var(--fx-ink-faint); }
+.fx-pick.off .fx-pick-amt{ color:var(--fx-ink-faint); }
+.fx-free{ color:var(--fx-green); font-weight:700; font-size:.72rem; margin-left:6px; }
+.fx-qty-chip{ font-family:ui-monospace,monospace; font-size:.68rem; color:#2A3670; background:rgba(42,54,112,.06); padding:1px 6px; border-radius:3px; font-weight:700; }
+.fx-waived-chip{ font-size:.66rem; font-weight:700; color:var(--fx-ink-faint); letter-spacing:.08em; text-transform:uppercase; margin-left:4px; }
+
+.fx-tier-block{ margin-top:.7rem; padding:.65rem .75rem; background:var(--fx-bg); border-radius:6px; border:1px solid var(--fx-line-soft); }
+.fx-tier-label{ font-size:.62rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--fx-accent); margin-bottom:6px; }
+.fx-tier-row{ display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:6px; }
+.fx-tier-opt{ padding:7px 9px; border:1px solid var(--fx-line); border-radius:6px; background:#fff; cursor:pointer; transition:all .15s ease; }
+.fx-tier-opt:hover{ border-color:var(--fx-accent); }
+.fx-tier-opt.active{ border-color:var(--fx-green); background:rgba(16,185,129,.07); box-shadow:0 0 0 1px var(--fx-green) inset; }
+.fx-tier-name{ font-size:.72rem; font-weight:700; color:var(--fx-ink); }
+.fx-tier-amount{ font-size:.72rem; color:var(--fx-ink-faint); margin-top:2px; font-variant-numeric:tabular-nums; }
+.fx-tier-note{ font-size:.72rem; color:var(--fx-ink-faint); margin-top:6px; font-style:italic; }
+
+.fx-custom-inline{ display:flex; align-items:center; gap:8px; margin-top:6px; }
+.fx-custom-label{ font-size:.62rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--fx-accent); min-width:80px; }
+.fx-custom-input{ flex:0 0 130px; border:none; outline:none; background:transparent; border-bottom:1px dashed #9a938a; padding:2px 4px; font-family:inherit; font-size:.85rem; color:#2A3670; font-weight:600; }
+.fx-custom-input:focus{ border-bottom:1px solid var(--fx-green); }
+
+.fx-days-input{ width:64px; border:none; outline:none; background:transparent; border-bottom:1px dashed #9a938a; padding:2px 4px; font-family:ui-monospace,monospace; font-size:.95rem; font-weight:700; color:#2A3670; text-align:center; }
+.fx-days-input:focus{ border-bottom:1px solid var(--fx-green); }
+
+.fx-waiver-banner{ display:flex; align-items:flex-start; gap:.85rem; padding:.85rem 1rem; background:rgba(16,185,129,.06); border:1px solid rgba(16,185,129,.25); border-radius:8px; margin-bottom:14px; cursor:pointer; user-select:none; transition:background .15s ease; }
+.fx-waiver-banner:hover{ background:rgba(16,185,129,.1); }
+.fx-waiver-banner input{ appearance:none; -webkit-appearance:none; width:20px; height:20px; margin-top:1px; border:1.5px solid var(--fx-green); border-radius:3px; background:#fff; cursor:pointer; position:relative; flex:none; }
+.fx-waiver-banner input:checked{ background:var(--fx-green); }
+.fx-waiver-banner input:checked::after{ content:''; position:absolute; left:6px; top:2px; width:5px; height:10px; border:solid #fff; border-width:0 2.5px 2.5px 0; transform:rotate(45deg); }
+.fx-waiver-title{ font-weight:700; color:var(--fx-green); font-size:.82rem; }
+.fx-waiver-desc{ font-size:.74rem; color:var(--fx-ink-soft); margin-top:3px; line-height:1.5; }
+
+.fx-picker-totals{ margin-top:14px; margin-left:auto; width:100%; max-width:460px; border-top:2px solid var(--fx-ink); }
+.fx-picker-totals .row{ display:flex; justify-content:space-between; padding:.55rem .75rem; font-size:.85rem; border-bottom:1px solid var(--fx-line); color:var(--fx-ink-faint); }
+.fx-picker-totals .row.amt{ font-family:ui-monospace,monospace; font-weight:700; color:var(--fx-ink); }
+.fx-picker-totals .grand{ border-bottom:none; border-top:1px solid var(--fx-ink); font-size:1rem; font-weight:800; color:var(--fx-ink); padding-top:.75rem; margin-top:.25rem; }
+.fx-picker-totals .grand .amt{ color:#722F37; }
+
+.fx-picker-note{ margin-top:14px; padding:.75rem 1rem; background:var(--fx-bg); border-left:3px solid var(--fx-accent); font-size:.76rem; color:var(--fx-ink-faint); line-height:1.6; }
+`;
+
 const FX_CSS3 = `
-/* The receipt owns the full column; the editor sits underneath it so the
-   statement is never squeezed into a narrow 1fr track beside a sidebar. */
 .fx-r-layout{ display:grid; grid-template-columns:minmax(0,1fr); gap:26px; align-items:start; }
+@media (min-width:1100px){ .fx-r-layout{ grid-template-columns:minmax(0,1fr) 340px; } }
 .fx-r-details{ margin-bottom:0 !important; }
 .fx-r-details h3{ font-size:.92rem; font-weight:600; margin:0 0 4px; display:flex; align-items:center; gap:9px; }
 .fx-r-details .fx-hint{ font-size:.78rem; color:var(--fx-ink-faint); margin:0 0 18px; }
@@ -201,7 +242,6 @@ const FX_CSS3 = `
 .fx-r-live-item.ok .fx-r-live-val{ color:#047857; }
 .fx-r-live-item.due .fx-r-live-val{ color:#b45309; }
 .fx-statement{ width:100%; max-width:900px; margin:0 auto; background:var(--fx-paper); padding:3.6rem 3.4rem; box-shadow:var(--fx-shadow-paper); position:relative; overflow:hidden; animation:fxFadeUp .35s ease; }
-
 .fx-statement .fx-content{ position:relative; z-index:1; }
 .fx-statement .fx-header{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:2.8rem; padding-bottom:2rem; border-bottom:2px solid var(--fx-accent); gap:2rem; }
 .fx-letterhead{ display:flex; align-items:flex-start; gap:16px; min-width:0; }
@@ -209,7 +249,7 @@ const FX_CSS3 = `
 .fx-brand-logo img{ width:100%; height:100%; object-fit:contain; padding:7px; }
 .fx-brand-text{ min-width:0; }
 .fx-brand-name{ font-family:var(--fx-serif); font-size:1.35rem; font-weight:600; letter-spacing:.02em; margin-bottom:.45rem; }
-.fx-address{ font-size:.  1rem; color:var(--fx-ink-soft); line-height:1.65; }
+.fx-address{ font-size:.85rem; color:var(--fx-ink-soft); line-height:1.65; }
 .fx-contact{ display:flex; align-items:flex-start; gap:8px; margin-top:3px; }
 .fx-contact svg{ flex:none; margin-top:3px; color:var(--fx-accent); }
 .fx-meta-info{ text-align:right; }
@@ -226,20 +266,19 @@ const FX_CSS3 = `
 .fx-root table.fx-items thead th:last-child{ text-align:right; }
 .fx-root table.fx-items tbody td{ padding:1rem 0; border-bottom:1px solid var(--fx-line); vertical-align:top; }
 .fx-root table.fx-items td.fx-num{ color:var(--fx-ink-faint); font-size:.82rem; width:44px; font-family:var(--fx-serif); font-style:italic; }
-.fx-root table.fx-items td.fx-desc{ font-size:  1rem; font-weight:500; }
+.fx-root table.fx-items td.fx-desc{ font-size:.95rem; font-weight:500; }
 .fx-root table.fx-items td.fx-desc .fx-details{ display:block; font-size:.74rem; color:var(--fx-ink-faint); font-weight:300; margin-top:.15rem; }
 .fx-root table.fx-items td.fx-amount{ text-align:right; font-family:var(--fx-serif); font-size:1.15rem; font-weight:500; white-space:nowrap; }
 .fx-root table.fx-items tbody tr:hover{ background:transparent; }
 .fx-root table.fx-items td.fx-items-empty{ text-align:center; color:var(--fx-ink-faint); font-style:italic; font-family:var(--fx-serif); font-size:1rem; padding:1.6rem 0; }
 `;
 
-/* Statement summary, signatures, modal */
 const FX_CSS4 = `
 .fx-summary-wrapper{ display:flex; justify-content:flex-end; align-items:center; gap:2.6rem; margin-bottom:3rem; flex-wrap:wrap; }
 .fx-summary{ width:min(330px,100%); }
 .fx-summary-row{ display:flex; justify-content:space-between; align-items:baseline; gap:1rem; padding:.55rem 0; font-size:.88rem; color:var(--fx-ink-soft); }
 .fx-summary-row .fx-val{ font-family:var(--fx-serif); font-size:1.08rem; color:var(--fx-ink); font-weight:500; white-space:nowrap; font-variant-numeric:tabular-nums; }
-.fx-summary-row.fx-total{ margin-top:  1rem; padding-top:1.3rem; border-top:1px solid var(--fx-accent); }
+.fx-summary-row.fx-total{ margin-top:1rem; padding-top:1.3rem; border-top:1px solid var(--fx-accent); }
 .fx-summary-row.fx-total .fx-label{ font-family:var(--fx-serif); text-transform:uppercase; font-weight:600; font-size:.9rem; color:var(--fx-ink); letter-spacing:.1em; }
 .fx-summary-row.fx-total .fx-val{ font-size:1.75rem; font-weight:700; }
 .fx-summary-row.fx-paid .fx-val{ color:var(--fx-accent); }
@@ -260,7 +299,6 @@ const FX_CSS4 = `
 .fx-barcode{ height:38px; display:flex; align-items:stretch; gap:1px; justify-content:center; }
 .fx-bar{ background:#000; }
 .fx-barcode-num{ font-size:.72rem; letter-spacing:.22em; color:var(--fx-ink-soft); margin-top:8px; font-weight:600; }
-/* Record payment — a right-hand side panel, not a centred modal. */
 .fx-drawer{ position:fixed; inset:0; z-index:1000; display:flex; justify-content:flex-end; background:rgba(17,24,39,.45); animation:fxFadeIn .2s ease; }
 .fx-drawer-panel{ width:min(440px,100%); height:100%; display:flex; flex-direction:column; background:#fff; box-shadow:-12px 0 32px rgba(17,24,39,.16); animation:fxDrawerIn .25s cubic-bezier(.22,.7,.3,1); }
 @keyframes fxDrawerIn{ from{ transform:translateX(100%); } to{ transform:translateX(0); } }
@@ -275,7 +313,6 @@ const FX_CSS4 = `
 .fx-drawer-foot .fx-btn{ min-width:110px; }
 `;
 
-/* Responsive + print */
 const FX_CSS5 = `
 @media (max-width:980px){ .fx-statement{ padding:2.8rem 2.2rem; } }
 @media (max-width:760px){
@@ -303,6 +340,8 @@ const FX_CSS5 = `
   .fx-summary-wrapper{ gap:1.6rem; }
   .fx-summary{ width:100%; }
   .fx-summary-row.fx-total .fx-val{ font-size:1.5rem; }
+  .fx-pick{ grid-template-columns:24px 1fr; gap:.75rem; }
+  .fx-pick-amt{ grid-column:2; text-align:left; }
 }
 @media (max-width:640px){
   .fx-form-grid{ grid-template-columns:1fr; }
@@ -348,8 +387,6 @@ const fmt2 = (a, c) => `${sym(c)} ${Number(a || 0).toLocaleString('en-US', { min
 const fmt0 = (a, c) => `${sym(c)} ${Math.round(Number(a || 0)).toLocaleString('en-US')}`;
 const pad2 = (n) => String(n).padStart(2, '0');
 
-// A bare "YYYY-MM-DD" must not be shifted a day by the browser's zone, so it is
-// parsed as LOCAL midnight. A full timestamp keeps whatever the backend sent.
 const toDate = (v) => {
   if (!v) return null;
   if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v.slice(0, 10))) return new Date(`${v.slice(0, 10)}T00:00:00`);
@@ -372,13 +409,41 @@ const pillClass = (m) => {
   return 'fx-pill-bank';
 };
 
-const CHARGE_TYPES = [
-  'Professional Services', 'Preparation & Restorative Care', 'Facilities — Visitation',
-  'Facilities — Funeral Ceremony', 'Casket', 'Burial Vault', 'Memorial Stationery',
-  'Floral Tributes', 'Transportation', 'Repatriation Documentation', 'Other',
+// ── Charge catalogue (source of truth for prices) ─────────────────────────
+const CHARGE_CATALOGUE = [
+  { id: 'embalming',    title: 'Embalming',                   desc: 'Preservation and preparation of the body',                 type: 'fixed', amount: 8000,  defaultOn: true,  charge_type: 'Preparation & Restorative Care' },
+  { id: 'storage',      title: 'Daily Storage',                desc: 'Cold-room storage, billed per day held',                   type: 'daily', amount: 2000,  defaultOn: true,  charge_type: 'Facilities — Visitation' },
+  { id: 'prep',         title: 'Body Preparation & Dressing',  desc: 'Washing, grooming and dressing for viewing',               type: 'fixed', amount: 2500,  defaultOn: true,  charge_type: 'Preparation & Restorative Care' },
+  { id: 'facility',     title: 'Facility Fee',                 desc: 'Use of mortuary facilities and equipment',                 type: 'fixed', amount: 5000,  defaultOn: true,  charge_type: 'Facilities — Funeral Ceremony' },
+  { id: 'reconstruction', title: 'Body Reconstruction',        desc: 'Restoration after trauma / damage — pick a severity tier', type: 'tiered', defaultOn: false, charge_type: 'Preparation & Restorative Care',
+    tiers: [
+      { id: 'minor',    label: 'Minor',    amount: 8000,  note: 'Small abrasions, minimal shaping' },
+      { id: 'moderate', label: 'Moderate', amount: 18000, note: 'Facial / limb repair, some suturing' },
+      { id: 'severe',   label: 'Severe',   amount: 35000, note: 'Extensive trauma, major restoration' },
+      { id: 'custom',   label: 'Custom',   amount: 0,     note: 'Enter the quoted amount' },
+    ] },
+  { id: 'airlift',      title: 'Hearse Transfer to JKIA',       desc: 'Airlift transport from facility to Jomo Kenyatta Intl.', type: 'fixed', amount: 15000, defaultOn: false, charge_type: 'Transportation' },
+  { id: 'coffin_wrap',  title: 'Coffin Wrapping & Packaging',   desc: 'Protective wrapping and packaging for transit',            type: 'fixed', amount: 15000, defaultOn: false, charge_type: 'Casket' },
+  { id: 'embalm_cert',  title: 'Embalming Certificate',         desc: 'Official certificate for travel / repatriation',           type: 'fixed', amount: 10000, defaultOn: true,  waivedBy: 'coffin_bundle', charge_type: 'Repatriation Documentation' },
+  { id: 'booking',      title: 'Booking & Check-in',            desc: 'Airline booking and cargo check-in coordination',          type: 'fixed', amount: 10000, defaultOn: true,  waivedBy: 'coffin_bundle', charge_type: 'Repatriation Documentation' },
+  { id: 'seal_cert',    title: 'Seal Certificate',              desc: 'Tamper-proof seal and certificate',                        type: 'fixed', amount: 5000,  defaultOn: true,  waivedBy: 'coffin_bundle', charge_type: 'Repatriation Documentation' },
+  { id: 'custom',       title: 'Custom Charge',                 desc: 'Any other charge — describe and enter the amount',         type: 'custom', defaultOn: false, charge_type: 'Other' },
 ];
 
-// Deterministic bar pattern from the invoice code (no randomness per render).
+const tierAmount = (c, tierId, customAmt) => {
+  const t = c.tiers?.find((x) => x.id === tierId);
+  if (!t) return 0;
+  return t.id === 'custom' ? (Number(customAmt) || 0) : t.amount;
+};
+const lineAmount = (c, daysHeld, tierId, reconCustom, customAmt) => {
+  if (c.type === 'fixed')  return c.amount;
+  if (c.type === 'daily')  return c.amount * Math.max(1, Number(daysHeld) || 1);
+  if (c.type === 'tiered') return tierAmount(c, tierId, reconCustom);
+  if (c.type === 'custom') return Number(customAmt) || 0;
+  return 0;
+};
+
+// Deterministic barcode bars
 const barcodeBars = (seed) => {
   let h = 2166136261;
   for (let i = 0; i < String(seed).length; i++) { h ^= String(seed).charCodeAt(i); h = Math.imul(h, 16777619); }
@@ -386,17 +451,11 @@ const barcodeBars = (seed) => {
   const rnd = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   const widths = [1, 1, 1, 2, 2, 3, 4];
   const out = [];
-  for (let i = 0; i < 48; i++) {
-    const w = widths[Math.floor(rnd() * widths.length)];
-    out.push({ dark: i % 2 === 0, w });
-  }
+  for (let i = 0; i < 48; i++) { const w = widths[Math.floor(rnd() * widths.length)]; out.push({ dark: i % 2 === 0, w }); }
   return out;
 };
 
-/* ── Statement details editor ───────────────────────────────────────────────
-   Rendered BELOW the receipt (not beside it) so the statement always gets the
-   full column width. Grouped into sections because a flat 10-field grid read as
-   an undifferentiated wall of inputs. */
+// Statement details editor (unchanged behaviour, rendered as a right-hand pane)
 const StatementDetailsPane = ({ receipt, setField }) => (
   <aside className="fx-card fx-panel-card fx-r-details fx-no-print">
     <h3>
@@ -410,40 +469,25 @@ const StatementDetailsPane = ({ receipt, setField }) => (
       <div className="fx-form-grid">
         <div className="fx-field">
           <label htmlFor="dCurrency">Currency</label>
-          <select
-            id="dCurrency" className="fx-input" value={receipt.currency}
-            onChange={(e) => setField('currency', e.target.value)}
-          >
+          <select id="dCurrency" className="fx-input" value={receipt.currency} onChange={(e) => setField('currency', e.target.value)}>
             {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         <div className="fx-field">
           <label htmlFor="dInvoice">Invoice no.</label>
-          <input
-            id="dInvoice" className="fx-input" value={receipt.invoice}
-            onChange={(e) => setField('invoice', e.target.value)}
-          />
+          <input id="dInvoice" className="fx-input" value={receipt.invoice} onChange={(e) => setField('invoice', e.target.value)} />
         </div>
         <div className="fx-field">
           <label htmlFor="dStmtDate">Statement date</label>
-          <input
-            id="dStmtDate" className="fx-input" type="date" value={receipt.stmtDate}
-            onChange={(e) => setField('stmtDate', e.target.value)}
-          />
+          <input id="dStmtDate" className="fx-input" type="date" value={receipt.stmtDate} onChange={(e) => setField('stmtDate', e.target.value)} />
         </div>
         <div className="fx-field">
           <label htmlFor="dServiceDate">Service date</label>
-          <input
-            id="dServiceDate" className="fx-input" type="date" value={receipt.serviceDate}
-            onChange={(e) => setField('serviceDate', e.target.value)}
-          />
+          <input id="dServiceDate" className="fx-input" type="date" value={receipt.serviceDate} onChange={(e) => setField('serviceDate', e.target.value)} />
         </div>
         <div className="fx-field fx-full">
           <label htmlFor="dAdjust">Courtesy adjustment</label>
-          <input
-            id="dAdjust" className="fx-input" type="number" min="0" step="any" placeholder="0.00" value={receipt.adjust}
-            onChange={(e) => setField('adjust', e.target.value)}
-          />
+          <input id="dAdjust" className="fx-input" type="number" min="0" step="any" placeholder="0.00" value={receipt.adjust} onChange={(e) => setField('adjust', e.target.value)} />
         </div>
       </div>
     </div>
@@ -453,17 +497,11 @@ const StatementDetailsPane = ({ receipt, setField }) => (
       <div className="fx-form-grid">
         <div className="fx-field fx-full">
           <label htmlFor="dDeceased">In loving memory of</label>
-          <input
-            id="dDeceased" className="fx-input" value={receipt.deceased}
-            onChange={(e) => setField('deceased', e.target.value)}
-          />
+          <input id="dDeceased" className="fx-input" value={receipt.deceased} onChange={(e) => setField('deceased', e.target.value)} />
         </div>
         <div className="fx-field fx-full">
           <label htmlFor="dYears">Years</label>
-          <input
-            id="dYears" className="fx-input" value={receipt.years}
-            onChange={(e) => setField('years', e.target.value)}
-          />
+          <input id="dYears" className="fx-input" value={receipt.years} onChange={(e) => setField('years', e.target.value)} />
         </div>
       </div>
     </div>
@@ -471,34 +509,10 @@ const StatementDetailsPane = ({ receipt, setField }) => (
     <div className="fx-r-section">
       <div className="fx-r-section-title">Signatories</div>
       <div className="fx-form-grid">
-        <div className="fx-field">
-          <label htmlFor="dSigName">Signatory</label>
-          <input
-            id="dSigName" className="fx-input" value={receipt.sigName}
-            onChange={(e) => setField('sigName', e.target.value)}
-          />
-        </div>
-        <div className="fx-field">
-          <label htmlFor="dSigTitle">Signatory title</label>
-          <input
-            id="dSigTitle" className="fx-input" value={receipt.sigTitle}
-            onChange={(e) => setField('sigTitle', e.target.value)}
-          />
-        </div>
-        <div className="fx-field">
-          <label htmlFor="dRepName">Authorizing representative</label>
-          <input
-            id="dRepName" className="fx-input" value={receipt.repName}
-            onChange={(e) => setField('repName', e.target.value)}
-          />
-        </div>
-        <div className="fx-field">
-          <label htmlFor="dRepTitle">Representative title</label>
-          <input
-            id="dRepTitle" className="fx-input" value={receipt.repTitle}
-            onChange={(e) => setField('repTitle', e.target.value)}
-          />
-        </div>
+        <div className="fx-field"><label htmlFor="dSigName">Signatory</label><input id="dSigName" className="fx-input" value={receipt.sigName} onChange={(e) => setField('sigName', e.target.value)} /></div>
+        <div className="fx-field"><label htmlFor="dSigTitle">Signatory title</label><input id="dSigTitle" className="fx-input" value={receipt.sigTitle} onChange={(e) => setField('sigTitle', e.target.value)} /></div>
+        <div className="fx-field"><label htmlFor="dRepName">Authorizing representative</label><input id="dRepName" className="fx-input" value={receipt.repName} onChange={(e) => setField('repName', e.target.value)} /></div>
+        <div className="fx-field"><label htmlFor="dRepTitle">Representative title</label><input id="dRepTitle" className="fx-input" value={receipt.repTitle} onChange={(e) => setField('repTitle', e.target.value)} /></div>
       </div>
     </div>
 
@@ -507,18 +521,14 @@ const StatementDetailsPane = ({ receipt, setField }) => (
       <div className="fx-form-grid">
         <div className="fx-field fx-full">
           <label htmlFor="dQuote">Footer quote</label>
-          <input
-            id="dQuote" className="fx-input" placeholder="e.g. Thank you for trusting us with your loved one."
-            value={receipt.quote}
-            onChange={(e) => setField('quote', e.target.value)}
-          />
+          <input id="dQuote" className="fx-input" placeholder="e.g. Thank you for trusting us with your loved one." value={receipt.quote} onChange={(e) => setField('quote', e.target.value)} />
         </div>
       </div>
     </div>
   </aside>
 );
 
-// ── Component ──────────────────────────────────────────────────────────────
+// ── Main component ─────────────────────────────────────────────────────────
 const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, deceasedId, deceased, onDataChanged, branchSlug, refreshVersion = 0 }) => {
   const [payments, setPayments] = useState(initialPayments || []);
   const [chargeList, setChargeList] = useState(initialCharges || []);
@@ -526,28 +536,30 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
   const [viewCur, setViewCur] = useState('KES');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [showChargeForm, setShowChargeForm] = useState(false);
-  const [isAddingCharge, setIsAddingCharge] = useState(false);
   const [deletingChargeId, setDeletingChargeId] = useState(null);
+  const [isSubmittingCharges, setIsSubmittingCharges] = useState(false);
+
+  // Charge picker state
+  const [selected, setSelected] = useState(() => {
+    const s = {};
+    CHARGE_CATALOGUE.forEach((c) => { s[c.id] = !!c.defaultOn; });
+    return s;
+  });
+  const [daysHeld, setDaysHeld] = useState(5);
+  const [tierChoice, setTierChoice] = useState('moderate');
+  const [reconstructionCustom, setReconstructionCustom] = useState(0);
+  const [customAmount, setCustomAmount] = useState(0);
+  const [customDesc, setCustomDesc] = useState('');
+  const [waiveBundle, setWaiveBundle] = useState(false);
 
   const [paymentForm, setPaymentForm] = useState({
     date: todayKey(), currency: 'KES', payment_method: 'Cash',
     reference: '', amount: '', description: '', insurance_provider: '',
   });
-  const [chargeForm, setChargeForm] = useState({
-    charge_type: '', amount: '', currency: 'KES', description: '', service_date: todayKey(),
-  });
 
-  // Organisation letterhead. resolveTenantBranding() merges the Zustand tenant
-  // store (populated by TenantResolver for the EXACT tenant in the URL) over the
-  // login-time localStorage values, then normalises the phone/email and — most
-  // importantly — rebases the logo onto the public gateway origin so it actually
-  // renders instead of failing as mixed content / unresolvable docker DNS.
+  // Branding
   const { tenantData } = useTenantStore();
   const brand = useMemo(() => resolveTenantBranding(tenantData), [tenantData]);
-  // resolveTenantBranding().email pads any non-email string with "@restpoint.co.ke",
-  // which is fine for an input field but must never be printed on a receipt, so
-  // only a well-formed address is allowed through.
   const brandEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(brand.displayEmail || '') ? brand.displayEmail : '';
   const org = {
     name: brand.name || '',
@@ -581,18 +593,11 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
 
   const setReceiptField = useCallback((k, v) => setReceipt((p) => ({ ...p, [k]: v })), []);
 
-  // Keep local mirrors in sync with parent data
+  // Sync with parent
   useEffect(() => { setChargeList(initialCharges || []); }, [initialCharges]);
   useEffect(() => { setPayments(initialPayments || []); }, [initialPayments]);
-
-  // Fill in the deceased once it arrives (the tab can mount before the fetch lands).
   useEffect(() => {
-    setReceipt((p) => ({
-      ...p,
-      deceased: p.deceased || dName,
-      years: p.years || lifeYears,
-      invoice: p.invoice || dAdmNo,
-    }));
+    setReceipt((p) => ({ ...p, deceased: p.deceased || dName, years: p.years || lifeYears, invoice: p.invoice || dAdmNo }));
   }, [dName, lifeYears, dAdmNo]);
 
   const headers = useCallback(() => ({
@@ -606,43 +611,40 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
     try {
       const res = await axios.get(`${env.FULL_API_URL}/payments/${deceasedId}`, { headers: headers() });
       if (res.data?.success) setPayments(res.data.data || []);
-    } catch (error) {
-      console.error('Error loading payments:', error);
-    }
+    } catch (error) { console.error('Error loading payments:', error); }
   }, [deceasedId, headers]);
-
   useEffect(() => { loadPayments(); }, [loadPayments, refreshVersion]);
 
+  const loadCharges = useCallback(async () => {
+    if (!deceasedId) return;
+    try {
+      const res = await axios.get(`${env.FULL_API_URL}/charges/${deceasedId}`, { headers: headers() });
+      if (res.data?.success) setChargeList(res.data.data || []);
+    } catch (error) { console.error('Error loading charges:', error); }
+  }, [deceasedId, headers]);
 
+  // ── Payment ─────────────────────────────────────────────────
   const handleRecordPayment = async (e) => {
     e.preventDefault();
-    if (!paymentForm.amount || !paymentForm.reference) {
-      showToast.error('Please fill in all required fields'); return;
-    }
+    if (!paymentForm.amount || !paymentForm.reference) { showToast.error('Please fill in all required fields'); return; }
     if (paymentForm.payment_method === 'Insurance' && !(paymentForm.insurance_provider || '').trim()) {
       showToast.error('Please enter the name of the insurance provider'); return;
     }
     setIsRecording(true);
     try {
       let userEmail = 'Unknown';
-      try {
-        const raw = localStorage.getItem('user');
-        if (raw) { const u = JSON.parse(raw); userEmail = u.email || u.username || 'Unknown'; }
-      } catch (_) { /* keep Unknown */ }
-
+      try { const raw = localStorage.getItem('user'); if (raw) { const u = JSON.parse(raw); userEmail = u.email || u.username || 'Unknown'; } } catch (_) {}
       const res = await axios.post(`${env.FULL_API_URL}/payments`, {
         deceased_id: deceasedId,
         amount: parseFloat(paymentForm.amount),
         currency: paymentForm.currency || 'KES',
         payment_method: paymentForm.payment_method,
-        insurance_provider: paymentForm.payment_method === 'Insurance'
-          ? (paymentForm.insurance_provider || '').trim() || null : null,
+        insurance_provider: paymentForm.payment_method === 'Insurance' ? (paymentForm.insurance_provider || '').trim() || null : null,
         reference: paymentForm.reference,
         payment_date: paymentForm.date,
         description: paymentForm.description || null,
         recorded_by: userEmail,
       }, { headers: headers() });
-
       if (res.data?.success) {
         showToast.success('Payment recorded successfully');
         setShowPaymentModal(false);
@@ -650,45 +652,59 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
         await loadPayments();
         if (onDataChanged) onDataChanged();
       }
-    } catch (error) {
-      console.error('Error recording payment:', error);
-      showToast.error('Failed to record payment');
-    } finally {
-      setIsRecording(false);
-    }
+    } catch (error) { console.error('Error recording payment:', error); showToast.error('Failed to record payment'); }
+    finally { setIsRecording(false); }
   };
 
-  const handleAddCharge = async (e) => {
+  // ── Add charges from picker (one row per ticked item) ────────
+  const handleSubmitCharges = async (e) => {
     e.preventDefault();
-    if (!chargeForm.charge_type || !chargeForm.amount || parseFloat(chargeForm.amount) <= 0) {
-      showToast.error('Please provide a charge type and a valid amount'); return;
-    }
-    setIsAddingCharge(true);
-    try {
-      const res = await axios.post(`${env.FULL_API_URL}/charges`, {
-        deceased_id: deceasedId,
-        charge_type: chargeForm.charge_type,
-        amount: parseFloat(chargeForm.amount),
-        currency: chargeForm.currency || 'KES',
-        description: chargeForm.description || null,
-        service_date: chargeForm.service_date,
-      }, { headers: headers() });
+    if (!deceasedId) { showToast.error('Deceased ID missing'); return; }
+    const lines = CHARGE_CATALOGUE
+      .filter((c) => selected[c.id])
+      .map((c) => {
+        const waived = !!(c.waivedBy && waiveBundle);
+        if (waived) return null;
+        const amount = lineAmount(c, daysHeld, tierChoice, reconstructionCustom, customAmount);
+        if (!amount || amount <= 0) return null;
+        let description = c.desc;
+        if (c.id === 'storage') description = `Cold-room storage — ${daysHeld} day${daysHeld > 1 ? 's' : ''} @ 2,000/day`;
+        if (c.id === 'reconstruction') {
+          const t = c.tiers.find((x) => x.id === tierChoice);
+          description = `Body reconstruction — ${t?.label || 'Custom'}${tierChoice === 'custom' ? '' : ' severity'}`;
+        }
+        if (c.id === 'custom') description = customDesc || 'Custom charge';
+        return {
+          charge_type: c.charge_type || c.title,
+          amount,
+          currency: viewCur,
+          description,
+          service_date: receipt.serviceDate || todayKey(),
+        };
+      })
+      .filter(Boolean);
 
-      if (res.data?.success) {
-        showToast.success('Charge added to bill');
-        const created = res.data.data;
-        if (created) setChargeList((prev) => [created, ...prev]);
-        setChargeForm((p) => ({ ...p, charge_type: '', amount: '', description: '' }));
-        setShowChargeForm(false);
+    if (lines.length === 0) { showToast.error('Tick at least one charge with a non-zero amount'); return; }
+
+    setIsSubmittingCharges(true);
+    try {
+      const created = [];
+      for (const line of lines) {
+        const res = await axios.post(`${env.FULL_API_URL}/charges`, {
+          deceased_id: deceasedId, ...line,
+        }, { headers: headers() });
+        if (res.data?.success && res.data.data) created.push(res.data.data);
+      }
+      if (created.length) {
+        setChargeList((prev) => [...created, ...prev]);
+        showToast.success(`${created.length} charge${created.length === 1 ? '' : 's'} added to bill`);
         if (onDataChanged) onDataChanged();
-      } else {
-        throw new Error(res.data?.message || 'Failed to add charge');
       }
     } catch (error) {
-      console.error('Error adding charge:', error);
-      showToast.error(error.response?.data?.message || error.message || 'Failed to add charge');
+      console.error('Error adding charges:', error);
+      showToast.error(error.response?.data?.message || error.message || 'Failed to add charges');
     } finally {
-      setIsAddingCharge(false);
+      setIsSubmittingCharges(false);
     }
   };
 
@@ -703,30 +719,21 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
     } catch (error) {
       console.error('Error deleting charge:', error);
       showToast.error(error.response?.data?.message || 'Failed to remove charge');
-    } finally {
-      setDeletingChargeId(null);
-    }
+    } finally { setDeletingChargeId(null); }
   };
 
-
-  // ── Derived ───────────────────────────────────────────────────────────────
+  // ── Derived values ──────────────────────────────────────────
   const chargeAmount = (c) => c.amount ?? c.charge_amount;
-  const shownPayments = useMemo(
-    () => payments.filter((p) => (p.currency || 'KES') === viewCur), [payments, viewCur]
-  );
-  const shownCharges = useMemo(
-    () => chargeList.filter((c) => (c.currency || 'KES') === viewCur), [chargeList, viewCur]
-  );
+  const shownPayments = useMemo(() => payments.filter((p) => (p.currency || 'KES') === viewCur), [payments, viewCur]);
+  const shownCharges = useMemo(() => chargeList.filter((c) => (c.currency || 'KES') === viewCur), [chargeList, viewCur]);
   const billed = sumBy(chargeList, viewCur, chargeAmount);
   const largest = shownCharges.reduce((m, c) => Math.max(m, Number(chargeAmount(c)) || 0), 0);
   const biggestRow = shownCharges.find((c) => Number(chargeAmount(c)) === largest);
 
-  // Top-bar chip: what is still owed, across every currency.
   const dues = CURRENCIES
     .map((c) => ({ c, b: sumBy(chargeList, c, chargeAmount) - sumBy(payments, c, (p) => p.amount) }))
     .filter((r) => r.b > 0.004);
 
-  // Statement maths, all in the statement's own currency.
   const rc = receipt.currency;
   const rcItems = chargeList.filter((c) => (c.currency || 'KES') === rc);
   const rcPays = payments.filter((p) => (p.currency || 'KES') === rc);
@@ -739,8 +746,6 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
   const invoiceCode = `MTZ-${(toDate(receipt.stmtDate)?.getFullYear() || '')}-${receipt.invoice || '0000'}`;
   const bars = useMemo(() => barcodeBars(invoiceCode), [invoiceCode]);
   const monogram = (org.name || 'O').trim().charAt(0).toUpperCase();
-  // Letterhead contact rows, in order, with only values the tenant actually has.
-  // `location` is kept as a fallback so older records without `address` still print.
   const orgContacts = [
     org.branch ? { Icon: IcoPin, text: org.branch } : null,
     org.address ? { Icon: IcoPin, text: org.address } : null,
@@ -749,9 +754,16 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
     org.country ? { Icon: IcoGlobe, text: org.country } : null,
   ].filter(Boolean);
 
-  // The payment side panel is a real dialog: ESC and the scrim close it, the page
-  // behind it stays locked, and focus moves into the panel so keyboard users are
-  // not left tabbing through the tables underneath.
+  // Charge picker totals
+  const pickerSubtotal = CHARGE_CATALOGUE
+    .filter((c) => selected[c.id] && !(c.waivedBy && waiveBundle))
+    .reduce((s, c) => s + lineAmount(c, daysHeld, tierChoice, reconstructionCustom, customAmount), 0);
+  const pickerWaived = CHARGE_CATALOGUE
+    .filter((c) => selected[c.id] && c.waivedBy && waiveBundle)
+    .reduce((s, c) => s + lineAmount(c, daysHeld, tierChoice, reconstructionCustom, customAmount), 0);
+  const pickerCount = CHARGE_CATALOGUE.filter((c) => selected[c.id]).length;
+
+  // Payment drawer focus trap
   const payPanelRef = useRef(null);
   useEffect(() => {
     if (!showPaymentModal) return undefined;
@@ -759,34 +771,20 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
     document.addEventListener('keydown', onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const t = setTimeout(() => {
-      const first = payPanelRef.current?.querySelector('input, select, button');
-      if (first) first.focus();
-    }, 320);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prev;
-      clearTimeout(t);
-    };
+    const t = setTimeout(() => { const first = payPanelRef.current?.querySelector('input, select, button'); if (first) first.focus(); }, 320);
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev; clearTimeout(t); };
   }, [showPaymentModal]);
 
-
-  // Count-up for the stat cards. Honours prefers-reduced-motion by snapping.
-  const prefersReduced = typeof window !== 'undefined'
-    && window.matchMedia
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Stat count-up
+  const prefersReduced = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const [statNow, setStatNow] = useState({ billed: 0, count: shownCharges.length });
   useEffect(() => {
-    const targetBilled = billed;
-    const targetCount = shownCharges.length;
+    const targetBilled = billed; const targetCount = shownCharges.length;
     setStatNow((p) => ({ ...p, billed: targetBilled, count: targetCount }));
     if (prefersReduced) return undefined;
-    const t0 = performance.now();
-    const dur = 550;
-    let raf = 0;
+    const t0 = performance.now(); const dur = 550; let raf = 0;
     const tick = (t) => {
-      const p = Math.min(1, (t - t0) / dur);
-      const e = 1 - Math.pow(1 - p, 3);
+      const p = Math.min(1, (t - t0) / dur); const e = 1 - Math.pow(1 - p, 3);
       setStatNow({ billed: targetBilled * e, count: targetCount * e });
       if (p < 1) raf = requestAnimationFrame(tick);
     };
@@ -796,19 +794,20 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
 
   const TABS = [
     { key: 'payments', label: 'Payments', Icon: IcoCard },
-    { key: 'charges', label: 'Itemized Charges', Icon: IcoReceipt },
-    { key: 'receipt', label: 'Generate Receipt', Icon: IcoPrinter },
+    { key: 'charges',  label: 'Itemized Charges', Icon: IcoReceipt },
+    { key: 'receipt',  label: 'Generate Receipt', Icon: IcoPrinter },
   ];
 
   return (
     <div className="fx-root">
       <style>{FX_CSS}</style>
       <style>{FX_CSS2}</style>
+      <style>{FX_CSS_PICKER}</style>
       <style>{FX_CSS3}</style>
       <style>{FX_CSS4}</style>
       <style>{FX_CSS5}</style>
 
-      {/* ── Sub topbar ── */}
+      {/* Top bar */}
       <div className="fx-topbar fx-no-print">
         <div className="fx-topbar-inner">
           <span className="fx-topbar-label">Financials</span>
@@ -816,16 +815,9 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
             {TABS.map((t) => {
               const TabIcon = t.Icon;
               return (
-                <button
-                  key={t.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === t.key}
-                  className={'fx-tab' + (tab === t.key ? ' active' : '')}
-                  onClick={() => setTab(t.key)}
-                >
-                  <TabIcon w={14} />
-                  {t.label}
+                <button key={t.key} type="button" role="tab" aria-selected={tab === t.key}
+                  className={'fx-tab' + (tab === t.key ? ' active' : '')} onClick={() => setTab(t.key)}>
+                  <TabIcon w={14} />{t.label}
                 </button>
               );
             })}
@@ -833,20 +825,11 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
           <div className="fx-topbar-side">
             <div className="fx-seg" role="group" aria-label="Display currency">
               {CURRENCIES.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  className={viewCur === c ? 'on' : ''}
-                  onClick={() => setViewCur(c)}
-                >
-                  {c}
-                </button>
+                <button key={c} type="button" className={viewCur === c ? 'on' : ''} onClick={() => setViewCur(c)}>{c}</button>
               ))}
             </div>
             <span className={'fx-chip ' + (dues.length ? 'due' : 'ok')}>
-              {dues.length
-                ? dues.map((r) => `${fmt0(r.b, r.c)} due`).join(' · ')
-                : 'Account settled'}
+              {dues.length ? dues.map((r) => `${fmt0(r.b, r.c)} due`).join(' · ') : 'Account settled'}
             </span>
           </div>
         </div>
@@ -857,10 +840,7 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
         <div className="fx-card fx-panel-card">
           <div className="fx-panel-head">
             <div>
-              <h2>
-                <span className="fx-tile fx-tile-green"><IcoCard w={15} sw={2} /></span>
-                Payment History
-              </h2>
+              <h2><span className="fx-tile fx-tile-green"><IcoCard w={15} sw={2} /></span>Payment History</h2>
               <p className="fx-sub">Every payment received, with method and reference.</p>
             </div>
             <div className="fx-panel-actions">
@@ -873,42 +853,21 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
           <div className="fx-table-scroll">
             <table className="fx">
               <thead>
-                <tr>
-                  <th>Date</th><th>Method</th><th>Insurance</th><th>Reference</th>
-                  <th>Description</th><th>Amount</th><th>Recorded by</th>
-                </tr>
+                <tr><th>Date</th><th>Method</th><th>Insurance</th><th>Reference</th><th>Description</th><th>Amount</th><th>Recorded by</th></tr>
               </thead>
               <tbody>
                 {shownPayments.length === 0 && (
-                  <tr>
-                    <td colSpan={7}>
-                      <div className="fx-empty">
-                        <IcoCard w={22} style={{ margin: '0 auto 8px', opacity: .45 }} />
-                        No payments recorded in {viewCur} yet.
-                      </div>
-                    </td>
-                  </tr>
+                  <tr><td colSpan={7}><div className="fx-empty"><IcoCard w={22} style={{ margin: '0 auto 8px', opacity: .45 }} />No payments recorded in {viewCur} yet.</div></td></tr>
                 )}
                 {shownPayments.map((p, i) => (
                   <tr key={p.payment_id || p.id || i}>
                     <td data-label="Date">{shortDate(p.payment_date || p.created_at)}</td>
-                    <td data-label="Method">
-                      <span className={'fx-pill ' + pillClass(p.payment_method)}>
-                        <span className="fx-pdot" />
-                        {p.payment_method || '—'}
-                      </span>
-                    </td>
-                    <td data-label="Insurance">
-                      {p.insurance_provider || <span className="fx-muted">—</span>}
-                    </td>
+                    <td data-label="Method"><span className={'fx-pill ' + pillClass(p.payment_method)}><span className="fx-pdot" />{p.payment_method || '—'}</span></td>
+                    <td data-label="Insurance">{p.insurance_provider || <span className="fx-muted">—</span>}</td>
                     <td data-label="Reference"><span className="fx-ref">{p.reference || '—'}</span></td>
-                    <td data-label="Description">
-                      {p.description || p.notes || <span className="fx-muted">—</span>}
-                    </td>
+                    <td data-label="Description">{p.description || p.notes || <span className="fx-muted">—</span>}</td>
                     <td data-label="Amount"><span className="fx-money">{fmt2(p.amount, p.currency)}</span></td>
-                    <td data-label="Recorded by">
-                      <span className="fx-by" title={p.recorded_by || ''}>{p.recorded_by || '—'}</span>
-                    </td>
+                    <td data-label="Recorded by"><span className="fx-by" title={p.recorded_by || ''}>{p.recorded_by || '—'}</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -917,16 +876,14 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
         </div>
       </section>
 
-      {/* ═══ TAB 2 · ITEMIZED CHARGES ═══ */}
+      {/* ═══ TAB 2 · ITEMIZED CHARGES (picker + table) ═══ */}
       <section className={'fx-panel' + (tab === 'charges' ? ' active' : '')} role="tabpanel">
         <div className="fx-stats">
           <div className="fx-stat brass">
             <div className="fx-stat-ico"><IcoReceipt w={16} sw={2} /></div>
             <span className="fx-stat-label">Total billed</span>
             <div className="fx-stat-val">{fmt0(statNow.billed, viewCur)}</div>
-            <span className="fx-stat-sub">
-              {shownCharges.length ? `${shownCharges.length} item${shownCharges.length === 1 ? '' : 's'} on the bill` : 'nothing billed'}
-            </span>
+            <span className="fx-stat-sub">{shownCharges.length ? `${shownCharges.length} item${shownCharges.length === 1 ? '' : 's'} on the bill` : 'nothing billed'}</span>
           </div>
           <div className="fx-stat blue">
             <div className="fx-stat-ico"><IcoList w={16} sw={2} /></div>
@@ -942,93 +899,143 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
           </div>
         </div>
 
-        <div className="fx-card fx-panel-card">
+        <form className="fx-card fx-panel-card" onSubmit={handleSubmitCharges} noValidate>
           <div className="fx-panel-head">
             <div>
-              <h2>
-                <span className="fx-tile fx-tile-brass"><IcoReceipt w={17} sw={2} /></span>
-                Itemized Charges
-              </h2>
-              <p className="fx-sub">Every service and item billed to this account.</p>
-            </div>
-            <div className="fx-panel-actions">
-              <button type="button" className="fx-btn fx-btn-ghost" onClick={() => setShowChargeForm((v) => !v)}>
-                <IcoPlus w={14} /> {showChargeForm ? 'Close' : 'Add charge'}
-              </button>
+              <h2><span className="fx-tile fx-tile-brass"><IcoReceipt w={17} sw={2} /></span>Add charges to the bill</h2>
+              <p className="fx-sub">Tick what applies to this case. Storage is billed per day held; reconstruction is priced by severity tier.</p>
             </div>
           </div>
 
-          <form className={'fx-add-form' + (showChargeForm ? '' : ' fx-hidden')} onSubmit={handleAddCharge} noValidate>
-            <div className="fx-form-grid">
-              <div className="fx-field">
-                <label htmlFor="cType">Charge type</label>
-                <select
-                  id="cType"
-                  className="fx-input"
-                  value={chargeForm.charge_type}
-                  onChange={(e) => setChargeForm((p) => ({ ...p, charge_type: e.target.value }))}
-                >
-                  <option value="">Select type…</option>
-                  {CHARGE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-              <div className="fx-field">
-                <label htmlFor="cAmount">Amount</label>
-                <input
-                  id="cAmount" className="fx-input" type="number" min="0" step="any" placeholder="0.00"
-                  value={chargeForm.amount}
-                  onChange={(e) => setChargeForm((p) => ({ ...p, amount: e.target.value }))}
-                />
-              </div>
-              <div className="fx-field">
-                <label htmlFor="cCurrency">Currency</label>
-                <select
-                  id="cCurrency" className="fx-input" value={chargeForm.currency}
-                  onChange={(e) => setChargeForm((p) => ({ ...p, currency: e.target.value }))}
-                >
-                  {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div className="fx-field">
-                <label htmlFor="cDate">Service date</label>
-                <input
-                  id="cDate" className="fx-input" type="date" value={chargeForm.service_date}
-                  onChange={(e) => setChargeForm((p) => ({ ...p, service_date: e.target.value }))}
-                />
-              </div>
-              <div className="fx-field fx-full">
-                <label htmlFor="cDesc">Description (optional)</label>
-                <input
-                  id="cDesc" className="fx-input"
-                  placeholder="e.g. Hand-rubbed finish, brushed bronze hardware"
-                  value={chargeForm.description}
-                  onChange={(e) => setChargeForm((p) => ({ ...p, description: e.target.value }))}
-                />
-              </div>
-              <div className="fx-form-actions">
-                <button type="button" className="fx-btn fx-btn-ghost" onClick={() => setShowChargeForm(false)}>Cancel</button>
-                <button type="submit" className="fx-btn fx-btn-primary" disabled={isAddingCharge}>
-                  {isAddingCharge ? 'Adding…' : 'Add to bill'}
-                </button>
+          {/* Days held */}
+          <div className="fx-form-grid" style={{ marginBottom: 14, maxWidth: 420 }}>
+            <div className="fx-field">
+              <label htmlFor="daysHeld">Days held</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input id="daysHeld" className="fx-days-input" type="number" min="1" value={daysHeld}
+                  onChange={(e) => setDaysHeld(Math.max(1, Number(e.target.value) || 1))} />
+                <span style={{ color: 'var(--fx-ink-faint)', fontSize: '.8rem' }}>days</span>
               </div>
             </div>
-          </form>
+          </div>
+
+          {/* Waiver banner */}
+          <label className="fx-waiver-banner">
+            <input type="checkbox" checked={waiveBundle} onChange={(e) => setWaiveBundle(e.target.checked)} />
+            <div style={{ flex: 1 }}>
+              <div className="fx-waiver-title">Coffin was purchased from our funeral home</div>
+              <div className="fx-waiver-desc">
+                Tick to waive the <strong>Embalming Certificate</strong>, <strong>Booking &amp; Check-in</strong> and <strong>Seal Certificate</strong> charges.
+                Optional — leave unticked if the coffin came from elsewhere.
+              </div>
+            </div>
+          </label>
+
+          {/* Charge picker */}
+          <div className="fx-picker">
+            {CHARGE_CATALOGUE.map((c) => {
+              const on = !!selected[c.id];
+              const waived = !!(c.waivedBy && waiveBundle);
+              const amount = lineAmount(c, daysHeld, tierChoice, reconstructionCustom, customAmount);
+              return (
+                <div key={c.id} className={'fx-pick' + (on ? ' on' : ' off') + (waived ? ' waived' : '')}>
+                  <input type="checkbox" className="fx-pick-check" checked={on} onChange={() => setSelected((p) => ({ ...p, [c.id]: !p[c.id] }))} aria-label={`Toggle ${c.title}`} />
+                  <div className="fx-pick-body">
+                    <div className="fx-pick-title">
+                      {c.title}
+                      {c.type === 'daily' && on && <span className="fx-qty-chip">× {daysHeld} day{daysHeld > 1 ? 's' : ''}</span>}
+                      {waived && <span className="fx-waived-chip">— waived</span>}
+                    </div>
+                    <div className="fx-pick-desc">{c.desc}</div>
+
+                    {c.type === 'tiered' && on && (
+                      <div className="fx-tier-block">
+                        <div className="fx-tier-label">Severity</div>
+                        <div className="fx-tier-row">
+                          {c.tiers.map((t) => (
+                            <label key={t.id} className={'fx-tier-opt' + (tierChoice === t.id ? ' active' : '')}>
+                              <input type="radio" name={`tier-${c.id}`} value={t.id} checked={tierChoice === t.id}
+                                onChange={() => setTierChoice(t.id)} style={{ display: 'none' }} />
+                              <div className="fx-tier-name">{t.label}</div>
+                              <div className="fx-tier-amount">{t.id === 'custom' ? 'Enter amount' : fmt0(t.amount, viewCur)}</div>
+                            </label>
+                          ))}
+                        </div>
+                        {tierChoice === 'custom' && (
+                          <div className="fx-custom-inline">
+                            <label className="fx-custom-label">Quoted amount</label>
+                            <input type="number" min="0" step="100" value={reconstructionCustom || ''}
+                              onChange={(e) => setReconstructionCustom(Number(e.target.value) || 0)}
+                              className="fx-custom-input" placeholder="0" />
+                          </div>
+                        )}
+                        <div className="fx-tier-note">{c.tiers.find((t) => t.id === tierChoice)?.note}</div>
+                      </div>
+                    )}
+
+                    {c.type === 'custom' && on && (
+                      <div style={{ marginTop: '.7rem' }}>
+                        <div className="fx-custom-inline">
+                          <label className="fx-custom-label">Description</label>
+                          <input type="text" value={customDesc} onChange={(e) => setCustomDesc(e.target.value)}
+                            className="fx-custom-input" style={{ flex: '1 1 220px' }} placeholder="e.g. Repairs after damage" />
+                        </div>
+                        <div className="fx-custom-inline">
+                          <label className="fx-custom-label">Amount</label>
+                          <input type="number" min="0" step="50" value={customAmount || ''}
+                            onChange={(e) => setCustomAmount(Number(e.target.value) || 0)}
+                            className="fx-custom-input" placeholder="0" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="fx-pick-amt">
+                    {!on ? '—' : waived
+                      ? <><s>{fmt0(amount, viewCur)}</s><span className="fx-free">FREE</span></>
+                      : (c.type === 'custom' || (c.type === 'tiered' && tierChoice === 'custom'))
+                        ? (amount > 0 ? fmt0(amount, viewCur) : 'Enter amount')
+                        : fmt0(amount, viewCur)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="fx-picker-totals">
+            <div className="row"><span>Selected charges</span><span className="amt">{pickerCount}</span></div>
+            <div className="row"><span>Subtotal</span><span className="amt">{fmt0(pickerSubtotal, viewCur)}</span></div>
+            <div className="row"><span>Waived</span><span className="amt">{pickerWaived > 0 ? '− ' + fmt0(pickerWaived, viewCur) : '—'}</span></div>
+            <div className="row grand"><span>Total Payable</span><span className="amt">{fmt0(pickerSubtotal, viewCur)}</span></div>
+          </div>
+
+          <div className="fx-picker-note">
+            <strong>Notes.</strong> Every line is optional. Only ticked charges are written to the bill on submit.
+            Where the coffin was purchased from us, tick the banner above to waive the embalming certificate,
+            booking / check-in and seal certificate.
+          </div>
+
+          <div className="fx-form-actions" style={{ marginTop: 16 }}>
+            <button type="submit" className="fx-btn fx-btn-primary" disabled={isSubmittingCharges}>
+              <IcoPlus w={14} /> {isSubmittingCharges ? 'Adding…' : `Add ${pickerCount} charge${pickerCount === 1 ? '' : 's'} to bill`}
+            </button>
+          </div>
+        </form>
+
+        {/* Existing charges table */}
+        <div className="fx-card fx-panel-card">
+          <div className="fx-panel-head">
+            <div>
+              <h2><span className="fx-tile fx-tile-brass"><IcoReceipt w={17} sw={2} /></span>Itemized Charges</h2>
+              <p className="fx-sub">Every service and item billed to this account.</p>
+            </div>
+          </div>
 
           <div className="fx-table-scroll">
             <table className="fx">
-              <thead>
-                <tr><th /><th>Item</th><th>Date</th><th>Amount</th><th /></tr>
-              </thead>
+              <thead><tr><th /><th>Item</th><th>Date</th><th>Amount</th><th /></tr></thead>
               <tbody>
                 {shownCharges.length === 0 && (
-                  <tr>
-                    <td colSpan={5}>
-                      <div className="fx-empty">
-                        <IcoReceipt w={26} style={{ margin: '0 auto 10px', opacity: .5 }} />
-                        No charges billed in {viewCur} yet.
-                      </div>
-                    </td>
-                  </tr>
+                  <tr><td colSpan={5}><div className="fx-empty"><IcoReceipt w={26} style={{ margin: '0 auto 10px', opacity: .5 }} />No charges billed in {viewCur} yet.</div></td></tr>
                 )}
                 {shownCharges.map((c, i) => {
                   const cid = c.charge_id ?? c.id;
@@ -1044,13 +1051,7 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
                       <td data-label="Date">{shortDate(c.service_date)}</td>
                       <td data-label="Amount"><span className="fx-money">{fmt2(chargeAmount(c), c.currency)}</span></td>
                       <td className="fx-cell-actions" data-label="">
-                        <button
-                          type="button"
-                          className="fx-icon-btn"
-                          title="Remove charge"
-                          disabled={deletingChargeId === cid}
-                          onClick={() => handleDeleteCharge(cid)}
-                        >
+                        <button type="button" className="fx-icon-btn" title="Remove charge" disabled={deletingChargeId === cid} onClick={() => handleDeleteCharge(cid)}>
                           <IcoTrash w={15} />
                         </button>
                       </td>
@@ -1067,10 +1068,7 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
       <section className={'fx-panel fx-print-target' + (tab === 'receipt' ? ' active' : '')} role="tabpanel">
         <div className="fx-panel-head fx-no-print">
           <div>
-            <h2>
-              <span className="fx-tile fx-tile-ink"><IcoPrinter w={17} /></span>
-              Generate Receipt
-            </h2>
+            <h2><span className="fx-tile fx-tile-ink"><IcoPrinter w={17} /></span>Generate Receipt</h2>
             <p className="fx-sub">A formal Statement of Arrangements, auto-filled live from the bill.</p>
           </div>
           <div className="fx-panel-actions">
@@ -1081,57 +1079,32 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
         </div>
 
         <div className="fx-r-layout">
-          {/* Live figures for the statement currently on screen — so the totals
-              being printed are readable without scrolling into the paper. */}
-          <div className="fx-r-live fx-no-print">
-            <div className="fx-r-live-item">
-              <span className="fx-r-live-label">Items</span>
-              <span className="fx-r-live-val">{rcItems.length}</span>
+          <div>
+            <div className="fx-r-live fx-no-print">
+              <div className="fx-r-live-item"><span className="fx-r-live-label">Items</span><span className="fx-r-live-val">{rcItems.length}</span></div>
+              <div className="fx-r-live-item"><span className="fx-r-live-label">Billed</span><span className="fx-r-live-val">{fmt0(subtotal, rc)}</span></div>
+              <div className="fx-r-live-item ok"><span className="fx-r-live-label">Received</span><span className="fx-r-live-val">{fmt0(paid, rc)}</span></div>
+              <div className={'fx-r-live-item' + (balance > 0.004 ? ' due' : ' ok')}><span className="fx-r-live-label">Balance</span><span className="fx-r-live-val">{fmt0(Math.max(0, balance), rc)}</span></div>
             </div>
-            <div className="fx-r-live-item">
-              <span className="fx-r-live-label">Billed</span>
-              <span className="fx-r-live-val">{fmt0(subtotal, rc)}</span>
-            </div>
-            <div className="fx-r-live-item ok">
-              <span className="fx-r-live-label">Received</span>
-              <span className="fx-r-live-val">{fmt0(paid, rc)}</span>
-            </div>
-            <div className={'fx-r-live-item' + (balance > 0.004 ? ' due' : ' ok')}>
-              <span className="fx-r-live-label">Balance</span>
-              <span className="fx-r-live-val">{fmt0(Math.max(0, balance), rc)}</span>
-            </div>
-          </div>
 
-          <div className="fx-r-paper">
             <div className="fx-statement">
               <div className="fx-content">
                 <header className="fx-header">
                   <div className="fx-letterhead">
-                    <div className="fx-brand-logo">
-                      {org.logoUrl ? <img src={org.logoUrl} alt="" /> : monogram}
-                    </div>
+                    <div className="fx-brand-logo">{org.logoUrl ? <img src={org.logoUrl} alt="" /> : monogram}</div>
                     <div className="fx-brand-text">
                       <div className="fx-brand-name">{org.name || '—'}</div>
                       <div className="fx-address">
-                        {orgContacts.length
-                          ? orgContacts.map(({ Icon, text }, i) => (
-                            <span className="fx-contact" key={i}>
-                              <Icon w={12} />{text}
-                            </span>
-                          ))
-                          : <span className="fx-muted">—</span>}
+                        {orgContacts.length ? orgContacts.map(({ Icon, text }, i) => (<span className="fx-contact" key={i}><Icon w={12} />{text}</span>)) : <span className="fx-muted">—</span>}
                       </div>
                     </div>
                   </div>
                   <div className="fx-meta-info">
                     <div className="fx-doc-title">Statement of Arrangements</div>
                     <div className="fx-meta-grid">
-                      <span className="fx-label">Invoice</span>
-                      <span className="fx-val">{receipt.invoice ? `No. ${receipt.invoice}` : '—'}</span>
-                      <span className="fx-label">Date</span>
-                      <span className="fx-val">{longDate(receipt.stmtDate)}</span>
-                      <span className="fx-label">Service</span>
-                      <span className="fx-val">{longDate(receipt.serviceDate)}</span>
+                      <span className="fx-label">Invoice</span><span className="fx-val">{receipt.invoice ? `No. ${receipt.invoice}` : '—'}</span>
+                      <span className="fx-label">Date</span><span className="fx-val">{longDate(receipt.stmtDate)}</span>
+                      <span className="fx-label">Service</span><span className="fx-val">{longDate(receipt.serviceDate)}</span>
                     </div>
                   </div>
                 </header>
@@ -1143,24 +1116,13 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
                 </section>
 
                 <table className="fx-items">
-                  <thead>
-                    <tr><th>Item</th><th>Description</th><th>Amount</th></tr>
-                  </thead>
+                  <thead><tr><th>Item</th><th>Description</th><th>Amount</th></tr></thead>
                   <tbody>
-                    {rcItems.length === 0 && (
-                      <tr>
-                        <td className="fx-items-empty" colSpan={3}>
-                          No items billed in {rc} for this statement.
-                        </td>
-                      </tr>
-                    )}
+                    {rcItems.length === 0 && (<tr><td className="fx-items-empty" colSpan={3}>No items billed in {rc} for this statement.</td></tr>)}
                     {rcItems.map((c, i) => (
                       <tr key={c.charge_id ?? c.id ?? i}>
                         <td className="fx-num">{pad2(i + 1)}</td>
-                        <td className="fx-desc">
-                          {c.charge_type || 'Charge'}
-                          {c.description && <span className="fx-details">{c.description}</span>}
-                        </td>
+                        <td className="fx-desc">{c.charge_type || 'Charge'}{c.description && <span className="fx-details">{c.description}</span>}</td>
                         <td className="fx-amount">{fmt0(chargeAmount(c), rc)}</td>
                       </tr>
                     ))}
@@ -1168,46 +1130,20 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
                 </table>
 
                 <div className="fx-summary-wrapper">
-                  {(balance <= 0.004 && paid > 0) && (
-                    <div className="fx-paid-seal"><span className="fx-paid-seal-text">Paid</span></div>
-                  )}
+                  {(balance <= 0.004 && paid > 0) && (<div className="fx-paid-seal"><span className="fx-paid-seal-text">Paid</span></div>)}
                   <div className="fx-summary">
-                    <div className="fx-summary-row">
-                      <span>Subtotal</span><span className="fx-val">{fmt0(subtotal, rc)}</span>
-                    </div>
-                    {adjust > 0 && (
-                      <div className="fx-summary-row">
-                        <span>Courtesy Adjustment</span>
-                        <span className="fx-val">— {fmt0(adjust, rc)}</span>
-                      </div>
-                    )}
-                    <div className="fx-summary-row fx-total">
-                      <span className="fx-label">Total Due</span>
-                      <span className="fx-val">{fmt0(total, rc)}</span>
-                    </div>
-                    <div className="fx-summary-row fx-paid">
-                      <span>Payment Received</span>
-                      <span className="fx-val">{fmt0(paid, rc)}</span>
-                    </div>
+                    <div className="fx-summary-row"><span>Subtotal</span><span className="fx-val">{fmt0(subtotal, rc)}</span></div>
+                    {adjust > 0 && (<div className="fx-summary-row"><span>Courtesy Adjustment</span><span className="fx-val">— {fmt0(adjust, rc)}</span></div>)}
+                    <div className="fx-summary-row fx-total"><span className="fx-label">Total Due</span><span className="fx-val">{fmt0(total, rc)}</span></div>
+                    <div className="fx-summary-row fx-paid"><span>Payment Received</span><span className="fx-val">{fmt0(paid, rc)}</span></div>
                     <div className="fx-paid-methods">{paidMethods.length ? paidMethods.join(' · ') : ''}</div>
-                    <div className="fx-summary-row fx-balance">
-                      <span className="fx-label">Balance Remaining</span>
-                      <span className="fx-val">{fmt2(Math.max(0, balance), rc)}</span>
-                    </div>
+                    <div className="fx-summary-row fx-balance"><span className="fx-label">Balance Remaining</span><span className="fx-val">{fmt2(Math.max(0, balance), rc)}</span></div>
                   </div>
                 </div>
 
                 <div className="fx-signatures">
-                  <div className="fx-sig-block">
-                    <div className="fx-sig-line" />
-                    <div className="fx-sig-name">{receipt.sigName || '—'}</div>
-                    <div className="fx-sig-title">{receipt.sigTitle || '—'}</div>
-                  </div>
-                  <div className="fx-sig-block">
-                    <div className="fx-sig-line" />
-                    <div className="fx-sig-name">{receipt.repName || '—'}</div>
-                    <div className="fx-sig-title">{receipt.repTitle || '—'}</div>
-                  </div>
+                  <div className="fx-sig-block"><div className="fx-sig-line" /><div className="fx-sig-name">{receipt.sigName || '—'}</div><div className="fx-sig-title">{receipt.sigTitle || '—'}</div></div>
+                  <div className="fx-sig-block"><div className="fx-sig-line" /><div className="fx-sig-name">{receipt.repName || '—'}</div><div className="fx-sig-title">{receipt.repTitle || '—'}</div></div>
                 </div>
 
                 <footer className="fx-footer">
@@ -1216,136 +1152,46 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
                 </footer>
 
                 <div className="fx-bottom-barcode">
-                  <div className="fx-barcode">
-                    {bars.map((b, i) => (
-                      <span key={i} className={b.dark ? 'fx-bar' : undefined} style={{ width: `${b.w}px` }} />
-                    ))}
-                  </div>
+                  <div className="fx-barcode">{bars.map((b, i) => (<span key={i} className={b.dark ? 'fx-bar' : undefined} style={{ width: `${b.w}px` }} />))}</div>
                   <div className="fx-barcode-num">{invoiceCode}</div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Editor sits BELOW the receipt — full width, never stealing space
-              from the statement it is meant to preview. */}
           <StatementDetailsPane receipt={receipt} setField={setReceiptField} />
         </div>
       </section>
 
-      {/* ── Record payment side panel ── */}
+      {/* Payment side panel */}
       {showPaymentModal && (
         <div className="fx-drawer" onClick={() => setShowPaymentModal(false)}>
-          <div
-            className="fx-drawer-panel"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="fx-pay-title"
-            ref={payPanelRef}
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="fx-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="fx-pay-title" ref={payPanelRef} onClick={(e) => e.stopPropagation()}>
             <div className="fx-drawer-head">
               <div>
-                <h3 id="fx-pay-title">
-                  <span className="fx-tile fx-tile-green"><IcoCard w={15} sw={2} /></span>
-                  Record payment
-                </h3>
+                <h3 id="fx-pay-title"><span className="fx-tile fx-tile-green"><IcoCard w={15} sw={2} /></span>Record payment</h3>
                 <p>Receipts feed straight into the statement.</p>
               </div>
-              <button
-                type="button"
-                className="fx-icon-btn"
-                aria-label="Close"
-                onClick={() => setShowPaymentModal(false)}
-              >
-                <IcoClose w={16} />
-              </button>
+              <button type="button" className="fx-icon-btn" aria-label="Close" onClick={() => setShowPaymentModal(false)}><IcoClose w={16} /></button>
             </div>
-
             <form id="fx-pay-form" className="fx-drawer-body" onSubmit={handleRecordPayment} noValidate>
               <div className="fx-grid3">
-                <div className="fx-field">
-                  <label htmlFor="pDate">Date</label>
-                  <input
-                    id="pDate" className="fx-input" type="date" required
-                    value={paymentForm.date}
-                    onChange={(e) => setPaymentForm((p) => ({ ...p, date: e.target.value }))}
-                  />
-                </div>
-                <div className="fx-field">
-                  <label htmlFor="pCurrency">Currency</label>
-                  <select
-                    id="pCurrency" className="fx-input" value={paymentForm.currency}
-                    onChange={(e) => setPaymentForm((p) => ({ ...p, currency: e.target.value }))}
-                  >
-                    {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div className="fx-field">
-                  <label htmlFor="pMethod">Method</label>
-                  <select
-                    id="pMethod" className="fx-input" value={paymentForm.payment_method}
-                    onChange={(e) => setPaymentForm((p) => ({ ...p, payment_method: e.target.value }))}
-                  >
-                    <option>Cash</option>
-                    <option>M-Pesa</option>
-                    <option>Card</option>
-                    <option>Bank Transfer</option>
-                    <option>Insurance</option>
-                  </select>
-                </div>
+                <div className="fx-field"><label htmlFor="pDate">Date</label><input id="pDate" className="fx-input" type="date" required value={paymentForm.date} onChange={(e) => setPaymentForm((p) => ({ ...p, date: e.target.value }))} /></div>
+                <div className="fx-field"><label htmlFor="pCurrency">Currency</label><select id="pCurrency" className="fx-input" value={paymentForm.currency} onChange={(e) => setPaymentForm((p) => ({ ...p, currency: e.target.value }))}>{CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
+                <div className="fx-field"><label htmlFor="pMethod">Method</label><select id="pMethod" className="fx-input" value={paymentForm.payment_method} onChange={(e) => setPaymentForm((p) => ({ ...p, payment_method: e.target.value }))}><option>Cash</option><option>M-Pesa</option><option>Card</option><option>Bank Transfer</option><option>Insurance</option></select></div>
               </div>
-
               {paymentForm.payment_method === 'Insurance' && (
-                <div className="fx-field">
-                  <label htmlFor="pIns">Name of insurance *</label>
-                  <input
-                    id="pIns" className="fx-input"
-                    placeholder="e.g. CIC Insurance, Jubilee, Britam"
-                    value={paymentForm.insurance_provider}
-                    onChange={(e) => setPaymentForm((p) => ({ ...p, insurance_provider: e.target.value }))}
-                    required
-                  />
-                </div>
+                <div className="fx-field"><label htmlFor="pIns">Name of insurance *</label><input id="pIns" className="fx-input" placeholder="e.g. CIC Insurance, Jubilee, Britam" value={paymentForm.insurance_provider} onChange={(e) => setPaymentForm((p) => ({ ...p, insurance_provider: e.target.value }))} required /></div>
               )}
-
               <div className="fx-grid2">
-                <div className="fx-field">
-                  <label htmlFor="pRef">Reference number</label>
-                  <input
-                    id="pRef" className="fx-input" placeholder="e.g. QXR89YU72" required
-                    value={paymentForm.reference}
-                    onChange={(e) => setPaymentForm((p) => ({ ...p, reference: e.target.value }))}
-                  />
-                </div>
-                <div className="fx-field">
-                  <label htmlFor="pAmount">Amount</label>
-                  <input
-                    id="pAmount" className="fx-input" type="number" min="0" step="any" placeholder="0.00" required
-                    value={paymentForm.amount}
-                    onChange={(e) => setPaymentForm((p) => ({ ...p, amount: e.target.value }))}
-                  />
-                </div>
+                <div className="fx-field"><label htmlFor="pRef">Reference number</label><input id="pRef" className="fx-input" placeholder="e.g. QXR89YU72" required value={paymentForm.reference} onChange={(e) => setPaymentForm((p) => ({ ...p, reference: e.target.value }))} /></div>
+                <div className="fx-field"><label htmlFor="pAmount">Amount</label><input id="pAmount" className="fx-input" type="number" min="0" step="any" placeholder="0.00" required value={paymentForm.amount} onChange={(e) => setPaymentForm((p) => ({ ...p, amount: e.target.value }))} /></div>
               </div>
-
-              <div className="fx-field">
-                <label htmlFor="pDesc">Description / notes (optional)</label>
-                <input
-                  id="pDesc" className="fx-input"
-                  placeholder="e.g. Facility fee, coffin, embalming…"
-                  value={paymentForm.description}
-                  onChange={(e) => setPaymentForm((p) => ({ ...p, description: e.target.value }))}
-                />
-              </div>
+              <div className="fx-field"><label htmlFor="pDesc">Description / notes (optional)</label><input id="pDesc" className="fx-input" placeholder="e.g. Facility fee, coffin, embalming…" value={paymentForm.description} onChange={(e) => setPaymentForm((p) => ({ ...p, description: e.target.value }))} /></div>
             </form>
-
             <div className="fx-drawer-foot">
-              <button type="button" className="fx-btn fx-btn-ghost" onClick={() => setShowPaymentModal(false)}>
-                Cancel
-              </button>
-              <button type="submit" form="fx-pay-form" className="fx-btn fx-btn-green" disabled={isRecording}>
-                {isRecording ? 'Saving…' : 'Save payment'}
-              </button>
+              <button type="button" className="fx-btn fx-btn-ghost" onClick={() => setShowPaymentModal(false)}>Cancel</button>
+              <button type="submit" form="fx-pay-form" className="fx-btn fx-btn-green" disabled={isRecording}>{isRecording ? 'Saving…' : 'Save payment'}</button>
             </div>
           </div>
         </div>
