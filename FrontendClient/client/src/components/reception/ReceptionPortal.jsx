@@ -149,8 +149,8 @@ const CARDS = [
   },
   {
     num: "05",
-    title: "Amani Insurance",
-    sub: "Funeral cover with peace of mind for your family",
+    title: "Embalming Consent",
+    sub: "Authorize and record embalming with dignity",
     ...GREEN,
     Icon: ShieldCheckIcon,
   },
@@ -491,7 +491,7 @@ export default function App() {
     // NOT /insurance — that route is the Rest Point B2B insurance page and is
     // still used by the main website. Deliberately NOT prefixed with
     // tenantSlug: the reception portal is public, and this page is public.
-    else if (serviceName === "Amani Insurance") redirectPath = "/amani/cover";
+    else if (serviceName === "Embalming Consent") redirectPath = "/embalming-consent";
     navigate(redirectPath);
   };
 

@@ -20,6 +20,7 @@ func TestMonitoringReportsLiveGatewayMetricsAndRequestLogs(t *testing.T) {
 		}
 		w.WriteHeader(http.StatusOK)
 	}))
+	
 	defer healthServer.Close()
 
 	target, err := url.Parse(healthServer.URL)
