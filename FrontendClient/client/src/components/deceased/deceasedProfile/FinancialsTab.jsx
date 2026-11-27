@@ -25,7 +25,6 @@ const IcoPhone = (p) => <Ico {...p} d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 
 const IcoMail = (p) => <Ico {...p} d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z M3.4 6.2 12 12.6l8.6-6.4" />;
 const IcoPin = (p) => <Ico {...p} d="M20 10.5c0 5.6-8 11.5-8 11.5S4 16.1 4 10.5a8 8 0 1 1 16 0z M12 13.2a2.7 2.7 0 1 0 0-5.4 2.7 2.7 0 0 0 0 5.4z" />;
 const IcoGlobe = (p) => <Ico {...p} d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M2.5 12h19 M12 2c2.6 2.6 4 6.1 4 10s-1.4 7.4-4 10c-2.6-2.6-4-6.1-4-10s1.4-7.4 4-10z" />;
-const IcoTrend = (p) => <Ico {...p} d="M12 3v18M5 8l7-5 7 5" />;
 
 // ── Design system ──────────────────────────────────────────────────────────
 const FX_CSS = `
@@ -54,7 +53,6 @@ const FX_CSS = `
 .fx-hidden{ display:none !important; }
 .fx-mono{ font-family:var(--fx-mono); }
 
-/* Top nav — ink pill row, not floating tabs */
 .fx-topbar{ background: var(--white); border:1px solid var(--line); border-radius:8px; margin-bottom:20px; padding:6px 10px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
 .fx-tabs{ display:flex; gap:4px; overflow-x:auto; flex:1; min-width:0; scrollbar-width:none; }
 .fx-tabs::-webkit-scrollbar{ display:none; }
@@ -69,24 +67,20 @@ const FX_CSS = `
 .fx-chip.ok{ background: rgba(34,197,94,.08); color:#15803D; border-color: rgba(34,197,94,.3); }
 .fx-chip.due{ background: rgba(176,58,46,.06); color:var(--red); border-color: rgba(176,58,46,.25); }
 
-/* Panels */
 .fx-panel{ display:none; }
 .fx-panel.active{ display:block; animation:fxFade .25s ease; }
 @keyframes fxFade { from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:none; } }
 
-/* Section head — ink bar like the charge schedule sheet */
 .fx-section-head{ display:flex; align-items:center; gap:12px; margin-bottom:18px; padding:10px 18px; background:var(--ink); border-radius:4px; }
 .fx-section-num{ font-family:var(--fx-mono); font-size:.66rem; color:rgba(250,248,244,.4); font-weight:700; }
 .fx-section-title{ margin:0; font-family:var(--fx-mono); font-size:.72rem; font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:var(--bone); }
 
-/* Cards */
 .fx-card{ background:var(--white); border:1px solid var(--line); border-radius:6px; margin-bottom:16px; overflow:hidden; }
 .fx-card-body{ padding:18px 20px; }
 .fx-card-title{ font-size:.9rem; font-weight:700; margin:0 0 4px; display:flex; align-items:center; gap:8px; color:var(--ink); }
 .fx-card-sub{ font-size:.76rem; color:var(--muted); margin:0 0 14px; line-height:1.5; }
 .fx-card-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
 
-/* Buttons */
 .fx-btn{ display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:8px 14px; border-radius:4px; font-size:.76rem; font-weight:600; font-family:var(--fx-sans); letter-spacing:.05em; text-transform:uppercase; border:1px solid transparent; white-space:nowrap; transition:all .15s ease; }
 .fx-btn:disabled{ opacity:.55; cursor:not-allowed; }
 .fx-btn-primary{ background:var(--maroon); color:var(--bone); border-color:var(--maroon); }
@@ -99,7 +93,6 @@ const FX_CSS = `
 .fx-icon-btn:hover:not(:disabled){ background:rgba(176,58,46,.08); color:var(--red); }
 .fx-icon-btn:disabled{ opacity:.4; cursor:not-allowed; }
 
-/* Forms */
 .fx-field label{ display:block; font-size:.62rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--brass); margin-bottom:5px; }
 .fx-input{ width:100%; padding:8px 10px; border:none; border-bottom:1px dashed var(--line-strong); border-radius:0; background:transparent; font-size:.85rem; color:var(--ink); transition:border-color .15s; }
 .fx-input::placeholder{ color:#b9b4aa; }
@@ -108,7 +101,6 @@ const FX_CSS = `
 .fx-form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px 18px; }
 .fx-form-grid .fx-full{ grid-column:1/-1; }
 
-/* Table (charges list + payments list) */
 .fx-table{ width:100%; border-collapse:collapse; font-size:.85rem; }
 .fx-table thead th{ text-align:left; font-family:var(--fx-mono); font-size:.6rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); padding:8px 10px; background:var(--bone); border-bottom:1.5px solid var(--ink); white-space:nowrap; }
 .fx-table thead th.num, .fx-table thead th.amt{ text-align:right; }
@@ -120,7 +112,6 @@ const FX_CSS = `
 .fx-table .item-sub{ display:block; font-size:.73rem; color:var(--muted); font-weight:400; margin-top:1px; }
 .fx-empty{ text-align:center; padding:36px 16px; color:var(--muted); font-size:.85rem; }
 
-/* Money pill for payment methods */
 .fx-pill{ display:inline-block; font-family:var(--fx-mono); font-size:.64rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:2px 8px; border-radius:3px; white-space:nowrap; }
 .fx-pill-cash{ background: rgba(169,143,110,.12); color:var(--brass); }
 .fx-pill-mpesa{ background: rgba(46,125,107,.1); color:var(--verdigris); }
@@ -128,16 +119,17 @@ const FX_CSS = `
 .fx-pill-bank{ background: rgba(42,54,112,.08); color:var(--pen); }
 .fx-pill-insurance{ background: rgba(176,58,46,.08); color:var(--red); }
 
-/* Charge picker (from previous build) */
 .fx-picker{ border:1px solid var(--line); border-radius:6px; overflow:hidden; margin-bottom:16px; background:var(--white); }
 .fx-pick{ display:grid; grid-template-columns:22px 1fr auto; align-items:flex-start; gap:14px; padding:14px 16px; border-bottom:1px solid var(--line); transition:background .15s; }
 .fx-pick:last-child{ border-bottom:none; }
 .fx-pick.on{ background: rgba(46,125,107,.04); }
 .fx-pick.waived{ background: rgba(168,162,158,.06); }
+.fx-pick.added{ background: rgba(21,23,26,.04); opacity:.7; }
 .fx-pick-check{ appearance:none; -webkit-appearance:none; width:20px; height:20px; margin-top:2px; border:1.5px solid var(--ink); border-radius:3px; background:var(--white); cursor:pointer; position:relative; flex:none; }
 .fx-pick-check:hover{ border-color:var(--verdigris); }
 .fx-pick-check:checked{ background:var(--verdigris); border-color:var(--verdigris); }
 .fx-pick-check:checked::after{ content:''; position:absolute; left:6px; top:2px; width:5px; height:10px; border:solid var(--bone); border-width:0 2.5px 2.5px 0; transform:rotate(45deg); }
+.fx-pick-check:disabled{ cursor:not-allowed; opacity:.4; }
 .fx-pick-body{ min-width:0; }
 .fx-pick-title{ font-weight:700; font-size:.9rem; color:var(--ink); display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
 .fx-pick-desc{ font-size:.75rem; color:var(--muted); margin-top:2px; line-height:1.45; }
@@ -145,9 +137,11 @@ const FX_CSS = `
 .fx-pick.waived .fx-pick-amt{ color:var(--gray); }
 .fx-pick.waived .fx-pick-amt s{ color:var(--gray); }
 .fx-pick.off .fx-pick-amt{ color:var(--gray); }
+.fx-pick.added .fx-pick-amt{ color:var(--muted); font-style:italic; font-weight:600; }
 .fx-free{ color:var(--verdigris); font-weight:700; font-size:.7rem; margin-left:6px; }
 .fx-qty-chip{ font-family:var(--fx-mono); font-size:.66rem; color:var(--pen); background:rgba(42,54,112,.06); padding:1px 6px; border-radius:3px; font-weight:700; }
 .fx-waived-chip{ font-size:.64rem; font-weight:700; color:var(--gray); letter-spacing:.08em; text-transform:uppercase; margin-left:4px; }
+.fx-added-chip{ font-size:.6rem; font-weight:700; color:var(--white); background:var(--verdigris); letter-spacing:.08em; text-transform:uppercase; padding:1px 6px; border-radius:3px; margin-left:4px; }
 
 .fx-tier-block{ margin-top:10px; padding:10px 12px; background:var(--bone); border-radius:5px; border:1px solid var(--line); }
 .fx-tier-label{ font-family:var(--fx-mono); font-size:.6rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--brass); margin-bottom:8px; }
@@ -183,14 +177,12 @@ const FX_CSS = `
 
 .fx-note{ margin-top:16px; padding:12px 14px; background:var(--bone); border-left:3px solid var(--brass); font-size:.75rem; color:var(--muted); line-height:1.6; }
 
-/* Stats row (charges tab) */
 .fx-stats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin-bottom:18px; }
 .fx-stat{ padding:14px 16px; border:1px solid var(--line); border-radius:6px; background:var(--white); }
 .fx-stat-label{ font-family:var(--fx-mono); font-size:.6rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
 .fx-stat-val{ font-family:var(--fx-mono); font-size:1.35rem; font-weight:700; margin-top:4px; color:var(--ink); }
 .fx-stat-sub{ font-size:.72rem; color:var(--muted); margin-top:2px; }
 
-/* Statement / receipt paper */
 .fx-statement-wrap{ max-width:900px; margin:0 auto; }
 .fx-statement{ background:var(--white); position:relative; overflow:hidden; box-shadow:0 2px 18px rgba(21,23,26,.08); border:1px solid var(--line); }
 .fx-watermark{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) rotate(-35deg); font-family:Georgia, 'Times New Roman', serif; font-weight:800; font-size:clamp(2.4rem,8vw,6rem); letter-spacing:.2em; text-transform:uppercase; white-space:nowrap; color:rgba(21,23,26,.022); pointer-events:none; z-index:0; }
@@ -223,7 +215,6 @@ const FX_CSS = `
 .fx-mem-name{ font-family:var(--fx-serif); font-size:1.75rem; font-weight:500; color:var(--ink); }
 .fx-mem-dates{ font-family:var(--fx-serif); font-style:italic; font-size:1rem; color:var(--muted); margin-top:2px; }
 
-/* Receipt summary rows */
 .fx-summary{ margin-left:auto; width:min(340px,100%); margin-top:18px; }
 .fx-summary-row{ display:flex; justify-content:space-between; padding:7px 0; font-size:.85rem; border-bottom:1px solid var(--line); }
 .fx-summary-row:last-child{ border-bottom:none; }
@@ -234,7 +225,6 @@ const FX_CSS = `
 .fx-summary-row.balance{ border-top:1px solid var(--line); margin-top:4px; padding-top:10px; font-weight:700; }
 .fx-summary-row.balance .val{ color:var(--maroon); }
 
-/* Paid seal */
 .fx-paid-seal{ width:96px; height:96px; border:2px solid var(--verdigris); border-radius:50%; color:var(--verdigris); display:flex; align-items:center; justify-content:center; transform:rotate(-14deg); opacity:.85; flex:none; position:relative; margin-left:20px; }
 .fx-paid-seal::before{ content:''; position:absolute; inset:5px; border:1px solid var(--verdigris); border-radius:50%; }
 .fx-paid-seal-text{ font-family:var(--fx-sans); font-size:1.2rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
@@ -249,7 +239,6 @@ const FX_CSS = `
 .fx-stmt-quote{ font-family:var(--fx-serif); font-style:italic; font-size:1rem; color:var(--brass); margin-bottom:6px; }
 .fx-stmt-note{ font-family:var(--fx-mono); font-size:.6rem; color:var(--muted); letter-spacing:.16em; text-transform:uppercase; }
 
-/* Drawer */
 .fx-drawer{ position:fixed; inset:0; z-index:1000; display:flex; justify-content:flex-end; background:rgba(21,23,26,.45); animation:fxFade .2s ease; }
 .fx-drawer-panel{ width:min(440px,100%); height:100%; display:flex; flex-direction:column; background:var(--white); box-shadow:-12px 0 32px rgba(21,23,26,.18); animation:fxDrawerIn .25s cubic-bezier(.22,.7,.3,1); }
 @keyframes fxDrawerIn{ from{ transform:translateX(100%); } to{ transform:translateX(0); } }
@@ -261,7 +250,6 @@ const FX_CSS = `
 .fx-grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
 .fx-drawer-foot{ display:flex; justify-content:flex-end; gap:8px; padding:14px 22px calc(14px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); background:var(--bone); }
 
-/* Responsive */
 @media (max-width:880px){
   .fx-branches{ grid-template-columns:1fr; }
   .fx-branch + .fx-branch{ border-left:none; border-top:1px solid var(--line); }
@@ -319,13 +307,15 @@ const pillClass = (m) => {
 };
 
 // ── Charge catalogue ───────────────────────────────────────────────────────
+// defaultOn is now false for ALL items — nothing gets auto-added.
+// The user must explicitly tick what applies to this case.
 const CHARGE_CATALOGUE = [
-  { id: 'embalming', title: 'Embalming', desc: 'Preservation and preparation of the body', type: 'fixed', amount: 8000, defaultOn: true, charge_type: 'Embalming' },
-  { id: 'storage', title: 'Daily Storage', desc: 'Cold-room storage, billed per day held', type: 'daily', amount: 2000, defaultOn: true, charge_type: 'Daily Storage' },
-  { id: 'prep', title: 'Body Preparation & Dressing', desc: 'Washing, grooming and dressing for viewing', type: 'fixed', amount: 2500, defaultOn: true, charge_type: 'Body Preparation & Dressing' },
-  { id: 'facility', title: 'Facility Fee', desc: 'Use of mortuary facilities and equipment', type: 'fixed', amount: 5000, defaultOn: true, charge_type: 'Facility Fee' },
+  { id: 'embalming', title: 'Embalming', desc: 'Preservation and preparation of the body', type: 'fixed', amount: 8000, charge_type: 'Embalming' },
+  { id: 'storage', title: 'Daily Storage', desc: 'Cold-room storage, billed per day held', type: 'daily', amount: 2000, charge_type: 'Daily Storage' },
+  { id: 'prep', title: 'Body Preparation & Dressing', desc: 'Washing, grooming and dressing for viewing', type: 'fixed', amount: 2500, charge_type: 'Body Preparation & Dressing' },
+  { id: 'facility', title: 'Facility Fee', desc: 'Use of mortuary facilities and equipment', type: 'fixed', amount: 5000, charge_type: 'Facility Fee' },
   {
-    id: 'reconstruction', title: 'Body Reconstruction', desc: 'Restoration after trauma / damage — pick a severity tier', type: 'tiered', defaultOn: false, charge_type: 'Body Reconstruction',
+    id: 'reconstruction', title: 'Body Reconstruction', desc: 'Restoration after trauma / damage — pick a severity tier', type: 'tiered', charge_type: 'Body Reconstruction',
     tiers: [
       { id: 'minor', label: 'Minor', amount: 8000, note: 'Small abrasions, minimal shaping' },
       { id: 'moderate', label: 'Moderate', amount: 18000, note: 'Facial / limb repair, some suturing' },
@@ -333,12 +323,12 @@ const CHARGE_CATALOGUE = [
       { id: 'custom', label: 'Custom', amount: 0, note: 'Enter the quoted amount' },
     ]
   },
-  { id: 'airlift', title: 'Hearse Transfer to JKIA', desc: 'Airlift transport from facility to Jomo Kenyatta Intl.', type: 'fixed', amount: 15000, defaultOn: false, charge_type: 'Hearse Transfer to JKIA' },
-  { id: 'coffin_wrap', title: 'Coffin Wrapping & Packaging', desc: 'Protective wrapping and packaging for transit', type: 'fixed', amount: 15000, defaultOn: false, charge_type: 'Coffin Wrapping & Packaging' },
-  { id: 'embalm_cert', title: 'Embalming Certificate', desc: 'Official certificate for travel / repatriation', type: 'fixed', amount: 10000, defaultOn: true, waivedBy: 'coffin_bundle', charge_type: 'Embalming Certificate' },
-  { id: 'booking', title: 'Booking & Check-in', desc: 'Airline booking and cargo check-in coordination', type: 'fixed', amount: 10000, defaultOn: true, waivedBy: 'coffin_bundle', charge_type: 'Booking & Check-in' },
-  { id: 'seal_cert', title: 'Seal Certificate', desc: 'Tamper-proof seal and certificate', type: 'fixed', amount: 5000, defaultOn: true, waivedBy: 'coffin_bundle', charge_type: 'Seal Certificate' },
-  { id: 'custom', title: 'Custom Charge', desc: 'Any other charge — describe and enter the amount', type: 'custom', defaultOn: false, charge_type: 'Other' },
+  { id: 'airlift', title: 'Hearse Transfer to JKIA', desc: 'Airlift transport from facility to Jomo Kenyatta Intl.', type: 'fixed', amount: 15000, charge_type: 'Hearse Transfer to JKIA' },
+  { id: 'coffin_wrap', title: 'Coffin Wrapping & Packaging', desc: 'Protective wrapping and packaging for transit', type: 'fixed', amount: 15000, charge_type: 'Coffin Wrapping & Packaging' },
+  { id: 'embalm_cert', title: 'Embalming Certificate', desc: 'Official certificate for travel / repatriation', type: 'fixed', amount: 10000, waivedBy: 'coffin_bundle', charge_type: 'Embalming Certificate' },
+  { id: 'booking', title: 'Booking & Check-in', desc: 'Airline booking and cargo check-in coordination', type: 'fixed', amount: 10000, waivedBy: 'coffin_bundle', charge_type: 'Booking & Check-in' },
+  { id: 'seal_cert', title: 'Seal Certificate', desc: 'Tamper-proof seal and certificate', type: 'fixed', amount: 5000, waivedBy: 'coffin_bundle', charge_type: 'Seal Certificate' },
+  { id: 'custom', title: 'Custom Charge', desc: 'Any other charge — describe and enter the amount', type: 'custom', charge_type: 'Other' },
 ];
 
 const tierAmount = (c, tierId, customAmt) => {
@@ -424,19 +414,21 @@ const StatementDetailsPane = ({ receipt, setField }) => (
 const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, deceasedId, deceased, onDataChanged, branchSlug, refreshVersion = 0 }) => {
   const [payments, setPayments] = useState(initialPayments || []);
   const [chargeList, setChargeList] = useState(initialCharges || []);
-  const [tab, setTab] = useState('charges');   // ← default to charges first
+  const [tab, setTab] = useState('charges');
   const [viewCur, setViewCur] = useState('KES');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [deletingChargeId, setDeletingChargeId] = useState(null);
   const [isSubmittingCharges, setIsSubmittingCharges] = useState(false);
 
-  // Charge picker
-  const [selected, setSelected] = useState(() => {
-    const s = {};
-    CHARGE_CATALOGUE.forEach((c) => { s[c.id] = !!c.defaultOn; });
-    return s;
-  });
+  // ── Picker state ───────────────────────────────────────────────────────
+  // The picker is a ONE-SHOT "add these" form. Nothing is ticked by default.
+  // After a successful submit, the ticked rows are cleared and the catalogue
+  // rows that were added are tracked in `addedIds` (so the user can still see
+  // them greyed with an "Added" chip and cannot re-add them accidentally —
+  // though they CAN use the Custom Charge row any number of times).
+  const [selected, setSelected] = useState({});          // { [id]: true }
+  const [addedIds, setAddedIds] = useState({});          // { [id]: true } — already on the bill
   const [daysHeld, setDaysHeld] = useState(5);
   const [tierChoice, setTierChoice] = useState('moderate');
   const [reconstructionCustom, setReconstructionCustom] = useState(0);
@@ -449,7 +441,6 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
     reference: '', amount: '', description: '', insurance_provider: '',
   });
 
-  // Branding
   const { tenantData } = useTenantStore();
   const brand = useMemo(() => resolveTenantBranding(tenantData), [tenantData]);
   const brandEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(brand.displayEmail || '') ? brand.displayEmail : '';
@@ -537,11 +528,21 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
     finally { setIsRecording(false); }
   };
 
+  // ── Submit ONLY the ticked, not-yet-added rows ─────────────────────────
   const handleSubmitCharges = async (e) => {
     e.preventDefault();
     if (!deceasedId) { showToast.error('Deceased ID missing'); return; }
+
+    // Build the lines from the ticked catalogue rows only.
+    // Skip rows already on the bill (addedIds) so re-submits never duplicate.
+    // The "custom" row is the ONE exception — it can be added any number of
+    // times because each occurrence is a distinct custom charge.
     const lines = CHARGE_CATALOGUE
-      .filter((c) => selected[c.id])
+      .filter((c) => {
+        if (!selected[c.id]) return false;
+        if (c.type === 'custom') return true;        // allow repeats
+        return !addedIds[c.id];                      // skip already-added
+      })
       .map((c) => {
         const waived = !!(c.waivedBy && waiveBundle);
         if (waived) return null;
@@ -555,6 +556,7 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
         }
         if (c.id === 'custom') description = customDesc || 'Custom charge';
         return {
+          _catalogueId: c.id,
           charge_type: c.charge_type || c.title,
           amount,
           currency: viewCur,
@@ -564,24 +566,53 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
       })
       .filter(Boolean);
 
-    if (lines.length === 0) { showToast.error('Tick at least one charge with a non-zero amount'); return; }
+    if (lines.length === 0) {
+      showToast.error('Tick at least one charge with a non-zero amount');
+      return;
+    }
 
     setIsSubmittingCharges(true);
     try {
       const created = [];
+      const succeededIds = [];
       for (const line of lines) {
-        const res = await axios.post(`${env.FULL_API_URL}/charges`, { deceased_id: deceasedId, ...line }, { headers: headers() });
-        if (res.data?.success && res.data.data) created.push(res.data.data);
+        const { _catalogueId, ...payload } = line;
+        const res = await axios.post(
+          `${env.FULL_API_URL}/charges`,
+          { deceased_id: deceasedId, ...payload },
+          { headers: headers() },
+        );
+        if (res.data?.success && res.data.data) {
+          created.push(res.data.data);
+          if (_catalogueId !== 'custom') succeededIds.push(_catalogueId);
+        }
       }
       if (created.length) {
         setChargeList((prev) => [...created, ...prev]);
+        // Mark succeeded IDs as "already on the bill" and clear their tick.
+        setAddedIds((prev) => {
+          const next = { ...prev };
+          succeededIds.forEach((id) => { next[id] = true; });
+          return next;
+        });
+        setSelected((prev) => {
+          const next = { ...prev };
+          succeededIds.forEach((id) => { delete next[id]; });
+          delete next.custom;   // reset custom row so it's ready for the next one
+          return next;
+        });
+        // Reset custom-charge inputs so the next custom can be typed fresh
+        setCustomAmount(0);
+        setCustomDesc('');
         showToast.success(`${created.length} charge${created.length === 1 ? '' : 's'} added to bill`);
         if (onDataChanged) onDataChanged();
       }
     } catch (error) {
       console.error('Error adding charges:', error);
       showToast.error(error.response?.data?.message || error.message || 'Failed to add charges');
-    } finally { setIsSubmittingCharges(false); }
+    } finally {
+      setIsSubmittingCharges(false);
+    }
   };
 
   const handleDeleteCharge = async (chargeId) => {
@@ -628,15 +659,21 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
     org.country ? { Icon: IcoGlobe, text: org.country } : null,
   ].filter(Boolean);
 
-  const pickerSubtotal = CHARGE_CATALOGUE
-    .filter((c) => selected[c.id] && !(c.waivedBy && waiveBundle))
+  // Picker subtotal counts ONLY ticked, not-yet-added rows (with custom
+  // exceptions allowed since custom may repeat).
+  const pickerLines = CHARGE_CATALOGUE.filter((c) => {
+    if (!selected[c.id]) return false;
+    if (c.type === 'custom') return true;
+    return !addedIds[c.id];
+  });
+  const pickerSubtotal = pickerLines
+    .filter((c) => !(c.waivedBy && waiveBundle))
     .reduce((s, c) => s + lineAmount(c, daysHeld, tierChoice, reconstructionCustom, customAmount), 0);
-  const pickerWaived = CHARGE_CATALOGUE
-    .filter((c) => selected[c.id] && c.waivedBy && waiveBundle)
+  const pickerWaived = pickerLines
+    .filter((c) => c.waivedBy && waiveBundle)
     .reduce((s, c) => s + lineAmount(c, daysHeld, tierChoice, reconstructionCustom, customAmount), 0);
-  const pickerCount = CHARGE_CATALOGUE.filter((c) => selected[c.id]).length;
+  const pickerCount = pickerLines.length;
 
-  // Focus trap for drawer
   const payPanelRef = useRef(null);
   useEffect(() => {
     if (!showPaymentModal) return undefined;
@@ -734,21 +771,33 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
 
             <div className="fx-picker">
               {CHARGE_CATALOGUE.map((c) => {
+                const isAdded = !!addedIds[c.id] && c.type !== 'custom';
                 const on = !!selected[c.id];
                 const waived = !!(c.waivedBy && waiveBundle);
                 const amount = lineAmount(c, daysHeld, tierChoice, reconstructionCustom, customAmount);
                 return (
-                  <div key={c.id} className={'fx-pick' + (on ? ' on' : ' off') + (waived ? ' waived' : '')}>
-                    <input type="checkbox" className="fx-pick-check" checked={on} onChange={() => setSelected((p) => ({ ...p, [c.id]: !p[c.id] }))} aria-label={`Toggle ${c.title}`} />
+                  <div key={c.id} className={'fx-pick' + (on ? ' on' : ' off') + (waived ? ' waived' : '') + (isAdded ? ' added' : '')}>
+                    <input
+                      type="checkbox"
+                      className="fx-pick-check"
+                      checked={on}
+                      disabled={isAdded}
+                      onChange={() => {
+                        if (isAdded) return;
+                        setSelected((p) => ({ ...p, [c.id]: !p[c.id] }));
+                      }}
+                      aria-label={`Toggle ${c.title}`}
+                    />
                     <div className="fx-pick-body">
                       <div className="fx-pick-title">
                         {c.title}
-                        {c.type === 'daily' && on && <span className="fx-qty-chip">× {daysHeld} day{daysHeld > 1 ? 's' : ''}</span>}
-                        {waived && <span className="fx-waived-chip">— waived</span>}
+                        {c.type === 'daily' && on && !isAdded && <span className="fx-qty-chip">× {daysHeld} day{daysHeld > 1 ? 's' : ''}</span>}
+                        {waived && !isAdded && <span className="fx-waived-chip">— waived</span>}
+                        {isAdded && <span className="fx-added-chip">added</span>}
                       </div>
                       <div className="fx-pick-desc">{c.desc}</div>
 
-                      {c.type === 'tiered' && on && (
+                      {c.type === 'tiered' && on && !isAdded && (
                         <div className="fx-tier-block">
                           <div className="fx-tier-label">Severity</div>
                           <div className="fx-tier-row">
@@ -790,11 +839,15 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
                       )}
                     </div>
                     <div className="fx-pick-amt">
-                      {!on ? '—' : waived
-                        ? <><s>{fmt0(amount, viewCur)}</s><span className="fx-free">FREE</span></>
-                        : (c.type === 'custom' || (c.type === 'tiered' && tierChoice === 'custom'))
-                          ? (amount > 0 ? fmt0(amount, viewCur) : 'Enter amount')
-                          : fmt0(amount, viewCur)}
+                      {isAdded
+                        ? 'On bill'
+                        : !on
+                          ? '—'
+                          : waived
+                            ? <><s>{fmt0(amount, viewCur)}</s><span className="fx-free">FREE</span></>
+                            : (c.type === 'custom' || (c.type === 'tiered' && tierChoice === 'custom'))
+                              ? (amount > 0 ? fmt0(amount, viewCur) : 'Enter amount')
+                              : fmt0(amount, viewCur)}
                     </div>
                   </div>
                 );
@@ -809,13 +862,15 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
             </div>
 
             <div className="fx-note">
-              <strong>Notes.</strong> Every line is optional. Only ticked charges are written to the bill on submit.
-              Where the coffin was purchased from us, tick the banner above to waive the embalming certificate,
+              <strong>Notes.</strong> Tick only what applies to this case — nothing is added by default.
+              Once a charge is added to the bill it turns grey with an “Added” chip and cannot be ticked again.
+              The <em>Custom Charge</em> row can be used as many times as needed for one-off items.
+              If the coffin was purchased from us, tick the banner above to waive the embalming certificate,
               booking / check-in and seal certificate.
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-              <button type="submit" className="fx-btn fx-btn-primary" disabled={isSubmittingCharges}>
+              <button type="submit" className="fx-btn fx-btn-primary" disabled={isSubmittingCharges || pickerCount === 0}>
                 <IcoPlus w={13} /> {isSubmittingCharges ? 'Adding…' : `Add ${pickerCount} charge${pickerCount === 1 ? '' : 's'} to bill`}
               </button>
             </div>
@@ -879,7 +934,6 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
           <div className="fx-statement">
             <div className="fx-watermark">Official Record</div>
             <div className="fx-stmt-content">
-              {/* Masthead */}
               <header className="fx-masthead">
                 <div className="fx-mast-main">
                   <div className="fx-mast-left">
@@ -902,7 +956,6 @@ const FinancialsTab = ({ charges: initialCharges, payments: initialPayments, dec
                 </div>
               </header>
 
-              {/* Branch strip */}
               <div className="fx-branches">
                 <div className="fx-branch"><b>MBAGATHI WAY (HEAD OFFICE)</b>Opp. Forces Memorial Hospital<br />Tel: (020) 2346928 / 9</div>
                 <div className="fx-branch"><b>CHAPEL OF REST · THIKA ROAD</b>Opp. Shell Kabati<br />Tel: 0726 094 847</div>
