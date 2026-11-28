@@ -496,6 +496,8 @@ export default function BookNewHearseModal({
   });
   const [bookingType, setBookingType] = useState('confirmed'); // 'confirmed' | 'pencil'
   const [hearseSearch, setHearseSearch] = useState('');        // filter the hearse list
+  // Pencil hold vs confirmed booking type — pencil shows as "Pencil Hold" (faded),
+  // confirmed shows as "Booked" (normal). Used when creating new bookings or editing.
   const [dates, setDates] = useState([]);          // confirmed selection — LIVE, no popover needed
   const [anchor, setAnchor] = useState(null);      // in-progress range start (START → END picking)
   const [pkM, setPkM] = useState(() => new Date().getMonth());

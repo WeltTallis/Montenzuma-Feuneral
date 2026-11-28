@@ -858,7 +858,7 @@ const FLX_RESPONSIVE = `
 .fb-sample-media img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
   /* Slight lift on hover so a client browsing options can tell the tiles
      apart; transitions only on capable pointers. */

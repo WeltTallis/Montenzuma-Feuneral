@@ -331,7 +331,7 @@ const FbSymbols = () => (
 
 /* helpers */
 
-const BLANK = { time: '', dep: '', funeralDate: '', ribbon: '', colors: '', anyColor: false, size: '', quantities: {}, flowers: '', notes: '', name: '', phone: '' }
+const BLANK = { time: '', dep: '', funeralDate: '', ribbon: '', colors: '', anyColor: false, size: '', quantities: {}, flowers: '', notes: '', name: '', phone: '', coffin_type: '' }
 const SIZES = [
   ['Small', 'Thoughtful tribute'],
   ['Medium', 'Classic tribute'],
@@ -601,6 +601,7 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
         accent_color: preferredColors.slice(1).join(', ') || null,
         ribbon_message: form.ribbon.trim() || null,
         size: form.size || null,
+        coffin_type: form.coffin_type || null,
         special_instructions: form.notes.trim() || null,
         notes: notesParts || null,
         booked_by: form.name.trim() || null,
@@ -794,6 +795,14 @@ export default function FlowerSnowBookingForm({ open, onBooked, onClose, selecte
                           <small>{sub}</small>
                         </button>
                       ))}
+                    </div>
+                  </div>
+
+                  <div className="field">
+                    <label htmlFor="fCoffinType">Coffin type <span className="opt">(optional)</span></label>
+                    <div className={'inwrap' + (form.coffin_type ? ' has-val' : '')}>
+                      <input type="text" id="fCoffinType" placeholder="e.g. Standard, half couch, full couch" {...set('coffin_type')} />
+                      <span className="tickbadge"><svg><use href="#tick" /></svg></span>
                     </div>
                   </div>
 
