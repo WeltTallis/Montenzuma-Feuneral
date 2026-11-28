@@ -69,7 +69,17 @@ const FillField = ({ id, value, onChange, width, placeholder }) => {
         autoComplete="off"
         spellCheck="false"
       />
-      <svg className="tick" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        className="tick"
+        width="13"
+        height="13"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <polyline points="20 6 9 17 4 12" />
       </svg>
     </span>
@@ -95,7 +105,7 @@ const EmbalmingConsentForm = () => {
     f_mname: '',
     f_mid: '',
   });
-  const [mastDate, setMastDate] = useState('');
+  const [mastDate, setMastDate] = useState('—');
   const [accept, setAccept] = useState(false);
   const [msg, setMsg] = useState({ kind: '', html: '' });
   const [condolence, setCondolence] = useState('Our sincere condolences during this difficult time.');
@@ -111,7 +121,20 @@ const EmbalmingConsentForm = () => {
   const searchTimerRef = useRef(null);
   const lastSearchedRef = useRef('');
 
-  const FIELDS = ['f_date', 'f_kname', 'f_rel', 'f_branch', 'f_deceased', 'f_recv', 'f_loc', 'f_smark', 'f_sname', 'f_sid', 'f_mname', 'f_mid'];
+  const FIELDS = [
+    'f_date',
+    'f_kname',
+    'f_rel',
+    'f_branch',
+    'f_deceased',
+    'f_recv',
+    'f_loc',
+    'f_smark',
+    'f_sname',
+    'f_sid',
+    'f_mname',
+    'f_mid',
+  ];
 
   const QUOTES = [
     'Our sincere condolences during this difficult time.',
@@ -132,16 +155,29 @@ const EmbalmingConsentForm = () => {
     return () => clearInterval(interval);
   }, []);
 
-  /* ─── Generated timestamp ───────────────────────────────────────── */
+  /* ─── Generated timestamp & initial barcode ─────────────────────── */
   useEffect(() => {
     const now = new Date();
     setGenLine(
       'Montezuma Monalisa Funeral Home Ltd — Generated ' +
         now.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) +
         ' at ' +
-        now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
+        now.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+        })
     );
     setYear(now.getFullYear());
+    drawBarcode(barcodeCanvasRef.current, '');
+  }, []);
+
+  /* ─── Cleanup debounce timer on unmount ─────────────────────────── */
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
   }, []);
 
   /* ─── Barcode render ────────────────────────────────────────────── */
@@ -191,74 +227,118 @@ const EmbalmingConsentForm = () => {
 
   const clearDetails = () => {
     const empty = {};
-    FIELDS.forEach((id) => (empty[id] = ''));
+    FIELDS.forEach((id) => {
+      empty[id] = '';
+    });
     setFields(empty);
     setMastDate('—');
   };
 
   /* ─── Search flow (debounced, real database lookup) ─────────────── */
-  const doSearch = useCallback(async () => {
-    const v = String(adm || '').trim().toUpperCase();
-    renderBarcode(v);
-    if (!v) {
-      setFound(false);
-      setIsSearching(false);
-      lastSearchedRef.current = '';
-      setStatus({ kind: '', text: '' });
-      clearDetails();
-      return;
-    }
-    setIsSearching(true);
-    setFound(false);
-    setStatus({
-      kind: 'searching',
-      text: '<span class="spinner"></span> Searching database...',
-    });
+  const doSearch = useCallback(
+    async (overrideAdm) => {
+      const target = overrideAdm !== undefined ? overrideAdm : adm;
+      const v = String(target || '').trim().toUpperCase();
+      renderBarcode(v);
 
-    try {
-      const tenantSlug = getTenantSlug();
-      const token = getAuthToken();
-      const response = await fetchWithCredentials(
-        env.FULL_API_URL + ENDPOINTS.BODYCHECKOUT.DECEASED_BY_ADMISSION(encodeURIComponent(v)),
-        {
-          headers: {
-            'x-tenant-slug': tenantSlug,
-            Authorization: 'Bearer ' + token,
-          },
-        }
-      );
-
-      if (String(adm || '').trim().toUpperCase() !== v) return;
-
-      const result = await response.json();
-      if (!response.ok || !result.success || !result.data) {
-        throw new Error(result.message || 'Record not found');
+      if (!v) {
+        setFound(false);
+        setIsSearching(false);
+        lastSearchedRef.current = '';
+        setStatus({ kind: '', text: '' });
+        clearDetails();
+        return;
       }
 
-      const rec = result.data;
-      setFound(true);
-      setIsSearching(false);
-      lastSearchedRef.current = v;
-      setStatus({
-        kind: 'found',
-        text: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Found',
-      });
-      fillRecordFromApi(rec);
-    } catch (error) {
-      if (String(adm || '').trim().toUpperCase() !== v) return;
+      setIsSearching(true);
       setFound(false);
-      setIsSearching(false);
       setStatus({
-        kind: 'notfound',
-        text: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Not Found',
+        kind: 'searching',
+        text: '<span class="spinner"></span> Searching database...',
       });
-      clearDetails();
+
+      try {
+        const tenantSlug = getTenantSlug();
+        const token = getAuthToken();
+        const response = await fetchWithCredentials(
+          env.FULL_API_URL + ENDPOINTS.BODYCHECKOUT.DECEASED_BY_ADMISSION(encodeURIComponent(v)),
+          {
+            headers: {
+              'x-tenant-slug': tenantSlug,
+              Authorization: 'Bearer ' + token,
+            },
+          }
+        );
+
+        const result = await response.json();
+        if (!response.ok || !result.success || !result.data) {
+          throw new Error(result.message || 'Record not found');
+        }
+
+        const rec = result.data;
+        setFound(true);
+        setIsSearching(false);
+        lastSearchedRef.current = v;
+        setStatus({
+          kind: 'found',
+          text: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Found',
+        });
+        fillRecordFromApi(rec);
+      } catch (error) {
+        setFound(false);
+        setIsSearching(false);
+        setStatus({
+          kind: 'notfound',
+          text: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Not Found',
+        });
+        clearDetails();
+      }
+    },
+    [adm, renderBarcode]
+  );
+
+  /* ─── Input & Action Handlers ───────────────────────────────────── */
+  const handleAdmChange = (e) => {
+    const val = e.target.value;
+    setAdm(val);
+    setMsg({ kind: '', html: '' });
+
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      doSearch(val);
+    }, 450);
+  };
+
+  const handleAdmKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+      doSearch(adm);
     }
-  }, [adm, renderBarcode]);
+  };
+
+  const handleFieldChange = (fieldKey, value) => {
+    setFields((prev) => ({
+      ...prev,
+      [fieldKey]: value,
+    }));
+  };
+
+  const handleReset = () => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    setAdm('');
+    setFound(false);
+    setIsSearching(false);
+    setStatus({ kind: '', text: '' });
+    setAccept(false);
+    setSignatureData(null);
+    setShowSignature(false);
+    setMsg({ kind: '', html: '' });
+    clearDetails();
+    renderBarcode('');
+  };
+
   const handleSubmit = () => {
-    // Embalming consent is optional and independent of registration.
-    // Only the admission number is needed to identify the record.
-    // The signature is what completes the embalming consent.
     if (!adm.trim()) {
       setMsg({
         kind: 'error',
@@ -266,26 +346,62 @@ const EmbalmingConsentForm = () => {
       });
       return;
     }
+
+    if (signatureData && !accept) {
+      setMsg({
+        kind: 'error',
+        html: '<b>Declaration required.</b> Please check the consent declaration box before submitting a signed form.',
+      });
+      return;
+    }
+
     const rec = fields.f_deceased.trim() || '\u2014';
     const hasSignature = !!signatureData;
     setMsg({
       kind: 'ok',
-      html:
-        hasSignature
-          ? '<b>Embalming consent signed.</b> The embalming consent record for <b>' +
-            rec +
-            '</b> (Admission No. ' +
-            (admNoRef.current?.textContent || adm) +
-            ') is complete and ready to file.'
-          : '<b>Record saved.</b> Admission No. ' +
-            (admNoRef.current?.textContent || adm) +
-            ' — embalming consent is optional. Sign the form when embalming is required.',
+      html: hasSignature
+        ? '<b>Embalming consent signed.</b> The embalming consent record for <b>' +
+          rec +
+          '</b> (Admission No. ' +
+          (admNoRef.current?.textContent || adm) +
+          ') is complete and ready to file.'
+        : '<b>Record saved.</b> Admission No. ' +
+          (admNoRef.current?.textContent || adm) +
+          ' — embalming consent is optional. Sign the form when embalming is required.',
     });
   };
-  /* ─── Initial state: empty — no auto search. User enters adm number manually. ─── */
-  // Removed auto doSearch() on mount so the consent form does not pre-fill
-  // and does not block registration. It is independent: search adm number,
-  // auto-fill details, sign to complete embalming consent only when needed.
+
+  return (
+    <div className="embalming-form-page">
+      <style>{`
+        :root {
+          --white: #FFFFFF;
+          --bone: #FAF8F4;
+          --cream: #EDE9DB;
+          --ink: #15171A;
+          --pen: #1E3A5F;
+          --muted: #5C5F66;
+          --gray: #78716C;
+          --line: #E5E0D8;
+          --line-strong: #B8B0A4;
+          --brass: #8C6D3F;
+          --verdigris: #2A6F68;
+          --pine: #1A2A27;
+          --pine-light: #273D39;
+          --maroon: #722F37;
+          --maroon-dark: #582229;
+          --green: #16A34A;
+          --red: #B03A2E;
+        }
+
+        .embalming-form-page {
+          background: #F2EFE9;
+          padding: 24px 12px;
+          min-height: 100vh;
+          color: var(--ink);
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
         .mono { font-family: ui-monospace, 'Cascadia Mono', Consolas, 'Courier New', monospace; }
         .sheet {
           width: 100%; max-width: 1080px; margin: 0 auto; background: var(--white);
@@ -367,6 +483,14 @@ const EmbalmingConsentForm = () => {
         .accept input:checked::after { content: ''; position: absolute; left: 7px; top: 3px; width: 5px; height: 10px; border: solid var(--bone); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg); }
         .accept-text { font-size: 0.88rem; font-weight: 600; line-height: 1.5; }
         .accept-small { display: block; margin-top: 0.15rem; font-size: 0.75rem; font-weight: 400; color: var(--gray); }
+        .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 1.5rem; }
+        @media (max-width: 768px) {
+          .sig-grid { grid-template-columns: 1fr; }
+        }
+        .sig-box { background: var(--bone); border: 1px solid var(--line); border-radius: 4px; padding: 1.2rem; }
+        .sig-box-title { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--brass); margin-bottom: 1rem; }
+        .sig-row { margin-bottom: 0.9rem; font-size: 0.9rem; }
+        .sig-preview { max-height: 64px; border-bottom: 1px dashed var(--line-strong); padding-bottom: 4px; margin-top: 6px; }
         .sig { display: inline-block; min-width: 10ch; padding: 0 0.6rem; border-bottom: 1px dashed var(--line-strong); color: var(--pen); font-family: 'Segoe Script', 'Bradley Hand', 'Comic Sans MS', cursive; font-size: 1.25em; line-height: 1.1; transform: rotate(-3deg); }
         .divider { height: 1px; background: var(--line); margin: 1.6rem 0; }
         .msg { display: none; margin-bottom: 1.5rem; padding: 0.8rem 1rem; border-radius: 4px; font-size: 0.82rem; line-height: 1.55; }
@@ -405,7 +529,7 @@ const EmbalmingConsentForm = () => {
         @media print {
           @page { size: A4 portrait; margin: 8mm; }
 
-          html, body {
+          html, body, .embalming-form-page {
             background: #fff !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -449,7 +573,7 @@ const EmbalmingConsentForm = () => {
             <div className="mast-main">
               <div className="mast-left">
                 <h1 className="site-name">Montezuma Monalisa Funeral Home Ltd · Head Office</h1>
-                <p className={`condolence`} id="condolence">{condolence}</p>
+                <p className="condolence" id="condolence">{condolence}</p>
                 <span className="sec-label">Facility</span>
                 <p className="fac-line">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
@@ -495,7 +619,7 @@ const EmbalmingConsentForm = () => {
 
             {/* Section 01 (screen only) */}
             <div className="section no-print">
-              <div className="section-head"><span className="section-num">01</span><h2 className="section-title">Record Search &amp; Auto-fill</h2></div>
+              <div className="section-head"><span className="section-num">01</span><h2 className="section-title">Record Search & Auto-fill</h2></div>
               <label className="label" htmlFor="adm">Admission Number <span className="req">*</span></label>
               <div className="search-wrap">
                 <input
@@ -528,129 +652,201 @@ const EmbalmingConsentForm = () => {
               </div>
 
               <ol className="consent">
-                <li><span className="clause-no">1.</span>DR/MR/MRS/MISS <FillField id="f_kname" value={fields.f_kname} onChange={(v) => handleFieldChange('f_kname', v)} width="17ch" /> being the <FillField id="f_rel" value={fields.f_rel} onChange={(v) => handleFieldChange('f_rel', v)} width="10ch" /> <span className="lbl">(Relationship)</span></li>
-                <li><span className="clause-no">2.</span>have consented and authorized Montezuma Monalisa Funeral Home <FillField id="f_branch" value={fields.f_branch} onChange={(v) => handleFieldChange('f_branch', v)} width="16ch" /> <span className="lbl">(Branch)</span></li>
-                <li><span className="clause-no">3.</span>to Carry out Embalming of <FillField id="f_deceased" value={fields.f_deceased} onChange={(v) => handleFieldChange('f_deceased', v)} width="23ch" /> <span className="lbl">(Deceased)</span></li>
-                <li><span className="clause-no">4.</span>Whose body was received on <FillField id="f_recv" value={fields.f_recv} onChange={(v) => handleFieldChange('f_recv', v)} width="15ch" /> <span className="lbl">(date)</span> From <FillField id="f_loc" value={fields.f_loc} onChange={(v) => handleFieldChange('f_loc', v)} width="13ch" /> <span className="lbl">(Location)</span></li>
+                <li>
+                  <span className="clause-no">1.</span>
+                  DR/MR/MRS/MISS{' '}
+                  <FillField id="f_kname" value={fields.f_kname} onChange={(v) => handleFieldChange('f_kname', v)} width="17ch" />{' '}
+                  being the{' '}
+                  <FillField id="f_rel" value={fields.f_rel} onChange={(v) => handleFieldChange('f_rel', v)} width="10ch" />{' '}
+                  <span className="lbl">(Relationship)</span>
+                </li>
+                <li>
+                  <span className="clause-no">2.</span>
+                  have consented and authorized Montezuma Monalisa Funeral Home{' '}
+                  <FillField id="f_branch" value={fields.f_branch} onChange={(v) => handleFieldChange('f_branch', v)} width="16ch" />{' '}
+                  <span className="lbl">(Branch)</span>
+                </li>
+                <li>
+                  <span className="clause-no">3.</span>
+                  to Carry out Embalming of{' '}
+                  <FillField id="f_deceased" value={fields.f_deceased} onChange={(v) => handleFieldChange('f_deceased', v)} width="23ch" />{' '}
+                  <span className="lbl">(Deceased)</span>
+                </li>
+                <li>
+                  <span className="clause-no">4.</span>
+                  Whose body was received on{' '}
+                  <FillField id="f_recv" value={fields.f_recv} onChange={(v) => handleFieldChange('f_recv', v)} width="15ch" />{' '}
+                  from{' '}
+                  <FillField id="f_loc" value={fields.f_loc} onChange={(v) => handleFieldChange('f_loc', v)} width="20ch" />{' '}
+                  <span className="lbl">(Hospital / Place of Death)</span>
+                </li>
+                <li>
+                  <span className="clause-no">5.</span>
+                  Special Marks / Condition on body:{' '}
+                  <FillField id="f_smark" value={fields.f_smark} onChange={(v) => handleFieldChange('f_smark', v)} width="28ch" />
+                </li>
               </ol>
-            </div>
 
-            {/* Section 03 */}
-            <div className="section">
-              <div className="section-head"><span className="section-num">03</span><h2 className="section-title">Consent Acceptance &amp; Sign-off</h2></div>
-
-              <label className="accept">
-                <input type="checkbox" checked={accept} onChange={(e) => setAccept(e.target.checked)} />
-                <span className="accept-text">I have read and accept this Embalming Consent.
-                  <span className="accept-small">Signing this form makes it part of the official record of the deceased.</span>
+              <label className="accept" htmlFor="acceptConsent">
+                <input
+                  id="acceptConsent"
+                  type="checkbox"
+                  checked={accept}
+                  onChange={(e) => setAccept(e.target.checked)}
+                />
+                <span className="accept-text">
+                  I confirm that I am the lawful next of kin / authorized representative and have read and understood this embalming authorization.
+                  <span className="accept-small">Check to confirm declaration before signing.</span>
                 </span>
               </label>
 
-              <div className="divider"></div>
+              <div className="divider" />
 
-              <ol className="consent">
-                <li>
-                  <span className="clause-no">A.</span>Signed.*{' '}
-                  {signatureData ? (
-                    <img src={signatureData} alt="Signature" style={{ height: 40, verticalAlign: 'middle', borderBottom: '1px dashed var(--line-strong)' }} />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setShowSignature(true)}
-                      className="sig"
-                      style={{ background: 'none', cursor: 'pointer', border: 'none', borderBottom: '1px dashed var(--line-strong)', padding: '0 0.6rem' }}
-                    >
-                      Tap to sign
-                    </button>
-                  )}{' '}
-                  Name: <FillField id="f_sname" value={fields.f_sname} onChange={(v) => handleFieldChange('f_sname', v)} width="18ch" />{' '}
-                  &nbsp;ID: <FillField id="f_sid" value={fields.f_sid} onChange={(v) => handleFieldChange('f_sid', v)} width="10ch" />
-                </li>
-                <li>
-                  <span className="clause-no">B.</span>Mortician / Receptionist (Sign) <span className="sig">Valery</span> Name:{' '}
-                  <FillField id="f_mname" value={fields.f_mname} onChange={(v) => handleFieldChange('f_mname', v)} width="11ch" />{' '}
-                  &nbsp;ID: <FillField id="f_mid" value={fields.f_mid} onChange={(v) => handleFieldChange('f_mid', v)} width="10ch" />
-                </li>
-              </ol>
-            </div>
+              {/* Section 03: Signatures & Verification */}
+              <div className="sig-grid">
+                <div className="sig-box">
+                  <div className="sig-box-title">Next of Kin / Authorized Signatory</div>
+                  <div className="sig-row">
+                    Name:{' '}
+                    <FillField id="f_sname" value={fields.f_sname} onChange={(v) => handleFieldChange('f_sname', v)} width="20ch" />
+                  </div>
+                  <div className="sig-row">
+                    ID / Passport No.:{' '}
+                    <FillField id="f_sid" value={fields.f_sid} onChange={(v) => handleFieldChange('f_sid', v)} width="14ch" />
+                  </div>
+                  <div className="sig-row">
+                    Signature:{' '}
+                    {signatureData ? (
+                      <div>
+                        <img src={signatureData} alt="Next of kin signature" className="sig-preview" />
+                        <button
+                          type="button"
+                          className="no-print"
+                          onClick={() => setShowSignature(true)}
+                          style={{
+                            marginLeft: '8px',
+                            fontSize: '0.72rem',
+                            color: 'var(--verdigris)',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            textDecoration: 'underline',
+                          }}
+                        >
+                          Re-sign
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="sig">{fields.f_sname ? '' : 'Unsigned'}</span>
+                        <button
+                          type="button"
+                          className="no-print"
+                          onClick={() => setShowSignature(true)}
+                          style={{
+                            marginLeft: '10px',
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            color: 'var(--verdigris)',
+                            background: 'none',
+                            border: '1px solid var(--verdigris)',
+                            borderRadius: '3px',
+                            padding: '2px 8px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Sign Here
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
 
-            {/* Actions */}
-            <div className="actions">
-              <button className="btn btn-gold" type="button" onClick={handleReset}>Reset Inputs</button>
-              <button className="btn btn-black" type="button" onClick={handlePrint}>Print Record</button>
-              <button className="btn btn-primary" type="button" onClick={handleSubmit}>Submit Consent</button>
+                <div className="sig-box">
+                  <div className="sig-box-title">Attending Mortician / Officer</div>
+                  <div className="sig-row">
+                    Mortician:{' '}
+                    <FillField id="f_mname" value={fields.f_mname} onChange={(v) => handleFieldChange('f_mname', v)} width="19ch" />
+                  </div>
+                  <div className="sig-row">
+                    Staff / License ID:{' '}
+                    <FillField id="f_mid" value={fields.f_mid} onChange={(v) => handleFieldChange('f_mid', v)} width="14ch" />
+                  </div>
+                  <div className="sig-row" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span>Record QR:</span>
+                    <QRCodeSVG
+                      value={`MMFH-EMBALM:${adm || 'UNASSIGNED'}`}
+                      size={52}
+                      bgColor="transparent"
+                      fgColor="#15171A"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {showSignature && (
+                <div className="no-print" style={{ marginTop: '1.5rem' }}>
+                  <ReusableSignaturePad
+                    onSave={(dataUrl) => {
+                      setSignatureData(dataUrl);
+                      setShowSignature(false);
+                    }}
+                    onCancel={() => setShowSignature(false)}
+                  />
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="actions no-print">
+                <button type="button" className="btn btn-black" onClick={handleReset}>
+                  Clear Form
+                </button>
+                <button type="button" className="btn btn-gold" onClick={() => window.print()}>
+                  Print Form
+                </button>
+                <button type="button" className="btn btn-primary" onClick={handleSubmit}>
+                  Save Consent Record
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Record info strip */}
-          <div className="record-strip">
-            <span id="genLine">{genLine}</span><br />
-            - Official Embalming Consent Record -
-          </div>
+          <div className="record-strip">{genLine}</div>
 
-          {/* Footer (screen only) */}
           <footer className="elegant-footer">
             <div className="leaf-mark">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#EDE9DB" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" width="21" height="21">
-                <path d="M4 20C4 10.5 10.5 4 20 4c0 9.5-6.5 16-16 16Z" />
-                <path d="M4 20c4-6.5 8.5-10 13-12.5" />
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" />
+                <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
               </svg>
             </div>
-            <p className="footer-tagline">Received with dignity. Cared for with respect. Remembered with love.</p>
+            <p className="footer-tagline">
+              Serving families with dignity, compassion, and quiet excellence.
+            </p>
             <div className="footer-values">
-              <span className="footer-value-label">Dignity</span><span className="footer-value-dot">·</span>
-              <span className="footer-value-label">Care</span><span className="footer-value-dot">·</span>
+              <span className="footer-value-label">Dignity</span>
+              <span className="footer-value-dot">·</span>
               <span className="footer-value-label">Respect</span>
+              <span className="footer-value-dot">·</span>
+              <span className="footer-value-label">Care</span>
             </div>
             <div className="footer-bar">
-              <span>© <span id="fyear">{year}</span> Montezuma Monalisa Funeral Home Ltd</span>
-              <span>Official Embalming Consent Record</span>
+              <span>© {year} Montezuma Monalisa Funeral Home Ltd</span>
+              <span>Official Embalming Authorization Form</span>
             </div>
           </footer>
         </div>
       </div>
-
-      {/* Signature Pad Modal */}
-      {showSignature && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.6)',
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 20,
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowSignature(false);
-          }}
-        >
-          <div
-            style={{
-              background: '#fff',
-              borderRadius: 8,
-              padding: 24,
-              maxWidth: 540,
-              width: '100%',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-            }}
-          >
-            <h3 style={{ marginTop: 0, marginBottom: 16, fontSize: '1rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Sign Below</h3>
-            <ReusableSignaturePad
-              onSave={(data) => {
-                setSignatureData(data);
-                setShowSignature(false);
-              }}
-              onCancel={() => setShowSignature(false)}
-              width={480}
-              height={200}
-            />
-          </div>
-        </div>
-      )}
-    </>
+    </div>
   );
 };
 
