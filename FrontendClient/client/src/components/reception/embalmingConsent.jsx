@@ -286,8 +286,6 @@ const EmbalmingConsentForm = () => {
   // Removed auto doSearch() on mount so the consent form does not pre-fill
   // and does not block registration. It is independent: search adm number,
   // auto-fill details, sign to complete embalming consent only when needed.
-          font-size: 15px; line-height: 1.5; padding: 10px 12px 0;
-        }
         .mono { font-family: ui-monospace, 'Cascadia Mono', Consolas, 'Courier New', monospace; }
         .sheet {
           width: 100%; max-width: 1080px; margin: 0 auto; background: var(--white);
