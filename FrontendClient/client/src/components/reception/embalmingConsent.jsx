@@ -395,7 +395,7 @@ const EmbalmingConsentForm = () => {
         }
 
         .embalming-form-page {
-          background: #F2EFE9;
+          background: #ffffff;
      
           min-height: 100vh;
           color: var(--ink);
@@ -639,7 +639,7 @@ const EmbalmingConsentForm = () => {
               <div className="section-head"><span className="section-num">02</span><h2 className="section-title">Consent for Embalming</h2></div>
 
               <div className="date-row">
-                <span className="note">Already Embalmed.</span>
+                <span className="note"> Embalming Consent</span>
                 <span className="d">
                   Date: <FillField id="f_date" value={fields.f_date} onChange={(v) => handleFieldChange('f_date', v)} width="15ch" />
                 </span>
