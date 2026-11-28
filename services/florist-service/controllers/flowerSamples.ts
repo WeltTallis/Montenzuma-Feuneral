@@ -14,6 +14,14 @@ import { safeQuery, safeExecute } from '../database.ts';
 import crypto from 'crypto';
 import { centralizedUploadService } from '@montezuma/shared-services/dist/centralizedUploadService.js';
 
+// ─── Image processor ───
+// We use sharp to generate iPad/phone-friendly variants on upload.
+// The ORIGINAL buffer is still stored byte-for-byte (quality guarantee),
+// but we ALSO write a 1200px medium and a 400px thumbnail so the gallery
+// can load fast on iPads without serving 8MB originals.
+// @ts-ignore
+import sharp from 'sharp';
+
 // TENANT HELPERS
 const tenantIdOf = (req: any): string | null =>
   req.tenantId || req.headers?.['x-tenant-id'] || req.headers?.['x-tenant_id'] || null;
@@ -45,6 +53,12 @@ const buildTenantScope = (req: any): { clause: string; params: any[] } => {
 const arrangementCache = new Map();
 const CACHE_TTL = 300000; // 5 minutes
 
+// Image variant sizes tuned for iPads & phones:
+// - MEDIUM: 1200px on the long edge (crisp on iPad retina, ~200KB webp)
+// - THUMB: 400px square-ish (fast grid on phones, ~30KB webp)
+const MEDIUM_MAX_DIM = 1200;
+const THUMB_MAX_DIM = 400;
+
 // ============================================
 // UTILITY FUNCTIONS
 // ============================================
@@ -75,6 +89,7 @@ const generateArrangementId = (): string => {
   const random = crypto.randomBytes(3).toString('hex').toUpperCase();
   return `ARR-${timestamp}-${random}`;
 };
+
 // ─── Transient DB error retry ───
 // Pool warm-up / network hiccups occasionally surface transient driver errors
 // (ECONNRESET, PROTOCOL_CONNECTION_LOST, lock waits…). The INSERT is retried
@@ -115,42 +130,123 @@ const safeExecuteWithRetry = async (
   throw lastErr;
 };
 
-// ─── Global uploader ───
-// Flower-sample images are stored through the SAME centralized upload service
-// the deceased / coffin / invoice services use. It writes directly into the
-// one shared uploads folder (GLOBAL_UPLOADS_DIR / UPLOADS_BASE_DIR) that is
-// bind-mounted in production and served to browsers at /uploads/... by the
-// tenant-service — no fragile per-service directory guessing and no
-// container-local folders that vanish on rebuild. A failed upload only skips
-// that image (kept in the logs) instead of failing the whole sample creation.
+// ─── Global uploader with iPad-optimized variants ───
+// The ORIGINAL is still stored byte-for-byte. We additionally build:
+//   • medium (max 1200px, webp q82)  → gallery hero on iPad
+//   • thumb  (max 400px,  webp q75)  → grid cells on iPad/phone
+// Each variant is uploaded through the same centralized service so the
+// shared /uploads folder serves them consistently.
+//
+// If variant generation fails (e.g. sharp missing), we fall back to serving
+// the original URL for medium/thumb — the gallery still works, just heavier.
 const saveFlowerImage = async (
   buffer: Buffer,
   filename: string,
   tenantSlug: string
-): Promise<string | null> => {
-  // QUALITY GUARANTEE: flower-sample images are persisted BYTE-FOR-BYTE as
-  // uploaded — the centralized uploader's writeBuffer writes the original
-  // buffer untouched: no resize, no re-compression, no format conversion,
-  // no sharp pass. Whatever resolution/quality the florist uploads is
-  // exactly what users see in the gallery, so samples stay crisp.
-  //
-  // Reliability: a transient disk hiccup (network mount, EBUSY, momentary
-  // EACCES) is retried a couple of times with backoff before the image is
-  // skipped, so a flaky first write doesn't silently drop a photo.
+): Promise<{
+  url: string;
+  medium_url: string;
+  thumb_url: string;
+  width: number;
+  height: number;
+  size: number;
+} | null> => {
   const attempts = 3;
   for (let i = 0; i < attempts; i++) {
     try {
-      const result = await centralizedUploadService.uploadImage(
+      // 1) Read dimensions from the ORIGINAL (for width/height attributes on <img>)
+      let width = 0;
+      let height = 0;
+      try {
+        const meta = await sharp(buffer).metadata();
+        width = meta.width || 0;
+        height = meta.height || 0;
+      } catch (metaErr: any) {
+        console.warn(`[FLOWER] Could not read dimensions (${metaErr?.message}) — continuing`);
+      }
+
+      // 2) Upload ORIGINAL byte-for-byte (unchanged quality guarantee)
+      const original = await centralizedUploadService.uploadImage(
         buffer,
         filename,
         tenantSlug,
         'flowers'
       );
-      if (result && result.success && result.urlPath) {
-        console.log(`[FLOWER] Image stored via global uploader (original quality, no re-compression): ${result.urlPath} (${(result.size / 1024).toFixed(1)}KB)`);
-        return result.urlPath;
+      if (!original?.success || !original.urlPath) {
+        throw new Error(original?.error || 'original upload failed');
       }
-      console.warn(`[FLOWER] Image upload failed (attempt ${i + 1}/${attempts})${i < attempts - 1 ? ' — retrying' : ''}: ${result?.error || 'unknown error'}`);
+
+      // 3) Build MEDIUM variant (iPad hero)
+      let mediumUrl = original.urlPath;
+      try {
+        const mediumBuf = await sharp(buffer)
+          .rotate() // honour EXIF orientation (phone camera shots)
+          .resize({
+            width: MEDIUM_MAX_DIM,
+            height: MEDIUM_MAX_DIM,
+            fit: 'inside',
+            withoutEnlargement: true,
+          })
+          .webp({ quality: 82 })
+          .toBuffer();
+
+        const mediumName = filename.replace(/\.[^.]+$/, '') + '_medium.webp';
+        const medium = await centralizedUploadService.uploadImage(
+          mediumBuf,
+          mediumName,
+          tenantSlug,
+          'flowers'
+        );
+        if (medium?.success && medium.urlPath) {
+          mediumUrl = medium.urlPath;
+        }
+      } catch (medErr: any) {
+        console.warn(`[FLOWER] Medium variant skipped (${medErr?.message}) — using original`);
+      }
+
+      // 4) Build THUMB variant (grid cells)
+      let thumbUrl = original.urlPath;
+      try {
+        const thumbBuf = await sharp(buffer)
+          .rotate()
+          .resize({
+            width: THUMB_MAX_DIM,
+            height: THUMB_MAX_DIM,
+            fit: 'inside',
+            withoutEnlargement: true,
+          })
+          .webp({ quality: 75 })
+          .toBuffer();
+
+        const thumbName = filename.replace(/\.[^.]+$/, '') + '_thumb.webp';
+        const thumb = await centralizedUploadService.uploadImage(
+          thumbBuf,
+          thumbName,
+          tenantSlug,
+          'flowers'
+        );
+        if (thumb?.success && thumb.urlPath) {
+          thumbUrl = thumb.urlPath;
+        }
+      } catch (thErr: any) {
+        console.warn(`[FLOWER] Thumb variant skipped (${thErr?.message}) — using original`);
+      }
+
+      console.log(
+        `[FLOWER] Image stored: original(${(original.size / 1024).toFixed(1)}KB) ` +
+        `dims=${width}x${height} ` +
+        `medium=${mediumUrl !== original.urlPath ? 'ok' : 'fallback'} ` +
+        `thumb=${thumbUrl !== original.urlPath ? 'ok' : 'fallback'}`
+      );
+
+      return {
+        url: original.urlPath,
+        medium_url: mediumUrl,
+        thumb_url: thumbUrl,
+        width,
+        height,
+        size: original.size,
+      };
     } catch (error: any) {
       console.warn(`[FLOWER] Image upload error (attempt ${i + 1}/${attempts})${i < attempts - 1 ? ' — retrying' : ''}: ${error?.message || error}`);
     }
@@ -302,19 +398,23 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
     // Prepare images array
     let images: Image[] = [];
 
-    // Handle uploaded files
+    // Handle uploaded files — now with iPad-friendly variants + dimensions
     if (req.files && Array.isArray(req.files)) {
       const uploadedFiles = req.files as Express.Multer.File[];
       for (let i = 0; i < uploadedFiles.length; i++) {
         const file = uploadedFiles[i];
-        const imageUrl = await saveFlowerImage(file.buffer, file.originalname, tenantSlug);
-        if (!imageUrl) continue;
+        const stored = await saveFlowerImage(file.buffer, file.originalname, tenantSlug);
+        if (!stored) continue;
         images.push({
-          url: imageUrl,
+          url: stored.url,
+          thumb_url: stored.thumb_url,
+          medium_url: stored.medium_url,
+          width: stored.width,
+          height: stored.height,
           alt_text: `${cleanTitle} - image ${i + 1}`,
           is_primary: i === 0,
-          order: i
-        });
+          order: i,
+        } as any);
       }
     }
 
@@ -328,10 +428,14 @@ export const createFlowerArrangement = async (req: any, res: any): Promise<any> 
         if (img && img.url) {
           images.push({
             url: img.url,
+            thumb_url: img.thumb_url || img.url,
+            medium_url: img.medium_url || img.url,
+            width: img.width || 0,
+            height: img.height || 0,
             alt_text: img.alt_text || `${cleanTitle} - image ${index + 1}`,
             is_primary: img.is_primary || (images.length === 0 && index === 0),
-            order: img.order || images.length + index
-          });
+            order: img.order || images.length + index,
+          } as any);
         }
       });
     }
@@ -506,24 +610,32 @@ export const updateFlowerArrangement = async (req: any, res: any): Promise<any> 
     if (providedImages && Array.isArray(providedImages)) {
       images = providedImages.map((img: any) => ({
         url: img.url,
+        thumb_url: img.thumb_url || img.url,
+        medium_url: img.medium_url || img.url,
+        width: img.width || 0,
+        height: img.height || 0,
         alt_text: img.alt_text || existingArrangement.title,
         is_primary: img.is_primary || false,
-        order: img.order || 0
-      }));
+        order: img.order || 0,
+      })) as any;
     }
 
     if (req.files && Array.isArray(req.files)) {
       const newFiles = req.files as Express.Multer.File[];
       for (let i = 0; i < newFiles.length; i++) {
         const file = newFiles[i];
-        const imageUrl = await saveFlowerImage(file.buffer, file.originalname, tenantSlug);
-        if (!imageUrl) continue;
+        const stored = await saveFlowerImage(file.buffer, file.originalname, tenantSlug);
+        if (!stored) continue;
         images.push({
-          url: imageUrl,
+          url: stored.url,
+          thumb_url: stored.thumb_url,
+          medium_url: stored.medium_url,
+          width: stored.width,
+          height: stored.height,
           alt_text: `${existingArrangement.title} - new image ${i + 1}`,
           is_primary: images.length === 0 && i === 0,
-          order: images.length + i
-        });
+          order: images.length + i,
+        } as any);
       }
     }
 
@@ -579,13 +691,29 @@ export const deleteFlowerArrangement = async (req: any, res: any): Promise<any> 
 
     // Remove the stored files from the shared uploads folder through the same
     // centralized upload service (safe: it resolves only inside the base dir).
+    // We also best-effort delete the generated medium/thumb variants.
     for (const image of existingArrangement.images) {
       try {
         const url = String(image.url || '').trim();
-        if (!url) continue;
-        await centralizedUploadService.deleteFile(url);
+        if (url) await centralizedUploadService.deleteFile(url);
       } catch (err) {
-        console.warn(`[FLOWER] Could not delete image: ${image.url}`);
+        console.warn(`[FLOWER] Could not delete original image: ${image.url}`);
+      }
+      try {
+        const mediumUrl = String((image as any).medium_url || '').trim();
+        if (mediumUrl && mediumUrl !== image.url) {
+          await centralizedUploadService.deleteFile(mediumUrl);
+        }
+      } catch (err) {
+        console.warn(`[FLOWER] Could not delete medium variant: ${(image as any).medium_url}`);
+      }
+      try {
+        const thumbUrl = String((image as any).thumb_url || '').trim();
+        if (thumbUrl && thumbUrl !== image.url) {
+          await centralizedUploadService.deleteFile(thumbUrl);
+        }
+      } catch (err) {
+        console.warn(`[FLOWER] Could not delete thumb variant: ${(image as any).thumb_url}`);
       }
     }
 

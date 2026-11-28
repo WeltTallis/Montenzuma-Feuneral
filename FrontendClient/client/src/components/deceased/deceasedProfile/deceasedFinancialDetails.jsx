@@ -381,7 +381,7 @@ export default function ChargeSchedule({
                         <div style={styles.pickDesc}>{c.desc}</div>
 
                         {/* Editable charge amount — overrides the catalogue default */}
-                        {(c.type === 'fixed' || c.type === 'daily') && on && (
+                        {on && (
                           <div style={styles.editAmountWrap}>
                             <label style={styles.editAmountLabel}>Amount</label>
                             <input

@@ -369,7 +369,7 @@ const TypeWrap = styled.div`
   display:flex;gap:.4rem;border:1px solid #d1d5db;border-radius:9px;overflow:hidden;background:#fff;
 `;
 const TypeBtn = styled.button`
-  flex:1;padding:.55rem .65rem;border:none;background:${p => p.$on ? C.primary : '#fff'};
+  flex:1;padding:.55rem .65rem;border:none;background:${p => p.$on ? C.primary : C.muted};
   color:${p => p.$on ? '#fff' : C.text};font:inherit;font-size:.78rem;font-weight:700;
   cursor:pointer;text-align:left;transition:.15s;
   &:first-child{border-right:1px solid #d1d5db;}
