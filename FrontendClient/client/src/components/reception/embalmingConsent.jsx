@@ -396,7 +396,7 @@ const EmbalmingConsentForm = () => {
 
         .embalming-form-page {
           background: #F2EFE9;
-          padding: 24px 12px;
+     
           min-height: 100vh;
           color: var(--ink);
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -605,12 +605,6 @@ const EmbalmingConsentForm = () => {
             </div>
           </header>
 
-          {/* Branch strip */}
-          <div className="branches">
-            <div className="b"><b>MBAGATHI WAY (HEAD OFFICE)</b>Opp. Forces Memorial Hospital<br />Tel: (020) 2346928 / 9, Fax: (020) 8068115</div>
-            <div className="b"><b>CHAPEL OF REST · THIKA ROAD BRANCH</b>Opp. Shell Kabati<br />Tel: 0726 094 847</div>
-            <div className="b"><b>MACHAKOS BRANCH</b>Opp. Governors Office<br />Tel: (020) 2672677/ 2111904</div>
-          </div>
 
           <div className="form-body">
             {msg.kind && (

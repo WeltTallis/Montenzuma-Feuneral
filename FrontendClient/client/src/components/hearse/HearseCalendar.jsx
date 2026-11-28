@@ -27,7 +27,9 @@ export const COLORS = {
 // Calendar booking colors identify the branch, while the status label remains
 
 export const getBranchBookingColor = (branchName, status) => {
-  if (String(status || '').toLowerCase() === 'cancelled') return '#DD2D4A';
+  const statusLower = String(status || '').toLowerCase();
+  if (statusLower === 'cancelled') return '#DD2D4A';
+  if (statusLower === 'pencil_hold') return '#9CA3AF';
   const branch = String(branchName || '').trim().toLowerCase();
   if (branch.includes('machakos')) return '#E36414';
   if (branch.includes('thika')) return '#5F0F40';
