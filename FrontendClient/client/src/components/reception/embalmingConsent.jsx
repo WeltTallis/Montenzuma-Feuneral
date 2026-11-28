@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReusableSignaturePad from '../../utils/signature/signaturepad';
 import { QRCodeSVG } from 'qrcode.react';
 
-/* ─── Demo record table ───────────────────────────────────────────── */
+/* Demo record table  */
 const RECORDS = {
   '1366': {
     deceased: 'ANN MOLLY W. IGAMBA',
@@ -24,7 +24,8 @@ const fetchRecord = (adm) =>
     setTimeout(() => resolve(RECORDS[adm] || null), 550);
   });
 
-/* ─── Code 39 barcode helper ──────────────────────────────────────── */
+  
+/* Code 39 barcode helper */
 const C39 = {
   '0': 'nnnwwnwnn', '1': 'wnnwnnnnw', '2': 'nnwwnnnnw', '3': 'wnwwnnnnn',
   '4': 'nnnwwnnnw', '5': 'wnnwwnnnn', '6': 'nnwwwnnnn', '7': 'nnnwnnwnw',

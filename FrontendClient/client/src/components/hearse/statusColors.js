@@ -2,6 +2,7 @@
 export const STATUS_COLOR = {
   pending: '#d97706',
   booked: '#00296B',
+  pencil_hold: '#9CA3AF',
   confirmed: '#00296B',
   scheduled: '#E36414',
   in_transit: '#E36414',
@@ -17,6 +18,7 @@ export const STATUS_COLOR = {
 export const STATUS_CONFIG = {
   pending: { label: 'Pending', color: '#d97706', bg: '#FFFBEB', textColor: '#92400E' },
   booked: { label: 'Booked', color: '#00296B', bg: '#EFF6FF', textColor: '#1E40AF' },
+  pencil_hold: { label: 'Pencil Hold', color: '#6B7280', bg: '#F3F4F6', textColor: '#4B5563' },
   confirmed: { label: 'Confirmed', color: '#00296B', bg: '#EFF6FF', textColor: '#1E40AF' },
   scheduled: { label: 'Scheduled', color: '#E36414', bg: '#FFEDD5', textColor: '#9A3412' },
   in_transit: { label: 'In Transit', color: '#E36414', bg: '#FFEDD5', textColor: '#9A3412' },

@@ -288,18 +288,18 @@ const NavBtn = styled.button`
   color:${C.muted2};display:grid;place-items:center;transition:.15s;
   &:hover{border-color:${C.primary};color:${C.primary}}
 `;
-const CalGrid = styled.div`display:grid;grid-template-columns:repeat(7,1fr);gap:3px`;
-const Wd = styled.span`text-align:center;font-size:.58rem;font-weight:700;color:${C.muted};text-transform:uppercase;padding:.25rem 0`;
+const CalGrid = styled.div`display:grid;grid-template-columns:repeat(7,1fr);gap:2px`;
+const Wd = styled.span`text-align:center;font-size:.55rem;font-weight:600;color:${C.muted2};text-transform:uppercase;padding:.18rem 0;letter-spacing:.02em`;
 const Day = styled.button`
-  aspect-ratio:1;display:grid;place-items:center;font-size:.78rem;font-weight:600;border:none;border-radius:8px;
+  aspect-ratio:1;display:grid;place-items:center;font-size:.72rem;font-weight:600;border:none;border-radius:10px;
   background:transparent;color:${C.text};cursor:pointer;transition:.12s;padding:0;font-family:inherit;
   ${p => p.$sel
-    ? `background:${C.primary};color:#fff;font-weight:800;`
+    ? `background:${C.primary};color:#fff;font-weight:800;box-shadow:0 2px 6px rgba(26,95,122,.18);`
     : p.$past
       ? `color:#cbd5e1;cursor:not-allowed;text-decoration:line-through;`
       : p.$today
-        ? `box-shadow:inset 0 0 0 1.5px ${C.ok};color:${C.ok};`
-        : `&:hover{background:#eaf4fa;}`}
+        ? `color:${C.ok};border:1.5px solid ${C.ok};`
+        : `&:hover{background:#f4f7f9;}`}
 `;
 const SelLine = styled.div`display:flex;align-items:center;justify-content:space-between;margin-top:.65rem;min-height:1rem;gap:.5rem`;
 const SelTxt = styled.span`font-size:.72rem;font-weight:600;color:${C.muted2};${p => (p.$has ? `color:${C.primary};` : '')}`;
@@ -363,6 +363,36 @@ const BranchSelect = styled.select`
   width:100%;padding:.5rem .65rem;font:inherit;font-size:.8rem;color:${C.text};
   border:1px solid #d1d5db;border-radius:9px;outline:none;transition:.15s;background:#fff;
   &:focus{border-color:${C.primary};box-shadow:0 0 0 3px rgba(26,95,122,.12)}
+`;
+/* type of booking — confirmed vs pencil hold (faded) */
+const TypeWrap = styled.div`
+  display:flex;gap:.4rem;border:1px solid #d1d5db;border-radius:9px;overflow:hidden;background:#fff;
+`;
+const TypeBtn = styled.button`
+  flex:1;padding:.55rem .65rem;border:none;background:${p => p.$on ? C.primary : '#fff'};
+  color:${p => p.$on ? '#fff' : C.text};font:inherit;font-size:.78rem;font-weight:700;
+  cursor:pointer;text-align:left;transition:.15s;
+  &:first-child{border-right:1px solid #d1d5db;}
+  &:hover:not(:disabled){background:${p => p.$on ? C.primaryHover : C.bg};}
+  &:disabled{opacity:.6;cursor:not-allowed;}
+`;
+/* hearse search — filter the fleet list by name/plate/model */
+const SearchWrap = styled.div`
+  position:relative;margin-bottom:.5rem;
+`;
+const SearchInp = styled.input`
+  width:100%;padding:.5rem .9rem .5rem 2.3rem;font:inherit;font-size:.78rem;
+  border:1px solid #d1d5db;border-radius:9px;outline:none;background:#fff;
+  &:focus{border-color:${C.primary};box-shadow:0 0 0 3px rgba(26,95,122,.12)}
+`;
+const SearchIcon = styled.span`
+  position:absolute;left:.65rem;top:50%;transform:translateY(-50%);
+  color:${C.muted2};font-size:.75rem;pointer-events:none;
+`;
+const ClearSearch = styled.button`
+  position:absolute;right:.45rem;top:50%;transform:translateY(-50%);
+  border:none;background:none;color:${C.muted2};cursor:pointer;font-size:.7rem;
+  &:hover{color:${C.bad}}
 `;
 /* location suggestions — chips, not a dropdown */
 const SuggWrap = styled.div`
@@ -462,7 +492,10 @@ export default function BookNewHearseModal({
     hearse_id: '', client_name: '', client_phone: '', deceased_name: '',
     from_location: '', to_location: '', branch_id: '', branch_slug: '',
     branch_code: '', branch_name: '', service_charge: 0,
+    booking_type: 'confirmed',
   });
+  const [bookingType, setBookingType] = useState('confirmed'); // 'confirmed' | 'pencil'
+  const [hearseSearch, setHearseSearch] = useState('');        // filter the hearse list
   const [dates, setDates] = useState([]);          // confirmed selection — LIVE, no popover needed
   const [anchor, setAnchor] = useState(null);      // in-progress range start (START → END picking)
   const [pkM, setPkM] = useState(() => new Date().getMonth());
@@ -552,7 +585,9 @@ export default function BookNewHearseModal({
       branch_code: editBranch?.code || defaultBranch?.code || u.branchCode || u.branch_code || u.branch?.branchCode || u.branch?.branch_code || '',
       branch_name: editBranch?.name || defaultBranch?.name || editingBooking?.branch_name || u.branchName || u.branch_name || u.branch?.branchName || u.branch?.branch_name || '',
       service_charge: editing ? Number(editingBooking.service_charge || 0) : 0,
+      booking_type: editing && String(editingBooking.status || '').toLowerCase().includes('pencil') ? 'pencil' : 'confirmed',
     });
+    setBookingType(editing && String(editingBooking.status || '').toLowerCase().includes('pencil') ? 'pencil' : 'confirmed');
     const editTimeMatch = String(editingBooking?.from_timestamp || '').match(/(?:T|\s)(\d{2}:\d{2})/);
     setBookingTime(editing ? (editingBooking.booking_time || editTimeMatch?.[1] || '') : '');
     setTimePickerOpen(false);
@@ -765,11 +800,22 @@ export default function BookNewHearseModal({
   const avCount = fleetVals.filter(s => s.status === 'available').length;
   const sortByName = (a, b) => String(a.hearse_name || a.plate_number || '').localeCompare(String(b.hearse_name || b.plate_number || ''));
   const fleetRows = useMemo(() => {
-    const list = hasD
-      ? [...(hearses || [])].sort(sortByName)
-      : [];
+    if (!hasD) return [];
+    const q = hearseSearch.toLowerCase().trim();
+    const list = [...(hearses || [])]
+      .filter((h) => {
+        if (!q) return true;
+        const haystack = [
+          h.hearse_name || '',
+          h.plate_number || h.number_plate || '',
+          h.model || '',
+          h.capacity ? String(h.capacity) : '',
+        ].join(' ').toLowerCase();
+        return haystack.includes(q);
+      })
+      .sort(sortByName);
     return list;
-  }, [hearses, hasD]);
+  }, [hearses, hasD, hearseSearch]);
 
   const selHearse = (hearses || []).find(x => String(x.id) === String(form.hearse_id)) || {};
   const selBlocked = (() => {
@@ -865,6 +911,9 @@ export default function BookNewHearseModal({
         branch_name: form.branch_name || '',
         branch_code: form.branch_code || '',
         service_charge: svcCharge,
+        // Pencil hold: hearse reserved but not yet paid — shows as "Pencil Hold".
+        // Confirmed: ordinary paid booking — shows as "Booked".
+        status: bookingType === 'pencil' ? 'pencil_hold' : 'booked',
       };
       const bookingId = editingBooking?.booking_id || editingBooking?.id;
       const r = await fetchWithCredentials(
@@ -969,6 +1018,20 @@ export default function BookNewHearseModal({
               <h2><i>2</i>Hearse</h2>
               <small>{fleetHint}</small>
             </SecT>
+            <SearchWrap>
+              <SearchIcon>🔍</SearchIcon>
+              <SearchInp
+                type="text"
+                placeholder="Search hearse by name, plate or model…"
+                value={hearseSearch}
+                onChange={(e) => setHearseSearch(e.target.value)}
+              />
+              {hearseSearch && (
+                <ClearSearch type="button" onClick={() => setHearseSearch('')} aria-label="Clear search">
+                  ✕
+                </ClearSearch>
+              )}
+            </SearchWrap>
 
             {checkError && <Warn>⚠ {checkError}</Warn>}
 
@@ -1033,6 +1096,30 @@ export default function BookNewHearseModal({
               ) : (
                 <Inp value={form.branch_name || 'Branch name unavailable'} readOnly aria-readonly="true" />
               )}
+            </Fld>
+            <Fld>
+              <Lbl>Type of booking <em>*</em></Lbl>
+              <TypeWrap>
+                <TypeBtn
+                  type="button"
+                  $on={bookingType !== 'pencil'}
+                  onClick={() => setBookingType('confirmed')}
+                >
+                  Confirmed Booking
+                </TypeBtn>
+                <TypeBtn
+                  type="button"
+                  $on={bookingType === 'pencil'}
+                  onClick={() => setBookingType('pencil')}
+                >
+                  Pencil Hold
+                </TypeBtn>
+              </TypeWrap>
+              <small style={{color:C.muted2,fontSize:'.68rem',marginTop:'.25rem',display:'block'}}>
+                {bookingType === 'pencil'
+                  ? 'Holds the hearse without payment — shows as "Pencil Hold" with a faded badge.'
+                  : 'Confirmed and paid booking — shows as "Booked".'}
+              </small>
             </Fld>
             <Fld>
               <Lbl>Pickup time <em>*</em></Lbl>

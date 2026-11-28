@@ -135,6 +135,13 @@ export default function ChargeSchedule({
     return s;
   });
 
+  // Per-charge editable amounts (defaults from catalogue, overridable)
+  const [chargeAmounts, setChargeAmounts] = useState(() => {
+    const a = {};
+    CHARGE_CATALOGUE.forEach((c) => { a[c.id] = c.amount; });
+    return a;
+  });
+
   const [daysHeld, setDaysHeld] = useState(deceased.days_held || 1);
   const [tierChoice, setTierChoice] = useState('moderate');
   const [reconstructionCustom, setReconstructionCustom] = useState(0);
@@ -152,10 +159,11 @@ export default function ChargeSchedule({
         let note = '';
 
         if (c.type === 'fixed') {
-          amount = c.amount;
+          amount = Number(chargeAmounts[c.id] || c.amount || 0);
         } else if (c.type === 'daily') {
-          amount = c.amount * Math.max(1, Number(daysHeld) || 1);
-          note = `${c.amount.toLocaleString()} × ${daysHeld} day${daysHeld > 1 ? 's' : ''}`;
+          const dailyRate = Number(chargeAmounts[c.id] || c.amount || 0);
+          amount = dailyRate * Math.max(1, Number(daysHeld) || 1);
+          note = `${dailyRate.toLocaleString()} × ${daysHeld} day${daysHeld > 1 ? 's' : ''}`;
         } else if (c.type === 'tiered') {
           const tier = c.tiers.find((t) => t.id === tierChoice) || c.tiers[0];
           amount = tier.id === 'custom' ? reconstructionCustom : tier.amount;
@@ -174,7 +182,7 @@ export default function ChargeSchedule({
           appliedAmount: isWaived ? 0 : amount,
         };
       });
-  }, [selected, daysHeld, tierChoice, reconstructionCustom, customAmount, customDesc, waiveBundle]);
+  }, [selected, daysHeld, tierChoice, reconstructionCustom, customAmount, customDesc, waiveBundle, chargeAmounts]);
 
   const subtotal = lineItems.reduce((s, i) => s + i.appliedAmount, 0);
   const waivedTotal = lineItems.reduce(
@@ -184,6 +192,11 @@ export default function ChargeSchedule({
 
   // ── Helpers ─────────────────────────────────────────────────
   const toggle = (id) => setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
+
+  const setChargeAmount = (id, value) => {
+    setChargeAmounts((prev) => ({ ...prev, [id]: value }));
+  };
+
   const onCount = Object.values(selected).filter(Boolean).length;
 
   const handlePrint = () => window.print();
@@ -323,41 +336,67 @@ export default function ChargeSchedule({
               </div>
             </label>
 
-            {/* Charge picker */}
+            {/* Charge picker — waived (bailed) items show first so they stay visible */}
             <div style={styles.picker}>
-              {CHARGE_CATALOGUE.map((c) => {
-                const on = !!selected[c.id];
-                const waived = !!(c.waivedBy && waiveBundle);
-                return (
-                  <div
-                    key={c.id}
-                    style={{
-                      ...styles.pickRow,
-                      ...(on ? styles.pickRowOn : null),
-                      ...(waived ? styles.pickRowWaived : null),
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={on}
-                      onChange={() => toggle(c.id)}
-                      style={styles.pickCheckbox}
-                      aria-label={`Toggle ${c.title}`}
-                    />
+              {[...CHARGE_CATALOGUE]
+                .sort((a, b) => {
+                  const aWaived = !!(a.waivedBy && waiveBundle);
+                  const bWaived = !!(b.waivedBy && waiveBundle);
+                  if (aWaived && !bWaived) return -1;
+                  if (!aWaived && bWaived) return 1;
+                  return 0;
+                })
+                .map((c) => {
+                  const on = !!selected[c.id];
+                  const waived = !!(c.waivedBy && waiveBundle);
+                  return (
+                    <div
+                      key={c.id}
+                      style={{
+                        ...styles.pickRow,
+                        ...(on ? styles.pickRowOn : null),
+                        ...(waived ? styles.pickRowWaived : null),
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        onChange={() => toggle(c.id)}
+                        style={styles.pickCheckbox}
+                        aria-label={`Toggle ${c.title}`}
+                      />
 
-                    <div style={styles.pickBody}>
-                      <div style={styles.pickTitle}>
-                        {c.title}
-                        {c.type === 'daily' && on && (
-                          <span style={styles.qtyChip}>
-                            × {daysHeld} day{daysHeld > 1 ? 's' : ''}
-                          </span>
+                      <div style={styles.pickBody}>
+                        <div style={styles.pickTitle}>
+                          {c.title}
+                          {c.type === 'daily' && on && (
+                            <span style={styles.qtyChip}>
+                              × {daysHeld} day{daysHeld > 1 ? 's' : ''}
+                            </span>
+                          )}
+                          {waived && (
+                            <span style={styles.waivedChip}>— waived</span>
+                          )}
+                        </div>
+                        <div style={styles.pickDesc}>{c.desc}</div>
+
+                        {/* Editable charge amount — overrides the catalogue default */}
+                        {(c.type === 'fixed' || c.type === 'daily') && on && (
+                          <div style={styles.editAmountWrap}>
+                            <label style={styles.editAmountLabel}>Amount</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="50"
+                              value={chargeAmounts[c.id] || ''}
+                              onChange={(e) =>
+                                setChargeAmount(c.id, e.target.value)
+                              }
+                              style={styles.editAmountInput}
+                              placeholder={fmt(c.amount)}
+                            />
+                          </div>
                         )}
-                        {waived && (
-                          <span style={styles.waivedChip}>— waived</span>
-                        )}
-                      </div>
-                      <div style={styles.pickDesc}>{c.desc}</div>
 
                       {/* Reconstruction tier selector */}
                       {c.type === 'tiered' && on && (
@@ -550,9 +589,9 @@ function SectionHead({ num, title }) {
 }
 
 /** Pure helper: compute a single charge's line amount */
-function getLineAmount(c, daysHeld, tierChoice, reconstructionCustom, customAmount) {
-  if (c.type === 'fixed') return c.amount;
-  if (c.type === 'daily') return c.amount * Math.max(1, Number(daysHeld) || 1);
+function getLineAmount(c, daysHeld, tierChoice, reconstructionCustom, customAmount, chargeAmounts) {
+  if (c.type === 'fixed') return Number(chargeAmounts?.[c.id] || c.amount || 0);
+  if (c.type === 'daily') return Number(chargeAmounts?.[c.id] || c.amount || 0) * Math.max(1, Number(daysHeld) || 1);
   if (c.type === 'tiered') {
     const tier = c.tiers.find((t) => t.id === tierChoice) || c.tiers[0];
     return tier.id === 'custom' ? reconstructionCustom : tier.amount;
@@ -869,6 +908,32 @@ const styles = {
   },
   customInput: {
     flex: '0 0 130px',
+    border: 'none',
+    outline: 'none',
+    background: 'transparent',
+    borderBottom: '1px dashed var(--line-strong)',
+    padding: '2px 4px',
+    fontFamily: 'inherit',
+    fontSize: '0.85rem',
+    color: 'var(--pen)',
+    fontWeight: 600,
+  },
+  editAmountWrap: {
+    marginTop: 6,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+  },
+  editAmountLabel: {
+    fontSize: '0.66rem',
+    fontWeight: 700,
+    letterSpacing: '0.1em',
+    textTransform: 'uppercase',
+    color: 'var(--brass)',
+    minWidth: 70,
+  },
+  editAmountInput: {
+    flex: '0 0 120px',
     border: 'none',
     outline: 'none',
     background: 'transparent',

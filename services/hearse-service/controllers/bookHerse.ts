@@ -204,7 +204,12 @@ export const makeHearseBooking = asyncHandler(async (req: Request, res: Response
         const branchSlugVal = headerOf('x-branch-slug') || req.body?.branch_slug || null;
         const branchCodeVal = headerOf('x-branch-code') || req.body?.branch_code || null;
         const branchNameVal = String(req.body?.branch_name || '').trim().slice(0, 255) || null;
-        const bookingStatus = 'booked';
+        // Allow the frontend to request a specific booking status (e.g. a faded
+        // "pencil_hold" for a hearse held but not yet paid). Fall back to 'booked'
+        // for any missing/unrecognised value so existing callers are unaffected.
+        const ALLOWED_BOOKING_STATUSES = ['booked', 'pencil_hold', 'pending', 'confirmed', 'scheduled', 'postponed', 'cancelled'];
+        const rawStatus = String(req.body?.status || '').toLowerCase().replace(/[-\s]+/g, '_');
+        const bookingStatus = ALLOWED_BOOKING_STATUSES.includes(rawStatus) ? rawStatus : 'booked';
 
         const insertQuery = `
             INSERT INTO hearse_bookings

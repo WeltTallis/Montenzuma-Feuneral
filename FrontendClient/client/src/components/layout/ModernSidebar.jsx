@@ -786,10 +786,12 @@ const ModernSidebar = ({
         // Root-level twins plus both the new (/{slug}/…) and the legacy
         const hiddenPaths = [
           `/${tenantSlug}/dashboard`, `/${tenantSlug}/analytics`, `/${tenantSlug}/workshop`,
+          `/${tenantSlug}/insurance`, `/${tenantSlug}/mini-store`, `/${tenantSlug}/store`,
           `/tenant/${tenantSlug}/dashboard`, `/tenant/${tenantSlug}/analytics`, `/tenant/${tenantSlug}/workshop`,
-          '/dashboard', '/analytics', '/workshop',
+          `/tenant/${tenantSlug}/insurance`, `/tenant/${tenantSlug}/mini-store`, `/tenant/${tenantSlug}/store`,
+          '/dashboard', '/analytics', '/workshop', '/insurance', '/mini-store', '/store',
         ];
-        const hiddenLabels = ['Dashboard', 'Analytics', 'Workshop'];
+        const hiddenLabels = ['Dashboard', 'Analytics', 'Workshop', 'Insurance', 'Mini Store'];
         const itemPath = item.path || '';
         const label = String(item.label || '');
         const pathSegments = itemPath.split(/[/?#]/).filter(Boolean);
@@ -802,7 +804,7 @@ const ModernSidebar = ({
         const isHrItem =
           /\bhr\b|human resources|payroll/i.test(label) ||
           routeSegments.some((segment) => ['hr', 'payroll', 'human-resources'].includes(segment.toLowerCase()));
-        return !(isHrItem || hiddenLabels.includes(item.label) || hiddenPaths.includes(itemPath) || itemPath.includes('/dashboard') || itemPath.includes('/analytics') || itemPath.includes('/workshop'));
+        return !(isHrItem || hiddenLabels.includes(item.label) || hiddenPaths.includes(itemPath) || itemPath.includes('/dashboard') || itemPath.includes('/analytics') || itemPath.includes('/workshop') || itemPath.includes('/insurance') || itemPath.includes('/mini-store') || itemPath.includes('/store'));
       })
     })).filter((section) => (section.items || []).length > 0);
 
