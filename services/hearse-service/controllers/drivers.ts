@@ -17,9 +17,9 @@ export const getDriverDashboard = asyncHandler(async (req: Request, res: Respons
                 return;
             }
 
-            const [overview] = await safeQuery(`SELECT COUNT(hb.id) AS total_bookings, SUM(CASE WHEN hb.status = 'pending' THEN 1 ELSE 0 END) AS total_pending, SUM(CASE WHEN hb.status = 'in_progress' THEN 1 ELSE 0 END) AS total_in_progress, SUM(CASE WHEN hb.status = 'confirmed' THEN 1 ELSE 0 END) AS total_confirmed, SUM(CASE WHEN hb.status = 'completed' THEN 1 ELSE 0 END) AS total_completed, SUM(CASE WHEN hb.status = 'cancelled' THEN 1 ELSE 0 END) AS total_cancelled, MAX(hb.updated_at) AS last_updated FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE h.driver_id = ?`, [driver_id]);
+            const [overview] = await safeQuery(`SELECT COUNT(hb.id) AS total_bookings, SUM(CASE WHEN hb.status = 'pending' THEN 1 ELSE 0 END) AS total_pending, SUM(CASE WHEN hb.status = 'in_progress' THEN 1 ELSE 0 END) AS total_in_progress, SUM(CASE WHEN hb.status = 'confirmed' THEN 1 ELSE 0 END) AS total_confirmed, SUM(CASE WHEN hb.status = 'completed' THEN 1 ELSE 0 END) AS total_completed, SUM(CASE WHEN hb.status = 'cancelled' THEN 1 ELSE 0 END) AS total_cancelled, MAX(hb.updated_at) AS last_updated FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.driver_id = ?`, [driver_id]);
 
-            const recentBookings = await safeQuery(`SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.destination, hb.status, hb.special_requests, DATE_FORMAT(hb.created_at, '%Y-%m-%d %H:%i') AS created_at, h.plate_number, h.model FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE h.driver_id = ? ORDER BY hb.created_at DESC LIMIT 5`, [driver_id]);
+            const recentBookings = await safeQuery(`SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.destination, hb.status, hb.special_requests, DATE_FORMAT(hb.created_at, '%Y-%m-%d %H:%i') AS created_at, h.plate_number, h.model FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.driver_id = ? ORDER BY hb.created_at DESC LIMIT 5`, [driver_id]);
 
             const completionRate = overview.total_bookings > 0 ? ((overview.total_completed / overview.total_bookings) * 100).toFixed(1) : 0;
 
@@ -84,7 +84,7 @@ export const getBookingsByDriver = asyncHandler(async (req: Request, res: Respon
             return;
         }
 
-        const query = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status AS booking_status, hb.booking_dates, hb.created_at, hb.driver_id, hb.assistant_name, hb.assistant_phone, h.id AS hearse_id, h.plate_number, h.model, h.status AS hearse_status FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE COALESCE(hb.driver_id, h.driver_id) = ? ORDER BY hb.created_at DESC`;
+        const query = `SELECT hb.id AS booking_id, hb.booking_code, hb.client_name, hb.client_phone, hb.destination, hb.from_location, hb.to_location, hb.status AS booking_status, hb.booking_dates, hb.created_at, hb.driver_id, hb.assistant_name, hb.assistant_phone, h.id AS hearse_id, h.plate_number, h.model, h.status AS hearse_status FROM hearse_bookings hb LEFT JOIN hearses h ON hb.hearse_id = h.id WHERE hb.driver_id = ? ORDER BY hb.created_at DESC`;
         const bookings = await safeQuery(query, [driver_id]);
         res.status(200).json({ status: 'success', total: bookings.length, bookings });
     } catch (error) {

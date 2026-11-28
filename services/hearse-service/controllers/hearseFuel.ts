@@ -276,18 +276,15 @@ async function getDriverFuelSummary(pool: Pool, tenantKey: string, driverIds: nu
         `SELECT h.id AS hearse_id, h.plate_number, h.hearse_name, h.fuel_card_number
          FROM hearses h
          WHERE ${tenantScope.clause}
-           AND (
-               h.driver_id IN (?)
-               OR EXISTS (
-                   SELECT 1 FROM hearse_bookings hb
-                   WHERE hb.hearse_id = h.id
-                     AND hb.driver_id IN (?)
-                     AND hb.status IN ('pending', 'booked', 'confirmed', 'in_transit', 'transit', 'reserved', 'in_progress')
-               )
+           AND EXISTS (
+               SELECT 1 FROM hearse_bookings hb
+               WHERE hb.hearse_id = h.id
+                 AND hb.driver_id IN (?)
+                 AND hb.status IN ('pending', 'booked', 'confirmed', 'in_transit', 'transit', 'reserved', 'in_progress')
            )
            AND h.fuel_card_number IS NOT NULL AND TRIM(h.fuel_card_number) <> ''
          ORDER BY h.plate_number`,
-        [...tenantScope.params, driverIds, driverIds]
+        [...tenantScope.params, driverIds]
     );
     const cards = hearseRows.map((hearse: any) => {
         const card = summary.cards.find((item: any) => String(item.hearse_id) === String(hearse.hearse_id));

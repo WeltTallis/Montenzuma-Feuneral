@@ -91,11 +91,11 @@ async function getTenantBookings(connection: PoolConnection, tenantScope: Tenant
     const params = [...tenantFilter.params, driverId, ...ACTIVE_BOOKING_STATUSES];
     const [rows]: any = await connection.query(
         `SELECT hb.id, hb.booking_dates, hb.booking_date, hb.from_timestamp, hb.to_timestamp,
-                COALESCE(hb.driver_id, h.driver_id) AS assigned_driver_id, hb.status
+                hb.driver_id AS assigned_driver_id, hb.status
          FROM hearse_bookings hb
          LEFT JOIN hearses h ON h.id = hb.hearse_id
          WHERE ${tenantFilter.clause}
-           AND COALESCE(hb.driver_id, h.driver_id) = ?
+           AND hb.driver_id = ?
            AND hb.status IN (${ACTIVE_BOOKING_STATUSES.map(() => '?').join(', ')})
          FOR UPDATE`,
         params

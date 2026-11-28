@@ -40,7 +40,7 @@ export const assignDriverToBooking = asyncHandler(async (req: Request, res: Resp
             // Drivers table may not exist
         }
 
-        await safeQuery('UPDATE hearses SET driver_id = ?, updated_at = ? WHERE id = ?', [driver_id, getKenyaTimeISO(), booking.hearse_id]);
+        await safeQuery('UPDATE hearse_bookings SET driver_id = ?, updated_at = ? WHERE id = ?', [driver_id, getKenyaTimeISO(), booking_id]);
 
         await invalidateHearseCache(req);
         await emitHearseDataChanged(req, 'hearse_driver_updated', { bookingId: booking_id, hearseId: booking.hearse_id });

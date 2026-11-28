@@ -1212,6 +1212,32 @@ export default function BookNewHearseModal({
               </Fld>
             </Row2>
             <Fld>
+              <Lbl>Booking type</Lbl>
+              <Row2>
+                <span className="opt">(optional)</span>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <input
+                      type="radio"
+                      checked={bookingType === 'confirmed'}
+                      onChange={() => setBookingType('confirmed')}
+                      style={{ transform: 'scale(1)', accentColor: '#134b5f' }}
+                    />
+                    Confirmed
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <input
+                      type="radio"
+                      checked={bookingType === 'pencil'}
+                      onChange={() => setBookingType('pencil')}
+                      style={{ transform: 'scale(1)', accentColor: '#64748b' }}
+                    />
+                    Pencil Hold
+                  </label>
+                </div>
+              </Row2>
+            </Fld>
+            <Fld>
               <Lbl>From <em>*</em></Lbl>
               <Inp placeholder="e.g., Nairobi CBD" value={form.from_location}
                 onChange={e => setForm(p => ({ ...p, from_location: e.target.value }))}

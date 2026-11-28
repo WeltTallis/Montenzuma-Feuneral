@@ -163,7 +163,7 @@ export const getAllHearseBookings = asyncHandler(async (req: Request, res: Respo
                    hb.destination, hb.from_location, hb.to_location, hb.from_timestamp,
                    hb.branch_name, hb.status, hb.booking_dates, hb.created_at, hb.updated_at,
                    hb.booked_by, hb.cancel_reason, hb.postpone_reason, hb.service_charge,
-                   hb.driver_id, COALESCE(hb.driver_id, h.driver_id) AS assigned_driver_id,
+                   hb.driver_id, hb.driver_id AS assigned_driver_id,
                    hb.manual_driver_name, hb.assistant_name, hb.assistant_phone,
                    COALESCE(NULLIF(hb.manual_driver_name, ''), d.full_name) AS assigned_driver_name,
                    hb.branch_slug AS booking_branch_slug, hb.tenant_slug AS tenant_slug,
@@ -174,7 +174,7 @@ export const getAllHearseBookings = asyncHandler(async (req: Request, res: Respo
                    h.branch_name AS hearse_branch_name
               FROM hearse_bookings hb
               LEFT JOIN hearses h ON hb.hearse_id = h.id
-              LEFT JOIN drivers d ON d.id = COALESCE(hb.driver_id, h.driver_id)
+              LEFT JOIN drivers d ON d.id = hb.driver_id
               ${whereSQL}
              ORDER BY hb.created_at DESC`;
 
