@@ -34,7 +34,7 @@ exports.up = function (knex) {
             table.string('from_timestamp', 255);
             table.string('to_timestamp', 255);
             table.date('booking_date').notNullable();
-            table.enu('status', ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'booked']).defaultTo('booked');
+            table.enu('status', ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'booked', 'pencil_hold']).defaultTo('booked');
             table.integer('branch_id');
             table.string('branch_code', 50);
             table.string('booked_by', 255).nullable().comment('User who created the booking (name, email, or system)');

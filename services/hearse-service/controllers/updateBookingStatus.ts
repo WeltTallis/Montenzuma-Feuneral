@@ -18,7 +18,7 @@ export const updateBookingStatus = asyncHandler(async (req: Request, res: Respon
         const cancelReason = String(req.body.cancel_reason || '').trim();
 
 
-        const validStatuses = ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'booked', 'in_transit', 'postponed'];
+        const validStatuses = ['pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'booked', 'in_transit', 'postponed', 'pencil_hold'];
         if (!validStatuses.includes(status)) {
             res.status(400).json({ status: 'error', message: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
             return;

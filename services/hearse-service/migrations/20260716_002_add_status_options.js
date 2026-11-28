@@ -9,7 +9,7 @@ exports.up = function (knex) {
         .raw("ALTER TABLE hearses MODIFY COLUMN status ENUM('available', 'booked', 'in_transit', 'maintenance', 'out_of_service', 'pending_inspection', 'on_standby', 'disabled') DEFAULT 'available'")
 
         // Update hearse_bookings status to include more options
-        .raw("ALTER TABLE hearse_bookings MODIFY COLUMN status ENUM('pending', 'confirmed', 'in_progress', 'in_transit', 'completed', 'cancelled', 'postponed', 'booked', 'on_hold', 'dispatched') DEFAULT 'booked'")
+        .raw("ALTER TABLE hearse_bookings MODIFY COLUMN status ENUM('pending', 'confirmed', 'in_progress', 'in_transit', 'completed', 'cancelled', 'postponed', 'booked', 'on_hold', 'dispatched', 'pencil_hold') DEFAULT 'booked'")
 
         // Update drivers status to include more options
         .raw("ALTER TABLE drivers MODIFY COLUMN status ENUM('available', 'on_trip', 'off_duty', 'resting', 'sick', 'on_leave', 'training') DEFAULT 'available'");
