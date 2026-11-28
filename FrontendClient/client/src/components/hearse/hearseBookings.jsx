@@ -101,7 +101,7 @@ const COLORS = {
 const STATUS_CONFIG = {
   pending: { label: 'Pending', progress: 10, color: COLORS.red, bg: COLORS.dangerLight, dotColor: COLORS.red },
   booked: { label: 'Booked', progress: 25, color: COLORS.orange, bg: COLORS.warningLight, dotColor: COLORS.orange },
-  pencil_hold: { label: 'Pencil Hold', progress: 15, color: COLORS.gray, bg: COLORS.bone2, dotColor: COLORS.gray },
+  pencil_hold: { label: 'Pencil Hold', progress: 15, color: COLORS.gray, bg: COLORS.yellow, dotColor: COLORS.yellow },
   confirmed: { label: 'Confirmed', progress: 25, color: COLORS.green, bg: COLORS.successLight, dotColor: COLORS.green },
   scheduled: { label: 'Scheduled', progress: 25, color: COLORS.brass, bg: COLORS.warningLight, dotColor: COLORS.brass },
   in_transit: { label: 'In Transit', progress: 60, color: COLORS.orange, bg: COLORS.warningLight, dotColor: COLORS.orange },

@@ -1,30 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReusableSignaturePad from '../../utils/signature/signaturepad';
 import { QRCodeSVG } from 'qrcode.react';
+import axios from 'axios';
+import { fetchWithCredentials } from '../../api/axios';
+import { ENDPOINTS } from '../../api/endpoints';
+import env from '../../utils/config/env';
+import { getAuthToken, getTenantSlug } from '../../utils/globalAuth';
 
-/* Demo record table  */
-const RECORDS = {
-  '1366': {
-    deceased: 'ANN MOLLY W. IGAMBA',
-    received: '12TH NOV 2026',
-    location: 'AAR KIAMBU',
-    kin: 'JOSEPH IGAMBA',
-    relationship: 'SPOUSE',
-    kin_id: '6851613',
-    branch: 'MONTEZUMA NBI',
-    mortician: 'VALERY',
-    mortician_id: '21804921',
-    consent_date: '12TH NOV 2026',
-    mast_date: '12 November 2026',
-  },
-};
-
-const fetchRecord = (adm) =>
-  new Promise((resolve) => {
-    setTimeout(() => resolve(RECORDS[adm] || null), 550);
-  });
-
-  
 /* Code 39 barcode helper */
 const C39 = {
   '0': 'nnnwwnwnn', '1': 'wnnwnnnnw', '2': 'nnwwnnnnw', '3': 'wnwwnnnnn',
@@ -95,24 +77,25 @@ const FillField = ({ id, value, onChange, width, placeholder }) => {
 };
 
 const EmbalmingConsentForm = () => {
-  const [adm, setAdm] = useState('1366');
+  const [adm, setAdm] = useState('');
   const [status, setStatus] = useState({ kind: '', text: '' });
+  const [isSearching, setIsSearching] = useState(false);
   const [found, setFound] = useState(false);
   const [fields, setFields] = useState({
-    f_date: '12TH NOV 2026',
-    f_kname: 'JOSEPH IGAMBA',
-    f_rel: 'SPOUSE',
-    f_branch: 'MONTEZUMA NBI',
-    f_deceased: 'ANN MOLLY W. IGAMBA',
-    f_recv: '12TH NOV 2026',
-    f_loc: 'AAR KIAMBU',
+    f_date: '',
+    f_kname: '',
+    f_rel: '',
+    f_branch: '',
+    f_deceased: '',
+    f_recv: '',
+    f_loc: '',
     f_smark: '',
-    f_sname: 'JOSEPH IGAMBA',
-    f_sid: '6851613',
-    f_mname: 'VALERY',
-    f_mid: '21804921',
+    f_sname: '',
+    f_sid: '',
+    f_mname: '',
+    f_mid: '',
   });
-  const [mastDate, setMastDate] = useState('12 November 2026');
+  const [mastDate, setMastDate] = useState('');
   const [accept, setAccept] = useState(false);
   const [msg, setMsg] = useState({ kind: '', html: '' });
   const [condolence, setCondolence] = useState('Our sincere condolences during this difficult time.');
@@ -187,6 +170,25 @@ const EmbalmingConsentForm = () => {
     setMastDate(rec.mast_date || rec.consent_date || '—');
   };
 
+  /* ─── Fill record from API response ──────────────────────────────── */
+  const fillRecordFromApi = (rec) => {
+    setFields({
+      f_date: rec.consent_date || rec.date_admitted || '',
+      f_kname: rec.next_of_kin || rec.kin || '',
+      f_rel: rec.relationship || '',
+      f_branch: rec.branch || '',
+      f_deceased: rec.full_name || rec.name_of_deceased || rec.deceased || '',
+      f_recv: rec.date_admitted || rec.received || '',
+      f_loc: rec.place_of_death || rec.death_location || rec.location || '',
+      f_smark: '',
+      f_sname: rec.next_of_kin || rec.kin || '',
+      f_sid: rec.kin_id || rec.id_number || '',
+      f_mname: rec.mortician || '',
+      f_mid: rec.mortician_id || '',
+    });
+    setMastDate(rec.mast_date || rec.consent_date || rec.date_admitted || '—');
+  };
+
   const clearDetails = () => {
     const empty = {};
     FIELDS.forEach((id) => (empty[id] = ''));
@@ -194,115 +196,97 @@ const EmbalmingConsentForm = () => {
     setMastDate('—');
   };
 
-  /* ─── Search flow ───────────────────────────────────────────────── */
-  const doSearch = useCallback(() => {
+  /* ─── Search flow (debounced, real database lookup) ─────────────── */
+  const doSearch = useCallback(async () => {
     const v = String(adm || '').trim().toUpperCase();
     renderBarcode(v);
     if (!v) {
       setFound(false);
+      setIsSearching(false);
       lastSearchedRef.current = '';
       setStatus({ kind: '', text: '' });
       clearDetails();
       return;
     }
-    setStatus({ kind: 'searching', text: '<span class="spinner"></span> Searching...' });
-    fetchRecord(v).then((rec) => {
-      if (String(adm || '').trim().toUpperCase() !== v) return;
-      if (rec) {
-        setFound(true);
-        lastSearchedRef.current = v;
-        setStatus({
-          kind: 'found',
-          text: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Found',
-        });
-        fillRecord(rec);
-      } else {
-        setFound(false);
-        setStatus({
-          kind: 'notfound',
-          text: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Not Found',
-        });
-        clearDetails();
-      }
+    setIsSearching(true);
+    setFound(false);
+    setStatus({
+      kind: 'searching',
+      text: '<span class="spinner"></span> Searching database...',
     });
-  }, [adm, renderBarcode]);
 
-  const handleAdmChange = (e) => {
-    const v = e.target.value;
-    setAdm(v);
-    setFound(false);
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => doSearch(), 800);
-  };
+    try {
+      const tenantSlug = getTenantSlug();
+      const token = getAuthToken();
+      const response = await fetchWithCredentials(
+        env.FULL_API_URL + ENDPOINTS.BODYCHECKOUT.DECEASED_BY_ADMISSION(encodeURIComponent(v)),
+        {
+          headers: {
+            'x-tenant-slug': tenantSlug,
+            Authorization: 'Bearer ' + token,
+          },
+        }
+      );
 
-  const handleAdmKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-      doSearch();
+      if (String(adm || '').trim().toUpperCase() !== v) return;
+
+      const result = await response.json();
+      if (!response.ok || !result.success || !result.data) {
+        throw new Error(result.message || 'Record not found');
+      }
+
+      const rec = result.data;
+      setFound(true);
+      setIsSearching(false);
+      lastSearchedRef.current = v;
+      setStatus({
+        kind: 'found',
+        text: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Found',
+      });
+      fillRecordFromApi(rec);
+    } catch (error) {
+      if (String(adm || '').trim().toUpperCase() !== v) return;
+      setFound(false);
+      setIsSearching(false);
+      setStatus({
+        kind: 'notfound',
+        text: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Not Found',
+      });
+      clearDetails();
     }
-  };
-
-  /* ─── Field change ──────────────────────────────────────────────── */
-  const handleFieldChange = (id, value) => {
-    setFields((prev) => ({ ...prev, [id]: value }));
-  };
-
-  /* ─── Buttons ───────────────────────────────────────────────────── */
-  const handleReset = () => {
-    setAdm('');
-    setFound(false);
-    lastSearchedRef.current = '';
-    setStatus({ kind: '', text: '' });
-    renderBarcode('');
-    clearDetails();
-    setAccept(false);
-    setMsg({ kind: '', html: '' });
-    setSignatureData(null);
-  };
-
-  const handlePrint = () => window.print();
-
+  }, [adm, renderBarcode]);
   const handleSubmit = () => {
-    const missing = [];
-    if (!adm.trim()) missing.push('Admission Number');
-    if (!fields.f_kname.trim()) missing.push('Next of kin name');
-    if (!fields.f_deceased.trim()) missing.push('Deceased name');
-    if (!fields.f_date.trim()) missing.push('Consent date');
-    if (!accept) missing.push('the acceptance tick');
-    if (missing.length) {
+    // Embalming consent is optional and independent of registration.
+    // Only the admission number is needed to identify the record.
+    // The signature is what completes the embalming consent.
+    if (!adm.trim()) {
       setMsg({
         kind: 'error',
-        html: '<b>Missing required details.</b> Please complete: ' + missing.join(', ') + '.',
+        html: '<b>Admission Number is required.</b> Please enter an admission number to look up or save the record.',
       });
       return;
     }
-    const rec = fields.f_deceased.trim().replace(/</g, '&lt;');
+    const rec = fields.f_deceased.trim() || '\u2014';
+    const hasSignature = !!signatureData;
     setMsg({
       kind: 'ok',
       html:
-        '<b>Consent completed.</b> The embalming consent record for <b>' +
-        rec +
-        '</b> (Admission No. ' +
-        (admNoRef.current?.textContent || '') +
-        ') is ready to file. Use “Print Record” for the paper copy.',
+        hasSignature
+          ? '<b>Embalming consent signed.</b> The embalming consent record for <b>' +
+            rec +
+            '</b> (Admission No. ' +
+            (admNoRef.current?.textContent || adm) +
+            ') is complete and ready to file.'
+          : '<b>Record saved.</b> Admission No. ' +
+            (admNoRef.current?.textContent || adm) +
+            ' — embalming consent is optional. Sign the form when embalming is required.',
     });
   };
-
-  /* ─── Initial search ────────────────────────────────────────────── */
-  useEffect(() => {
-    doSearch();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return (
-    <>
-      <style>{`
-        :root {
-          --ink: #15171A; --bone: #FAF8F4; --white: #FFFFFF; --line: #E4E0D8;
-          --line-strong: #9A938A; --brass: #A98F6E; --verdigris: #2E7D6B;
-          --green: #22C55E; --red: #B03A2E; --gray: #A8A29E; --muted: #8A857C;
-          --pen: #2A3670; --maroon: #722F37; --maroon-dark: #5C242B;
+  /* ─── Initial state: empty — no auto search. User enters adm number manually. ─── */
+  // Removed auto doSearch() on mount so the consent form does not pre-fill
+  // and does not block registration. It is independent: search adm number,
+  // auto-fill details, sign to complete embalming consent only when needed.
+            --pen: #2A3670; --maroon: #722F37; --maroon-dark: #5C242B;
           --pine: #1A2A27; --pine-light: #24352F; --cream: #E9EBDD;
         }
         * { box-sizing: border-box; }
@@ -497,10 +481,10 @@ const EmbalmingConsentForm = () => {
                 </div>
                 <div className="verify-block">
                   <span className="adm-label">Admission No.</span>
-                  <div className="adm-no" id="admNo" ref={admNoRef}>1366</div>
+                  <div className="adm-no" id="admNo" ref={admNoRef}>{adm || '—'}</div>
                   <div className="bc-wrap">
                     <canvas id="barcode" ref={barcodeCanvasRef} aria-label="Admission number barcode" role="img"></canvas>
-                    <div className="bc-text" id="bcText" ref={barcodeTextRef}>1366</div>
+                    <div className="bc-text" id="bcText" ref={barcodeTextRef}>{adm || '—'}</div>
                   </div>
                 </div>
               </div>
