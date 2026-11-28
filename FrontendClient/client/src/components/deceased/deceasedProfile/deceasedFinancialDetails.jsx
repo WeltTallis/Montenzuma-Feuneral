@@ -150,7 +150,7 @@ export default function ChargeSchedule({
   const [waiveBundle, setWaiveBundle] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  // ── Derived: line items ─────────────────────────────────────
+  // ── Derived: line items ────
   const lineItems = useMemo(() => {
     return CHARGE_CATALOGUE
       .filter((c) => selected[c.id])
@@ -381,7 +381,7 @@ export default function ChargeSchedule({
                         <div style={styles.pickDesc}>{c.desc}</div>
 
                         {/* Editable charge amount — overrides the catalogue default */}
-                        {on && (
+                        {(c.type === 'fixed' || c.type === 'daily') && on && (
                           <div style={styles.editAmountWrap}>
                             <label style={styles.editAmountLabel}>Amount</label>
                             <input
@@ -576,9 +576,9 @@ export default function ChargeSchedule({
   );
 }
 
-// ============================================================
+
 // SMALL COMPONENTS
-// ============================================================
+
 function SectionHead({ num, title }) {
   return (
     <div style={styles.sectionHead}>
@@ -600,9 +600,9 @@ function getLineAmount(c, daysHeld, tierChoice, reconstructionCustom, customAmou
   return 0;
 }
 
-// ============================================================
+
 // INLINE CSS (kept as JS objects so the component is drop-in)
-// ============================================================
+
 const cssReset = `
   @import url('https://fonts.googleapis.com/css2?family=Saira:wght@300;400;600;700;800&display=swap');
   :root {
